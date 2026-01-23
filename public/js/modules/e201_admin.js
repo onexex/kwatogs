@@ -57,7 +57,8 @@ $(document).ready(function() {
             $('#view_job_title').text(`${pos} | ${dept}`);
 
             // Image
-            $('#view_img').attr('src', detail.empPicPath ? `/storage/${detail.empPicPath}` : '/img/undraw_profile.svg');
+           // Points directly to the public/image folder
+            $('#view_img').attr('src', detail.empPicPath ? `/img/profile/${detail.empPicPath}` : '/img/undraw_profile.svg');
 
             // Employment Info
             $('#view_hired').text(detail.empDateHired ? moment(detail.empDateHired).format('MMM DD, YYYY') : '---');
