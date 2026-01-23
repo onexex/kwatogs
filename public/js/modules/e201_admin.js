@@ -35,6 +35,15 @@ $(document).ready(function() {
             type: 'GET',
             success: function(response) {
                 renderDossier(response.data);
+                // alert(response.image_url);
+                 if (response.image_url) {
+
+                
+                        // Use a cache-buster (?t=...) to ensure the "previous" image is cleared
+                        $('#view_img').attr('src', response.image_url );
+                    } else {
+                        $('#view_img').attr('src', '/img/undraw_profile.svg');
+                    }
             }
         });
     });
@@ -55,11 +64,8 @@ $(document).ready(function() {
             const pos = detail.position ? detail.position.pos_desc : 'N/A';
             const dept = detail.department ? detail.department.dep_name : 'N/A';
             $('#view_job_title').text(`${pos} | ${dept}`);
-
-            // Image
-           // Points directly to the public/image folder
-            $('#view_img').attr('src', detail.empPicPath ? `/img/profile/${detail.empPicPath}` : '/img/undraw_profile.svg');
-
+            
+           
             // Employment Info
             $('#view_hired').text(detail.empDateHired ? moment(detail.empDateHired).format('MMM DD, YYYY') : '---');
             $('#view_emp_status').text(detail.empStatus ?? '---');

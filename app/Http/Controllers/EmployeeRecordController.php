@@ -18,23 +18,53 @@ class EmployeeRecordController extends Controller
     }
 
     // THE GET FUNCTION: Fetch full bio-data using Eloquent
+    // public function getEmployeeDetails($empID) {
+    //     $user = User::with([
+    //         'empDetail.department',
+    //         'empDetail.position',
+    //         'empDetail.company',
+    //         'education' // <--- Add your new relationship here
+    //     ])
+    //     ->where('empID', $empID)
+    //     ->first();
+
+    //     if ($user) {
+    //         return response()->json([
+    //             'status' => 200,
+    //             'data' => $user
+    //         ]);
+    //     }
+
+    //     return response()->json(['status' => 404, 'message' => 'Record not found']);
+    // }
+
     public function getEmployeeDetails($empID) {
-        $user = User::with([
-            'empDetail.department',
-            'empDetail.position',
-            'empDetail.company',
-            'education' // <--- Add your new relationship here
-        ])
-        ->where('empID', $empID)
-        ->first();
+    $user = User::with([
+        'empDetail.department',
+        'empDetail.position',
+        'empDetail.company',
+        'education'
+    ])
+    ->where('empID', $empID)
+    ->first();
 
-        if ($user) {
-            return response()->json([
-                'status' => 200,
-                'data' => $user
-            ]);
-        }
+    if ($user) {
+    // 1. Get the path from the relationship
+    $imageName = $user->empDetail->empPicPath ?? null;
 
-        return response()->json(['status' => 404, 'message' => 'Record not found']);
-    }
+    // 2. Build the URL. 
+    // If you are on Folder 2 (cPanel), asset() is perfect.
+    $fullUrl = $imageName 
+        ? asset("img/profile/" . $imageName) 
+        : asset("img/undraw_profile.svg");
+
+    return response()->json([
+        'status' => 200, 
+        'data' => $user,
+        'image_url' => $fullUrl // Pass it as a top-level key for easy access
+    ]);
+}
+
+    return response()->json(['status' => 404, 'message' => 'Record not found']);
+}
 }
