@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\AttendanceSummary;
-use App\Models\HomeAttendance;
+use App\Models\homeAttendance;
 use App\Models\User;
 
 class reportAttendanceCtrl extends Controller
@@ -47,7 +47,11 @@ class reportAttendanceCtrl extends Controller
         ->get();
 
     // Fetch HomeAttendance logs for the same employees and date range
+<<<<<<< HEAD
     $logs = \App\Models\HomeAttendance::whereBetween('attendance_date', [$dateFrom, $dateTo])
+=======
+    $logs = \App\Models\homeAttendance::whereBetween('attendance_date', [$dateFrom, $dateTo])
+>>>>>>> 01cd4020dea42afea2742bbba03a1adf1880e770
         ->when($empId !== 'All', fn($q) => $q->where('employee_id', $empId))
         ->orderBy('attendance_date')
         ->orderBy('time_in')
