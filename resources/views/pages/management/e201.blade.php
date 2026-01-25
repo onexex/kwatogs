@@ -141,7 +141,8 @@
                 <div class="dossier-header mb-4">
                     <div class="row align-items-center">
                         <div class="col-auto">
-                            <img id="view_img" src="{{ asset('img/undraw_profile.svg') }}" class="profile-pic-large">
+                            {{-- <img id="view_img" src="{{ asset('img/undraw_profile.svg') }}" class="profile-pic-large"> --}}
+                            <img id="view_img" src="" class="profile-pic-large">
                         </div>
                         <div class="col">
                             <span class="badge bg-white text-teal mb-2" id="view_status">STATUS</span>

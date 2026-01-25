@@ -18,14 +18,18 @@ use Illuminate\Support\Facades\Hash;
 
 class registerCtrl extends Controller
 {
-    public function generateEmpID(){
-        $getEmployees=User::get();
-        if($getEmployees->count()>0){
-            $id = str_pad($getEmployees->count() + 1, 4, '0', STR_PAD_LEFT);
-        }else{
+    public function generateEmpID() {
+        // 1. Get only the latest ID, don't load all users
+        $latestEmployee = User::orderBy('id', 'desc')->first();
+
+        if (!$latestEmployee) {
             $id = str_pad(1, 4, '0', STR_PAD_LEFT);
+        } else {
+            // 2. Increment the actual ID value, not the count
+            $id = str_pad($latestEmployee->id + 1, 4, '0', STR_PAD_LEFT);
         }
-        return response()->json(['status'=>200, 'data'=>$id]);
+
+        return response()->json(['status' => 200, 'data' => $id]);
     }
 
     public function get_province(Request $request){
@@ -241,7 +245,7 @@ class registerCtrl extends Controller
        
         $defaultpass = "123456";
         $current_date_time = now();
-     
+        // dd($request->path->getClientOriginalName());
 
         $validator = Validator::make($request->all(), [
             'email' => 'required|unique:users',
@@ -272,10 +276,6 @@ class registerCtrl extends Controller
             'basic'=>'required|numeric',
             'allowance'=>'required|numeric',
             
-
-            
-
-
             
         ]);
 
@@ -398,7 +398,7 @@ class registerCtrl extends Controller
                 'empAgencyID' => $request->agency,
                 'empHMOID' => $request->hmo,
                 'empHMONo' => $request->hmo_number,
-                'empPicPath' => $request->path,
+                'empPicPath' => $request->path->getClientOriginalName(),
                 'empDateHired' => $request->date_hired,
                 'empDateResigned' => $request->date_resigned,
                 'empDateRegular' => $request->date_regularization,

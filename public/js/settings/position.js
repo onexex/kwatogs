@@ -70,7 +70,7 @@ $(document).ready(function() {
                 Swal.close();
                 $(response.data.data).each(function(index, row) {
                     $('#txtPosition').val(row.pos_desc);
-                    $('#selJobLevel').val(row.pos_jl);
+                    // $('#selJobLevel').val(row.pos_jl);
                 });
             })
             .catch(function (error) {
@@ -83,7 +83,8 @@ $(document).ready(function() {
         var datas = $('#frmPosition');
         var formData = new FormData($(datas)[0]);
         formData.append('formAction', formAction);
-        formData.append('jobdesc', $('#selJobLevel option:selected').text());
+        // formData.append('jobdesc', $('#selJobLevel option:selected').text());
+        // formData.append('jobdesc');
         formData.append('posID', posID);
 
         Swal.fire({

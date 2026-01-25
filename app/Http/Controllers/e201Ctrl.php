@@ -68,6 +68,8 @@ class e201Ctrl extends Controller
         $getA=e201::where('empID',$request->id)
         ->get();
         return response()->json(['stat'=>200,'data'=>$getA,'path'=>$path ]);
+
+        // asset('assets/img/default-logo.png'),
     }
 
     // public function getfiles(Request $request)

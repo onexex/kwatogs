@@ -2,6 +2,15 @@
 @section('content')
 
     <style>
+        input {
+            text-transform: uppercase;
+            }
+        select {
+            text-transform: uppercase;
+            }
+            textarea {
+            text-transform: uppercase;
+            }
         /* Force inactive tabs to zero height and hide overflow */
 .tab-content > .tab-pane:not(.active) {
     display: none !important;
@@ -202,7 +211,7 @@
                                         <div class="row g-4 px-2">
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtfname" class="form-label small fw-semibold text-muted">First Name <span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtfname" name="firstname" placeholder="Enter first name">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtfname" name="firstname"  >
                                                 <span class="text-danger error-text firstname_error"></span>
                                             </div>
 
