@@ -12,12 +12,12 @@ class positionCtrl extends Controller
     public function create_update(Request $request){
         $values = [
             'pos_desc'=>$request->position,
-            'pos_jl'=>$request->job,
-            'pos_jl_desc'=>$request->jobdesc,
+            // 'pos_jl'=>$request->job,
+            // 'pos_jl_desc'=>$request->jobdesc,
         ];
         $validator = Validator::make($request->all(),[
             'position'=>'required',
-            'job'=>'required',
+            // 'job'=>'required',
         ]);
         if(!$validator->passes()){
             return response()->json(['status'=>201, 'error'=>$validator->errors()->toArray()]);
