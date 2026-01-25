@@ -70,7 +70,7 @@ class companyCtrl extends Controller
                 'company'   => 'required',
                 'code'      => 'required',
                 'color'     => 'required',
-                'logo'      => $request->formAction == 1 ? 'image|mimes:jpeg,png,jpg|max:2048' : 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'logo'      => $request->formAction == 1 ? 'required|image|mimes:jpeg,png,jpg|max:2048' : 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             ]);
 
             if (!$validator->passes()) {
