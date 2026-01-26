@@ -271,6 +271,7 @@
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtHomePhone" class="form-label small fw-semibold text-muted">Home Phone</label>
                                                 <input type="number" class="form-control form-control-lg bg-light border-0 fs-6" id="txtHomePhone" name="homephone">
+                                                <span class="text-danger small error-text homephone_error"></span>
                                             </div>
 
                                             <div class="col-lg-3 col-md-6">
