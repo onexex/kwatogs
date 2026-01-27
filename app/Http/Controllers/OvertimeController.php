@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use App\Models\EmployeeSchedule;
 use App\Enums\OvertimeStatusEnum;
 use App\Models\holidayLoggerModel;
+use App\Models\otfiling;
 use Illuminate\Support\Facades\Auth;
 
 class OvertimeController extends Controller
@@ -70,6 +71,57 @@ class OvertimeController extends Controller
         $user = Auth::user();
 
         if ($user ) {
+            $otfilling = otfiling::where('comp_id', $user->empDetail->empCompID)
+                ->first();
+
+            if ($otfilling) {
+                $now = Carbon::now();
+
+                /**
+                 * Not allowed to file OVERTIME BEFORE (future OT)
+                 */
+                if ($fromDateTime->greaterThan($now)) {
+
+                    if ($otfilling->filebefore == 0) {
+                        return back()->withErrors([
+                            'dateFrom' => 'Filing overtime for future schedules is not allowed.'
+                        ])->withInput();
+                    }
+
+                    if ($otfilling->no_days_before > 0) {
+                        $maxFutureDate = $now->copy()->addDays($otfilling->no_days_before);
+
+                        if ($fromDateTime->greaterThan($maxFutureDate)) {
+                            return back()->withErrors([
+                                'dateFrom' => "You may only file overtime up to {$otfilling->no_days_before} day(s) in advance."
+                            ])->withInput();
+                        }
+                    }
+                }
+
+                /**
+                 * Not allowed to file OVERTIME AFTER (past OT)
+                 */
+                if ($toDateTime->lessThan($now)) {
+
+                    if ($otfilling->fileafter == 0) {
+                        return back()->withErrors([
+                            'dateTo' => 'Filing overtime for past schedules is not allowed.'
+                        ])->withInput();
+                    }
+
+                    if ($otfilling->no_days_after > 0) {
+                        $minPastDate = $now->copy()->subDays($otfilling->no_days_after);
+
+                        if ($toDateTime->lessThan($minPastDate)) {
+                            return back()->withErrors([
+                                'dateTo' => "You may only file overtime within {$otfilling->no_days_after} day(s) after the work date."
+                            ])->withInput();
+                        }
+                    }
+                }
+            }
+
             $schedules = EmployeeSchedule::where('employee_id', $user->empID)
                 ->whereDate('sched_start_date', '<=', $request->dateTo)
                 ->whereDate('sched_end_date', '>=', $request->dateFrom)
