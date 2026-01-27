@@ -49,9 +49,12 @@ $(document).ready(function() {
     });
 
     function renderDossier(user) {
+        $status = user.status == 1 ? 'ACTIVE' : 'INACTIVE';
+        $statusClass = user.status == 1 ? 'bg-success' : 'bg-danger';
         // 1. Root User Data
         $('#view_name').text(`${user.lname}, ${user.fname} ${user.mname ?? ''}`);
-        $('#view_status').text(user.status);
+        $('#view_status').text($status);
+        $('#view_status').addClass($statusClass)
         $('#view_email').text(user.email);
         $('#view_empid_val').text(user.empID);
 
@@ -65,17 +68,16 @@ $(document).ready(function() {
             const dept = detail.department ? detail.department.dep_name : 'N/A';
             $('#view_job_title').text(`${pos} | ${dept}`);
             
-           
             // Employment Info
             $('#view_hired').text(detail.empDateHired ? moment(detail.empDateHired).format('MMM DD, YYYY') : '---');
-            $('#view_emp_status').text(detail.empStatus ?? '---');
-            $('#view_class').text(detail.empClassification ?? '---');
-            
+            $('#view_emp_status').text(detail.empStatus == 1 ? 'Employed' : 'Resigned');
+            $('#view_class').text(detail.classification.class_desc);
             // Currency Formatting
             const basic = parseFloat(detail.empBasic || 0);
             $('#view_salary').text(basic.toLocaleString('en-US', { minimumFractionDigits: 2 }));
 
             // Statutory
+            $('#view_hmo').text(detail.empHMONo ?? '---');
             $('#view_sss').text(detail.empSSS ?? '---');
             $('#view_phil').text(detail.empPhilhealth ?? '---');
             $('#view_pagibig').text(detail.empPagibig ?? '---');

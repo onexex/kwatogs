@@ -105,8 +105,8 @@
            <div class="list-scroll" id="employeeList" style="max-height: 700px; overflow-y: auto;">
                 @foreach($resultUser as $user)
                 <div class="emp-row d-flex align-items-center p-3 border-bottom" data-id="{{ $user->empID }}" style="cursor: pointer;">
-                    <div class="avatar-circle me-3">
-                        <span>{{ strtoupper(substr($user->fname, 0, 1) . substr($user->lname, 0, 1)) }}</span>
+                    <div class="avatar-circle me-3 text-capitalize">
+                        <span>{{ (substr($user->fname, 0, 1) . substr($user->lname, 0, 1)) }}</span>
                     </div>
                     
                     <div class="flex-grow-1">
@@ -145,13 +145,16 @@
                             <img id="view_img" src="" class="profile-pic-large">
                         </div>
                         <div class="col">
-                            <span class="badge bg-white text-teal mb-2" id="view_status">STATUS</span>
-                            <h1 class="fw-bold mb-1" id="view_name">---</h1>
+                            <span class="badge text-teal  mb-2" id="view_status">STATUS</span>
+                            <h1 class="fw-bold mb-1 text-capitalize" id="view_name">---</h1>
                             <p class="mb-0 opacity-75 fs-5" id="view_job_title">Position | Department</p>
                         </div>
-                        <div class="col-auto text-end">
+                        <div class="col-auto text-end d-flex gap-2">
                             <button class="btn btn-light rounded-pill px-4 fw-bold shadow-sm" onclick="window.print()">
                                 <i class="fa-solid fa-print me-2"></i>Export PDF
+                            </button>
+                            <button class="btn btn-light rounded-pill px-4 fw-bold shadow-sm" onclick="window.print()">
+                                <i class="fa-solid fa-pencil me-2"></i>Edit
                             </button>
                         </div>
                     </div>
