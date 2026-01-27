@@ -353,28 +353,29 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     Route::get('/position/delete', [positionCtrl::class, 'delete']);
 
     Route::group(['prefix' => 'pages/management/e201', 'middleware' => ['auth']], function () {
-    
-    // 1. The Main View (Loads the search page)
-    Route::get('/', [EmployeeRecordController::class, 'index'])->name('e201.index');
+        
+        // 1. The Main View (Loads the search page)
+        Route::get('/', [EmployeeRecordController::class, 'index'])->name('e201.index');
 
-    // 2. The Search/Get Function (The AJAX "Messenger")
-    // This is what retrieves the full bio-data without refreshing
-    Route::get('/details/{empID}', [EmployeeRecordController::class, 'getEmployeeDetails'])
-         ->name('e201.details');
+        // 2. The Search/Get Function (The AJAX "Messenger")
+        // This is what retrieves the full bio-data without refreshing
+        Route::get('/details/{empID}', [EmployeeRecordController::class, 'getEmployeeDetails'])
+            ->name('e201.details');
 
-    // 3. Optional: Export to PDF
-    Route::get('/print/{empID}', [EmployeeRecordController::class, 'printProfile'])
-         ->name('e201.print');
+        // 3. Optional: Export to PDF
+        Route::get('/print/{empID}', [EmployeeRecordController::class, 'printProfile'])
+            ->name('e201.print');
 
 
-});
+    });
     
     // The {id} here corresponds to the empID passed from the frontend
     // Route::get('/admin/e201/fetch/{id}', [EmployeeRecordController::class, 'getE201Data'])->name('e201.fetch');
     
 
 // Ensure this is OUTSIDE any other conflicting groups
-Route::get('admin/e201/fetch/{empID}', [EmployeeRecordController::class, 'getEmployeeDetails']);
+    Route::get('admin/e201/fetch/{empID}', [EmployeeRecordController::class, 'getEmployeeDetails']);
+    Route::get('admin/e201/edit/{user}', [EmployeeRecordController::class, 'editEmployee']);
 
 });
 

@@ -54,8 +54,9 @@
 
         /* The Hover Effect */
         .nav-pills .nav-link:hover {
-            color: var(--primary-color) !important;
             background-color: rgba(105, 108, 255, 0.05);
+            color: var(--primary-color) !important;
+            box-shadow: none !important;
         }
 
         /* The Active State (Modern Underline) */
@@ -145,20 +146,15 @@
         <div class="row mb-3">
            <div class="d-flex align-items-center justify-content-between mb-4">
                 <div>
-                    <h4 class="fw-bold text-dark m-0">Personnel Onboarding</h4>
+                    <h4 class="fw-bold text-dark m-0 text-capitalize">Edit Information of {{ $user->fname }} {{ $user->lname }}</h4>
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item text-muted">Operation</li>
-                            <li class="breadcrumb-item active fw-semibold text-primary" aria-current="page">Employee Registration</li>
+                            <li class="breadcrumb-item active fw-semibold text-primary" aria-current="page">Employee Updating Information</li>
                         </ol>
                     </nav>
                 </div>
                 
-                <div class="d-none d-md-block">
-                    <span class="badge bg-soft-teal text-teal border border-teal rounded-pill px-3 py-2">
-                        <i class="fa-solid fa-user-plus me-1"></i> New Enrollment
-                    </span>
-                </div>
             </div>
                 
 

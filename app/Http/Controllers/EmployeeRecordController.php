@@ -3,7 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\company;
+use App\Models\agencies;
+use App\Models\HMOModel;
+use App\Models\joblevel;
+use App\Models\position;
+use App\Models\department;
 use Illuminate\Http\Request;
+use App\Models\classification;
 
 class EmployeeRecordController extends Controller
 {
@@ -37,6 +44,30 @@ class EmployeeRecordController extends Controller
 
     //     return response()->json(['status' => 404, 'message' => 'Record not found']);
     // }
+    public function editEmployee(User $user) 
+    {
+        $getCompany= company::get();
+        $getClassification= classification::get();
+        // $getClassification=classification::get();
+        $getDepartment= department::get();
+        $getPosition= position::get();
+        $getImmediateList=User::get();
+        $getJoblevel= joblevel::get();
+        $getAgency= agencies::get();
+        $getHMO= HMOModel::get();
+
+        return view('pages.modules.employee.edit_employee', [
+            'user' => $user,
+        ])->with('hmoData',$getHMO)
+            ->with('agencyData',$getAgency)
+            ->with('joblevelData',$getJoblevel)
+            ->with('companyData',$getCompany)
+            ->with('immediateData',$getImmediateList)
+            ->with('positionData',$getPosition)
+            ->with('departmentData',$getDepartment)
+            ->with('employeeClassification',$getClassification);;
+    }
+
 
     public function getEmployeeDetails($empID) 
     {

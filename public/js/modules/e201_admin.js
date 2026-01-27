@@ -57,11 +57,12 @@ $(document).ready(function() {
         $('#view_status').addClass($statusClass)
         $('#view_email').text(user.email);
         $('#view_empid_val').text(user.empID);
+        $('#editEmployee').attr('href', '/admin/e201/edit/' + user.id);
 
         // 2. Relationship Data (empDetail)
         const detail = user.emp_detail; // This matches your public function empDetail()
         const d = user.emp_detail;
-        
+
         if (detail) {
             // Position and Dept
             const pos = detail.position ? detail.position.pos_desc : 'N/A';

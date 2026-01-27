@@ -153,9 +153,9 @@
                             <button class="btn btn-light rounded-pill px-4 fw-bold shadow-sm" onclick="window.print()">
                                 <i class="fa-solid fa-print me-2"></i>Export PDF
                             </button>
-                            <button class="btn btn-light rounded-pill px-4 fw-bold shadow-sm" onclick="window.print()">
+                            <a class="btn btn-light rounded-pill px-4 fw-bold shadow-sm" id="editEmployee">
                                 <i class="fa-solid fa-pencil me-2"></i>Edit
-                            </button>
+                            </a>
                         </div>
                     </div>
                 </div>
