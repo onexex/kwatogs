@@ -207,77 +207,77 @@
                                         <div class="row g-4 px-2">
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtfname" class="form-label small fw-semibold text-muted">First Name <span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtfname" name="firstname"  >
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" value="{{ $user->fname }}" id="txtfname" name="firstname"  >
                                                 <span class="text-danger error-text firstname_error"></span>
                                             </div>
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtMiddleName" class="form-label small fw-semibold text-muted">Middle Name <span class="text-danger"></span></label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtMiddleName" name="middlename">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" value="{{ $user->mname }}" id="txtMiddleName" name="middlename">
                                                 <span class="text-danger error-text middlename_error"></span>
                                             </div>
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtLastName" class="form-label small fw-semibold text-muted">Last Name <span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtLastName" name="lastname">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" value="{{ $user->lname }}" id="txtLastName" name="lastname">
                                                 <span class="text-danger error-text lastname_error"></span>
                                             </div>
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtSuffix" class="form-label small fw-semibold text-muted">Suffix</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtSuffix" name="suffix" placeholder="e.g. Jr.">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" value="{{ $user->suffix }}" id="txtSuffix" name="suffix" placeholder="e.g. Jr.">
                                             </div>
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="selGender" class="form-label small fw-semibold text-muted">Gender <span class="text-danger">*</span></label>
                                                 <select class="form-select form-control-lg bg-light border-0 fs-6" name="gender" id="selGender">
-                                                    <option value="Female">Female</option>
-                                                    <option value="Male">Male</option>
+                                                    <option {{ $user->employeeInformation->gender == 'Female' ? 'selected' : '' }} value="Female">Female</option>
+                                                    <option {{ $user->employeeInformation->gender == 'Male' ? 'selected' : '' }}  value="">Male</option>
                                                 </select>
                                             </div>
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtCitizenship" class="form-label small fw-semibold text-muted">Citizenship <span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtCitizenship" name="citizenship">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" value="{{ $user->employeeInformation->citizenship }}" id="txtCitizenship" name="citizenship">
                                                 <span class="text-danger error-text citizenship_error"></span>
                                             </div>
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtReligion" class="form-label small fw-semibold text-muted">Religion<span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtReligion" name="religion">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" value="{{ $user->employeeInformation->empReligion }}" id="txtReligion" name="religion">
                                                 <span class="text-danger small error-text religion_error"></span>
                                             </div>
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtDOB" class="form-label small fw-semibold text-muted">Date of Birth <span class="text-danger">*</span></label>
-                                                <input type="date" class="form-control form-control-lg bg-light border-0 fs-6" id="txtDOB" name="birthdate">
+                                                <input type="date" class="form-control form-control-lg bg-light border-0 fs-6" id="txtDOB" value="{{ $user->employeeInformation->empBdate }}" name="birthdate">
                                                 <span class="text-danger small error-text birthdate_error"></span>
                                             </div>
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="selCivilStatus" class="form-label small fw-semibold text-muted">Civil Status <span class="text-danger">*</span></label>
                                                 <select class="form-select form-control-lg bg-light border-0 fs-6" name="status" id="selCivilStatus">
-                                                    <option value="0">Single</option>
-                                                    <option value="1">Married</option>
-                                                    <option value="2">Divorced</option>
+                                                    <option {{ $user->employeeInformation->empCStatus == '0' ? 'selected' : '' }} value="0">Single</option>
+                                                    <option {{ $user->employeeInformation->empCStatus == '1' ? 'selected' : '' }} value="1">Married</option>
+                                                    <option {{ $user->employeeInformation->empCStatus == '2' ? 'selected' : '' }} value="2">Divorced</option>
                                                 </select>
                                                 <span class="text-danger small error-text status_error"></span>
                                             </div>
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtHomePhone" class="form-label small fw-semibold text-muted">Home Phone</label>
-                                                <input type="number" class="form-control form-control-lg bg-light border-0 fs-6" id="txtHomePhone" name="homephone">
+                                                <input type="number" class="form-control form-control-lg bg-light border-0 fs-6" value="{{ $user->employeeInformation->empHContact }}"  id="txtHomePhone" name="homephone">
                                             </div>
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtMobileNumber" class="form-label small fw-semibold text-muted">Mobile Number <span class="text-danger">*</span></label>
-                                                <input type="number" class="form-control form-control-lg bg-light border-0 fs-6" id="txtMobileNumber" name="mobile">
+                                                <input type="number" class="form-control form-control-lg bg-light border-0 fs-6"  value="{{ $user->employeeInformation->empPContact }}" id="txtMobileNumber" name="mobile">
                                                 <span class="text-danger small error-text mobile_error"></span>
                                             </div>
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtEmailAddress" class="form-label small fw-semibold text-muted">Email Address <span class="text-danger">*</span></label>
-                                                <input type="email" class="form-control form-control-lg bg-light border-0 fs-6" id="txtEmailAddress" name="email">
+                                                <input type="email" class="form-control form-control-lg bg-light text-lowercase border-0 fs-6" value="{{ $user->employeeInformation->empEmail }}" id="txtEmailAddress" name="email">
                                                 <span class="text-danger small error-text email_error"></span>
                                                 
                                             </div>
@@ -294,26 +294,28 @@
                                         <div class="row g-4 px-2">
                                             <div class="col-lg-4">
                                                 <label for="txtProvince" class="form-label small fw-semibold text-muted">Province <span class="text-danger">*</span></label>
-                                                <select class="form-select form-control-lg bg-light border-0 fs-6" id="txtProvince" name="province"></select>
+                                                <select class="form-select form-control-lg bg-light border-0 fs-6" id="txtProvince" 
+                                                    data-selected="{{ $user->employeeInformation->empProv }}"
+                                                    name="province"></select>
                                                 <span class="text-danger small error-text province_error"></span>
                                             </div>
                                             <div class="col-lg-4">
                                                 <label for="txtCity" class="form-label small fw-semibold text-muted">City <span class="text-danger">*</span></label>
-                                                <select class="form-select form-control-lg bg-light border-0 fs-6" id="txtCity" name="city"></select>
+                                                <select class="form-select form-control-lg bg-light border-0 fs-6" data-selected="{{ $user->employeeInformation->empAddCity }}" id="txtCity" name="city"></select>
                                                 <span class="text-danger small error-text city_error"></span>
                                             </div>
                                             <div class="col-lg-4">
                                                 <label for="txtBrgy" class="form-label small fw-semibold text-muted">Barangay <span class="text-danger">*</span></label>
-                                                <select class="form-select form-control-lg bg-light border-0 fs-6" id="txtBrgy" name="barangay"></select>
+                                                <select class="form-select form-control-lg bg-light border-0 fs-6" data-selected="{{ $user->employeeInformation->empAddBrgy }}" id="txtBrgy" name="barangay"></select>
                                                 <span class="text-danger small error-text barangay_error"></span>
                                             </div>
                                             <div class="col-lg-6">
                                                 <label for="txtStreet" class="form-label small fw-semibold text-muted">Street No / Subdivision <span class="text-danger"></span></label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtStreet" name="street">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtStreet" value="{{ $user->employeeInformation->empAddStreet }}" name="street">
                                             </div>
                                             <div class="col-lg-3">
                                                 <label for="txtZipCode" class="form-label small fw-semibold text-muted">Zip Code <span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtZipCode" name="zipcode">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" value="{{ $user->employeeInformation->empZipcode }}" id="txtZipCode" name="zipcode">
                                             <span class="text-danger small error-text zipcode_error"></span>
                                             </div>
                                             <div class="col-lg-3">
@@ -767,30 +769,127 @@
         </div>
     </div>
     <script>
+        
         function previewImage(input) {
-    const preview = document.getElementById('imagePreview');
-    const icon = document.getElementById('previewIcon');
-    const file = input.files[0];
+            const preview = document.getElementById('imagePreview');
+            const icon = document.getElementById('previewIcon');
+            const file = input.files[0];
 
-    if (file) {
-        const reader = new FileReader();
+            if (file) {
+                const reader = new FileReader();
 
-        reader.onload = function(e) {
-            // Set the image source to the result of the file reader
-            preview.src = e.target.result;
-            // Show the image and hide the default icon
-            preview.style.display = 'block';
-            icon.style.display = 'none';
+                reader.onload = function(e) {
+                    // Set the image source to the result of the file reader
+                    preview.src = e.target.result;
+                    // Show the image and hide the default icon
+                    preview.style.display = 'block';
+                    icon.style.display = 'none';
+                }
+
+                reader.readAsDataURL(file);
+            } else {
+                // If user clears the input, reset to default icon
+                preview.src = "#";
+                preview.style.display = 'none';
+                icon.style.display = 'block';
+            }
         }
+        $(document).ready(function() {
 
-        reader.readAsDataURL(file);
-    } else {
-        // If user clears the input, reset to default icon
-        preview.src = "#";
-        preview.style.display = 'none';
-        icon.style.display = 'block';
-    }
-}
+            $(document).on('change', '#txtProvince ', function(e) {
+                var provCode = $(this).val();
+                var txtProvince = $('#txtCity').data('selected');
+            
+            });
+
+            $(document).on('change', '#txtCity ', function(e) {
+            });
+
+            function loadCity(prov) {
+                var txtCity = $('#txtCity').data('selected');
+                axios.get('/get_city',{
+                    params: {
+                        id: prov
+                    }
+                })    .then(function (response) {
+                    if (response.data.status == 200) {
+                        var bodyData = '';
+                        //    bodyData += ("<option value=0>-</option>");
+                        $.each(response.data.data, function(index, row) {
+                            let selected = txtCity == row.citymunCode ? 'selected' : '';
+                            bodyData += ("<option " + selected + " value=" + row.citymunCode + ">" + row.citymunDesc + "</option>");
+                        })
+                        $("#txtCity").empty();
+                        $("#txtCity").append(bodyData);
+                        
+                        if (txtCity) {
+                            loadBrgy(txtCity)
+                        }
+                    }
+                })
+                .catch(function (error) {
+                    dialog.alert({
+                        message: error
+                    });  
+                })
+                .then(function () {}); 
+            }
+            function loadBrgy(city) {
+                var txtBrgy = $('#txtBrgy').data('selected');
+                axios.get('/get_brgy',{
+                    params: {
+                        id: city
+                    }
+                })    .then(function (response) {
+                    if (response.data.status == 200) {
+                    var bodyData = '';
+                    //    bodyData += ("<option value=0>-</option>");
+                    $.each(response.data.data, function(index, row) {
+                        let selected = txtBrgy == row.brgyCode ? 'selected' : '';
+                        bodyData += ("<option " + selected + " value=" + row.brgyCode + ">" + row.brgyDesc + "</option>");
+                    })
+                    $("#txtBrgy").empty();
+                    $("#txtBrgy").append(bodyData);
+                    }
+                })
+                .catch(function (error) {
+                    dialog.alert({
+                        message: error
+                    });  
+                })
+                .then(function () {}); 
+            }
+            loadprovince()
+            function loadprovince(e) {
+                var txtProvince = $('#txtProvince').data('selected');
+                axios.post('/get_province',)  
+                .then(function (response) {
+                    //error response
+                    if (response.data.status == 200) {
+                        var bodyData = '';
+                        bodyData += ("<option value=0>-</option>");
+                        $.each(response.data.data, function(index, row) {
+                            let selected = txtProvince == row.provCode ? 'selected' : '';
+
+                            bodyData += (`<option ${selected} value=` + row.provCode + `>` + row.provDesc + `</option>`);
+                        })
+
+                        if (txtProvince) {
+                            loadCity(txtProvince)
+                        }
+                        $("#txtProvince").empty();
+                        $("#txtProvince").append(bodyData);
+                    }
+                })
+                .catch(function (error) {
+                    dialog.alert({
+                        message: error
+                    });  
+                })
+                .then(function () {});  
+            }
+        })
+     
     </script>
- <script src="{{ asset('js/modules/enrollment.js') }}" defer></script>
+ {{-- <script src="{{ asset('js/modules/enrollment.js') }}" defer></script> --}}
 @endsection
