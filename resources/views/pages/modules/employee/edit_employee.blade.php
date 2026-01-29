@@ -341,95 +341,44 @@
                                     
                                     <div class="card-body p-4">
                                         
-                                        <div class="row g-4 mb-5 px-2">
-                                            <div class="col-12">
-                                                <div class="d-flex align-items-center">
-                                                    <h6 class="fw-bold text-primary mb-0 small uppercase tracking-wide">Primary Education</h6>
-                                                    <div class="flex-grow-1 ms-3 border-bottom opacity-25"></div>
+                                        @foreach ($user->education as $education)
+                                            @php
+                                                $name = 'primary';
+                                                if ($education->schoolLevel == 'Secondary') {
+                                                    $name = 'secondary';
+                                                } else if ($education->schoolLevel == 'Tertiary') {
+                                                    $name = 'tertiary';
+                                                }
+                                            @endphp
+                                            <div class="row g-4 mb-5 px-2">
+                                                <div class="col-12">
+                                                    <div class="d-flex align-items-center">
+                                                        <h6 class="fw-bold text-primary mb-0 small uppercase tracking-wide">{{ $education->schoolLevel }} Education</h6>
+                                                        <div class="flex-grow-1 ms-3 border-bottom opacity-25"></div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="col-md-6">
+                                                    <label for="txtPrimarySchool" class="form-label small fw-semibold text-muted">Name of School</label>
+                                                    <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtPrimarySchool" value="{{ $education->schoolName }}" name="{{ $name }}_school" placeholder="Enter school name">
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label for="txtPrimaryStarted" class="form-label small fw-semibold text-muted">Year Started</label>
+                                                    <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtPrimaryStarted" value="{{ $education->schoolYearStarted }}" name="{{ $name }}_year_started" placeholder="YYYY">
+                                                </div>
+                                                
+                                                <div class="col-md-3">
+                                                    <label for="txtPrimaryGraduated" class="form-label small fw-semibold text-muted">Year Graduated</label>
+                                                    <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtPrimaryGraduated" value="{{ $education->schoolYearEnded }}" name="{{ $name }}_year_graduated" placeholder="YYYY">
+                                                </div>
+                                                
+                                                <div class="col-12 mt-3">
+                                                    <label for="txtPrimaryAddress" class="form-label small fw-semibold text-muted">School Address</label>
+                                                    <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtPrimaryAddress" value="{{ $education->schoolAddress }}" name="{{ $name }}_school_address" placeholder="Street, City, Province">
+                                                    <span class="text-danger small error-text {{ $name }}_address_error"></span>
                                                 </div>
                                             </div>
-                                            
-                                            <div class="col-md-6">
-                                                <label for="txtPrimarySchool" class="form-label small fw-semibold text-muted">Name of School</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtPrimarySchool" name="primary_school" placeholder="Enter school name">
-                                            </div>
-                                            
-                                            <div class="col-md-3">
-                                                <label for="txtPrimaryStarted" class="form-label small fw-semibold text-muted">Year Started</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtPrimaryStarted" name="primary_year_started" placeholder="YYYY">
-                                            </div>
-                                            
-                                            <div class="col-md-3">
-                                                <label for="txtPrimaryGraduated" class="form-label small fw-semibold text-muted">Year Graduated</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtPrimaryGraduated" name="primary_year_graduated" placeholder="YYYY">
-                                            </div>
-                                            
-                                            <div class="col-12 mt-3">
-                                                <label for="txtPrimaryAddress" class="form-label small fw-semibold text-muted">School Address</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtPrimaryAddress" name="primary_school_address" placeholder="Street, City, Province">
-                                                <span class="text-danger small error-text primary_address_error"></span>
-                                            </div>
-                                        </div>
-
-                                        <div class="row g-4 mb-5 px-2">
-                                            <div class="col-12">
-                                                <div class="d-flex align-items-center">
-                                                    <h6 class="fw-bold text-primary mb-0 small uppercase tracking-wide">Secondary Education</h6>
-                                                    <div class="flex-grow-1 ms-3 border-bottom opacity-25"></div>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="col-md-6">
-                                                <label for="txtSecondarySchool" class="form-label small fw-semibold text-muted">Name of School</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtSecondarySchool" name="secondary_school" placeholder="Enter school name">
-                                            </div>
-                                            
-                                            <div class="col-md-3">
-                                                <label for="txtSecondaryStarted" class="form-label small fw-semibold text-muted">Year Started</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtSecondaryStarted" name="secondary_year_started" placeholder="YYYY">
-                                            </div>
-                                            
-                                            <div class="col-md-3">
-                                                <label for="txtSecondaryGraduated" class="form-label small fw-semibold text-muted">Year Graduated</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtSecondaryGraduated" name="secondary_year_graduated" placeholder="YYYY">
-                                            </div>
-                                            
-                                            <div class="col-12 mt-3">
-                                                <label for="txtSecondaryAddress" class="form-label small fw-semibold text-muted">School Address</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtSecondaryAddress" name="secondary_school_address" placeholder="Street, City, Province">
-                                                <span class="text-danger small error-text secondary_address_error"></span>
-                                            </div>
-                                        </div>
-
-                                        <div class="row g-4 px-2">
-                                            <div class="col-12">
-                                                <div class="d-flex align-items-center">
-                                                    <h6 class="fw-bold text-primary mb-0 small uppercase tracking-wide">Tertiary Education</h6>
-                                                    <div class="flex-grow-1 ms-3 border-bottom opacity-25"></div>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="col-md-6">
-                                                <label for="txtTertiarySchool" class="form-label small fw-semibold text-muted">Name of School</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtTertiarySchool" name="tertiary_school" placeholder="Enter school name">
-                                            </div>
-                                            
-                                            <div class="col-md-3">
-                                                <label for="txtTertiaryStarted" class="form-label small fw-semibold text-muted">Year Started</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtTertiaryStarted" name="tertiary_year_started" placeholder="YYYY">
-                                            </div>
-                                            
-                                            <div class="col-md-3">
-                                                <label for="txtTertiaryGraduated" class="form-label small fw-semibold text-muted">Year Graduated</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtTertiaryGraduated" name="tertiary_year_graduated" placeholder="YYYY">
-                                            </div>
-                                            
-                                            <div class="col-12 mt-3">
-                                                <label for="txtTertiaryAddress" class="form-label small fw-semibold text-muted">School Address</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtTertiaryAddress" name="tertiary_school_address" placeholder="Street, City, Province">
-                                                <span class="text-danger small error-text tertiary_address_error"></span>
-                                            </div>
-                                        </div>
+                                        @endforeach
 
                                     </div>
                                 </div>
@@ -448,7 +397,7 @@
                                             <div class="col-lg-4">
                                                 <div class="form-group mb-3">
                                                     <label for="txtEmployeeNo" class="form-label small fw-semibold text-muted">Employee No. <span class="text-danger">*</span></label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6 fw-bold" id="txtEmployeeNo" name="employee_number" type="text" readonly />
+                                                    <input class="form-control form-control-lg bg-light border-0 fs-6 fw-bold" id="txtEmployeeNo" value="{{ $user->empID }}" name="employee_number" type="text" readonly />
                                                     <span class="text-danger small error-text employee_number_error"></span>
                                                 </div>
 
@@ -458,7 +407,7 @@
                                                         <option value="">Select Company</option>
                                                         @if (count($companyData) > 0)
                                                             @foreach ($companyData as $companyDatas)
-                                                                <option value='{{ $companyDatas->comp_id }}'>{{ $companyDatas->comp_name }}</option>
+                                                                <option {{ $user->empDetail->empCompID == $companyDatas->comp_id ? 'selected' : '' }} value='{{ $companyDatas->comp_id }}'>{{ $companyDatas->comp_name }}</option>
                                                             @endforeach
                                                         @endif
                                                     </select>
@@ -472,7 +421,7 @@
                                                         
                                                         @if (count($departmentData) > 0)
                                                             @foreach ($departmentData as $departmentDatas)
-                                                                <option value='{{ $departmentDatas->id }}'>{{ $departmentDatas->dep_name }}</option>
+                                                                <option {{ $user->empDetail->empDepID == $departmentDatas->id ? 'selected' : '' }} value='{{ $departmentDatas->id }}'>{{ $departmentDatas->dep_name }}</option>
                                                             @endforeach
                                                         @endif
                                                     </select>
@@ -485,7 +434,7 @@
                                                         <option value="">Select Position</option>
                                                         @if (count($positionData) > 0)
                                                             @foreach ($positionData as $positionDatas)
-                                                                <option value='{{ $positionDatas->id }}'>{{ $positionDatas->pos_desc }}</option>
+                                                                <option {{ $user->empDetail->empPos == $positionDatas->id ? 'selected' : '' }} value='{{ $positionDatas->id }}'>{{ $positionDatas->pos_desc }}</option>
                                                             @endforeach
                                                         @endif
                                                     </select>
@@ -500,7 +449,7 @@
                                                         <option value="">Select Classification</option>
                                                         @if (count($employeeClassification) > 0)
                                                             @foreach ($employeeClassification as $employeeClassifications)
-                                                                <option value='{{ $employeeClassifications->class_code }}'>{{ $employeeClassifications->class_desc }}</option>
+                                                                <option {{ $user->empDetail->empClassification == $employeeClassifications->class_code ? 'selected' : '' }} value='{{ $employeeClassifications->class_code }}'>{{ $employeeClassifications->class_desc }}</option>
                                                             @endforeach
                                                         @endif
                                                     </select>
@@ -513,7 +462,7 @@
                                                         <option value="">Select Immediate Superior</option>
                                                         @if (count($immediateData) > 0)
                                                             @foreach ($immediateData as $immediateDatas)
-                                                                <option value='{{ $immediateDatas->empID }}'>{{ $immediateDatas->fname . ' ' . $immediateDatas->lname }}</option>
+                                                                <option {{ $user->empDetail->empISID == $immediateDatas->empID ? 'selected' : '' }} value='{{ $immediateDatas->empID }}'>{{ $immediateDatas->fname . ' ' . $immediateDatas->lname }}</option>
                                                             @endforeach
                                                         @endif
                                                     </select>
@@ -524,8 +473,8 @@
                                                     <label for="selStatus" class="form-label small fw-semibold text-muted">Status <span class="text-danger">*</span></label>
                                                     <select class="form-select form-control-lg bg-light border-0 fs-6" name="status" id="selStatus">
                                                         <option value="">Select Status</option>
-                                                        <option value="1">Employed</option>
-                                                        <option value="0">Resigned</option>
+                                                        <option {{ $user->empDetail->empStatus == 1 ? 'selected' : '' }} value="1">Employed</option>
+                                                        <option {{ $user->empDetail->empStatus == 0 ? 'selected' : '' }} value="0">Resigned</option>
                                                     </select>
                                                     <span class="text-danger small error-text status_error"></span>
                                                 </div>
@@ -536,7 +485,7 @@
                                                         <option value="">Select Job Level</option>
                                                         @if (count($joblevelData) > 0)
                                                             @foreach ($joblevelData as $joblevelDatas)
-                                                                <option value='{{ $joblevelDatas->id }}'>{{ $joblevelDatas->job_desc }}</option>
+                                                                <option {{ $user->empDetail->empJobLevel == $joblevelDatas->id ? 'selected' : '' }} value='{{ $joblevelDatas->id }}'>{{ $joblevelDatas->job_desc }}</option>
                                                             @endforeach
                                                         @endif
                                                     </select>
@@ -551,7 +500,7 @@
                                                         <option value="">Select Agency</option>
                                                         @if (count($agencyData) > 0)
                                                             @foreach ($agencyData as $agencyDatas)
-                                                                <option value='{{ $agencyDatas->id }}'>{{ $agencyDatas->ag_name }}</option>
+                                                                <option {{ $user->empDetail->empAgencyID == $agencyDatas->id ? 'selected' : '' }} value='{{ $agencyDatas->id }}'>{{ $agencyDatas->ag_name }}</option>
                                                             @endforeach
                                                         @endif
                                                     </select>
@@ -565,7 +514,7 @@
 
                                                         @if (count($hmoData) > 0)
                                                             @foreach ($hmoData as $hmoDatas)
-                                                                <option value='{{ $hmoDatas->idNo }}'>{{ $hmoDatas->hmoName }}</option>
+                                                                <option {{ $user->empDetail->empHMOID == $hmoDatas->idNo ? 'selected' : '' }} value='{{ $hmoDatas->idNo }}'>{{ $hmoDatas->hmoName }}</option>
                                                             @endforeach
                                                         @endif
                                                     </select>
@@ -574,7 +523,7 @@
 
                                                 <div class="form-group mb-3">
                                                     <label for="selHMONo" class="form-label small fw-semibold text-muted">HMO Number <span class="text-danger"></span></label>
-                                                    <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" name="hmo_number" id="selHMONo" placeholder="Enter number" />
+                                                    <input type="text" value="{{ $user->empDetail->empHMONo }}" class="form-control form-control-lg bg-light border-0 fs-6" name="hmo_number" id="selHMONo" placeholder="Enter number" />
                                                     <span class="text-danger small error-text hmo_number_error"></span>
                                                 </div>
 
@@ -582,8 +531,8 @@
                                                     <label for="selWorkDays" class="form-label small fw-semibold text-muted">Work Days <span class="text-danger">*</span></label>
                                                     <select class="form-select form-control-lg bg-light border-0 fs-6" name="no_work_days" id="selWorkDays">
                                                         <option value="">Select Work Days</option>
-                                                        <option value="4">4 Days</option>
-                                                        <option value="5">5 Days</option>
+                                                        <option {{ $user->empDetail->empWday == 4 ? 'selected' : '' }} value="4">4 Days</option>
+                                                        <option {{ $user->empDetail->empWday == 5 ? 'selected' : '' }} value="5">5 Days</option>
                                                     </select>
                                                     <span class="text-danger small error-text no_work_days_error"></span>
                                                 </div>
@@ -596,34 +545,34 @@
                                             <div class="col-lg-4">
                                                 <div class="form-group mb-3">
                                                     <label for="txtDateHired" class="form-label small fw-semibold text-muted">Date Hired <span class="text-danger">*</span></label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtDateHired" name="date_hired" type="date" />
+                                                    <input value="{{ substr($user->empDetail->empDateHired, 0, 10) }}" class="form-control form-control-lg bg-light border-0 fs-6" id="txtDateHired" name="date_hired" type="date" />
                                                     <span class="text-danger small error-text date_hired_error"></span>
                                                 </div>
                                                 <div class="form-group mb-3">
                                                     <label for="txtDateRegular" class="form-label small fw-semibold text-muted">Date Regular <span class="text-danger"></span></label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtDateRegular" name="date_regularization" type="date" />
+                                                    <input value="{{ substr($user->empDetail->empDateRegular, 0, 10) }}" class="form-control form-control-lg bg-light border-0 fs-6" id="txtDateRegular" name="date_regularization" type="date" />
                                                     <span class="text-danger small error-text date_regularization_error"></span>
                                                 </div>
                                                 <div class="form-group mb-3">
                                                     <label for="txtDateResigned" class="form-label small fw-semibold text-muted">Date Resigned</label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtDateResigned" name="date_resingned" type="date" />
+                                                    <input value="{{ substr($user->empDetail->empDateResigned, 0, 10) }}" class="form-control form-control-lg bg-light border-0 fs-6" id="txtDateResigned" name="date_resingned" type="date" />
                                                 </div>
                                             </div>
 
                                             <div class="col-lg-4">
                                                 <div class="form-group mb-3">
                                                     <label for="txtBasic" class="form-label small fw-semibold text-muted">Basic Salary <span class="text-danger">*</span></label>
-                                                    <input type="number" class="form-control form-control-lg bg-light border-0 fs-6" name="basic" id="txtBasic"   />
+                                                    <input  value="{{ $user->empDetail->empBasic }}" type="number" class="form-control form-control-lg bg-light border-0 fs-6" name="basic" id="txtBasic"   />
                                                     <span class="text-danger small error-text basic_error"></span>
                                                 </div>
                                                 <div class="form-group mb-3">
                                                     <label for="txtAllowance" class="form-label small fw-semibold text-muted">Allowance <span class="text-danger">*</span></label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtAllowance" name="allowance" type="number"   />
+                                                    <input value="{{ $user->empDetail->empAllowance }}" class="form-control form-control-lg bg-light border-0 fs-6" id="txtAllowance" name="allowance" type="number"   />
                                                     <span class="text-danger small error-text allowance_error"></span>
                                                 </div>
                                                 <div class="form-group mb-3">
                                                     <label for="txtHourlyRate" class="form-label small fw-semibold text-muted">Hourly Rate <span class="text-danger"></span></label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtHourlyRate" name="hourly_rate" type="number" value="0"  />
+                                                    <input value="{{ $user->empDetail->empHrate }}" class="form-control form-control-lg bg-light border-0 fs-6" id="txtHourlyRate" name="hourly_rate" type="number" value="0"  />
                                                     <span class="text-danger small error-text hourly_rate_error"></span>
                                                 </div>
                                             </div>
@@ -631,15 +580,15 @@
                                             <div class="col-lg-4">
                                                 <div class="form-group mb-3">
                                                     <label for="selPreviousPosition" class="form-label small fw-semibold text-muted">Previous Position</label>
-                                                    <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" name="previous_position" id="selPreviousPosition" />
+                                                    <input type="text" value="{{ $user->empDetail->empPrevPos }}" class="form-control form-control-lg bg-light border-0 fs-6" name="previous_position" id="selPreviousPosition" />
                                                 </div>
                                                 <div class="form-group mb-3">
                                                     <label for="txtPreviousDepartment" class="form-label small fw-semibold text-muted">Previous Department</label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtPreviousDepartment" name="previous_department" type="text" />
+                                                    <input value="{{ $user->empDetail->empPrevDep }}" class="form-control form-control-lg bg-light border-0 fs-6" id="txtPreviousDepartment" name="previous_department" type="text" />
                                                 </div>
                                                 <div class="form-group mb-3">
                                                     <label for="txtPreviousDesignation" class="form-label small fw-semibold text-muted">Previous Designation</label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtPreviousDesignation" name="previous_designation" type="text" />
+                                                    <input value="{{ $user->empDetail->empPrevDesignation }}" class="form-control form-control-lg bg-light border-0 fs-6" id="txtPreviousDesignation" name="previous_designation" type="text" />
                                                 </div>
                                             </div>
                                         </div>
@@ -660,19 +609,19 @@
                                         <div class="row g-4"> <div class="col-lg-4">
                                                 <div class="form-group mb-3">
                                                     <label for="txtPassportNo" class="form-label small fw-semibold text-muted">Passport Number <span class="text-danger"></span></label>
-                                                    <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" name="passport_no" id="txtPassportNo" placeholder="Enter number">
+                                                    <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" value="{{ $user->empDetail->empPassport }}" name="passport_no" id="txtPassportNo" placeholder="Enter number">
                                                     <span class="text-danger small error-text passport_no_error"></span>
                                                 </div>
 
                                                 <div class="form-group mb-3">
                                                     <label for="txtPassportExpDate" class="form-label small fw-semibold text-muted">Passport Expiry Date <span class="text-danger"></span></label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtPassportExpDate" name="passport_exp_date" type="date">
+                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtPassportExpDate" value="{{ substr($user->empDetail->empPassportExpDate, 0, 10) }}" name="passport_exp_date" type="date">
                                                     <span class="text-danger small error-text passport_exp_date_error"></span>
                                                 </div>
 
                                                 <div class="form-group mb-3">
                                                     <label for="txtIssuingAuth" class="form-label small fw-semibold text-muted">Issuing Authority <span class="text-danger"></span></label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtIssuingAuth" name="issuing_authority" type="text" placeholder="e.g. DFA">
+                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtIssuingAuth" value="{{ $user->empDetail->empPassportIssueAuth }}" name="issuing_authority" type="text" placeholder="e.g. DFA">
                                                     <span class="text-danger small error-text issuing_authority_error"></span>
                                                 </div>
                                             </div>
@@ -680,19 +629,19 @@
                                             <div class="col-lg-4">
                                                 <div class="form-group mb-3">
                                                     <label for="txtPhilhealth" class="form-label small fw-semibold text-muted">PhilHealth <span class="text-danger"></span></label>
-                                                    <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" name="philhealth" id="txtPhilhealth" placeholder="00-000000000-0">
+                                                    <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" value="{{ $user->empDetail->empPhilhealth }}" name="philhealth" id="txtPhilhealth" placeholder="00-000000000-0">
                                                     <span class="text-danger small error-text philhealth_error"></span>
                                                 </div>
 
                                                 <div class="form-group mb-3">
                                                     <label for="txtSSS" class="form-label small fw-semibold text-muted">SSS No. <span class="text-danger"></span></label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtSSS" name="sss" type="text" placeholder="00-0000000-0">
+                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtSSS" value="{{ $user->empDetail->empSSS }}" name="sss" type="text" placeholder="00-0000000-0">
                                                     <span class="text-danger small error-text sss_error"></span>
                                                 </div>
 
                                                 <div class="form-group mb-3">
                                                     <label for="txtPagibig" class="form-label small fw-semibold text-muted">Pag-IBIG No. <span class="text-danger"></span></label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtPagibig" name="pagibig" type="text" placeholder="0000-0000-0000">
+                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtPagibig" value="{{ $user->empDetail->empPagibig }}" name="pagibig" type="text" placeholder="0000-0000-0000">
                                                     <span class="text-danger small error-text pagibig_error"></span>
                                                 </div>
                                             </div>
@@ -700,13 +649,13 @@
                                             <div class="col-lg-4">
                                                 <div class="form-group mb-3">
                                                     <label for="txtTIN" class="form-label small fw-semibold text-muted">TIN No. <span class="text-danger"></span></label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtTIN" name="tin" type="text" placeholder="000-000-000-000">
+                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtTIN" name="tin" value="{{ $user->empDetail->empTIN }}" type="text" placeholder="000-000-000-000">
                                                     <span class="text-danger small error-text tin_error"></span>
                                                 </div>
 
                                                 <div class="form-group mb-3">
                                                     <label for="txtUMIDNo" class="form-label small fw-semibold text-muted">UMID <span class="text-danger"></span></label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtUMIDNo" name="umid" type="text" placeholder="0000-0000000-0">
+                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtUMIDNo" value="{{ $user->empDetail->empUMID }}" name="umid" type="text" placeholder="0000-0000000-0">
                                                     <span class="text-danger small error-text umid_error"></span>
                                                 </div>
                                             </div>
@@ -748,7 +697,7 @@
                                                 <div class="text-center">
                                                     <div class="rounded-circle overflow-hidden d-flex align-items-center justify-content-center mb-3 mx-auto shadow-sm border border-5 border-white" style="width: 150px; height: 150px; background-color: #f8f9fa;">
                                                         <i id="previewIcon" class="fas fa-user text-secondary opacity-25" style="font-size: 4rem;"></i>
-                                                        <img id="imagePreview" src="#" alt="Preview" style="display: none; width: 100%; height: 100%; object-fit: cover;">
+                                                        <img {{ $user->empDetail->empPicPath }} id="imagePreview" src="#" alt="Preview" style="display: none; width: 100%; height: 100%; object-fit: cover;">
                                                     </div>
                                                     <p class="small text-muted mb-0">Photo Preview</p>
                                                 </div>
