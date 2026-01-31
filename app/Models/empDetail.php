@@ -70,6 +70,11 @@ class EmpDetail extends Model
     {
         return $this->belongsTo(HMOModel::class, 'empHMOID', 'id');
     }
+   
+    public function classification(): BelongsTo
+    {
+        return $this->belongsTo(classification::class, 'empClassification', 'class_code');
+    }
 
     public function getSalaryInfo()
     {
