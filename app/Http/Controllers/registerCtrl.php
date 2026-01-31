@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use DB;
 use Exception;
-use Validator;
-
 use Carbon\Carbon;
 use App\Models\User;
+
 use App\Models\access;
 use App\Models\emp_info;
 use App\Models\empDetail;
 use Illuminate\Http\Request;
 use App\Models\emp_education;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 
 
 class registerCtrl extends Controller
@@ -443,6 +443,214 @@ class registerCtrl extends Controller
                 'status' => 200,
                 'msg' => 'The employee was added successfully!',
                 'empID' => $empID
+            ]);
+        } catch (\Exception $e) {
+            DB::rollback();
+            return response()->json(['status' => 203, 'msg' => $e->getMessage()]);
+        }
+    }
+
+    public function update(Request $request)
+    {
+        $user = User::where('empID', $request->empID)
+            ->first();
+
+        $userEmail = User::where('email', $request->email)
+            ->where('empID', '!=', $request->empID) // exclude current user
+            ->first();
+
+        if ($userEmail) {
+            return response()->json([
+                'status' => 201,
+                'error' => [
+                    'email' => ['The email address is already in use.']
+                ]
+            ]);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'email' => 'required',
+            'firstname' => 'required',
+            'lastname' => 'required',
+            'company' => 'required',
+            'gender' => 'required',
+            'citizenship' => 'required',
+            'status' => 'required',
+            'immediate' => 'required',
+            'department' => 'required',
+            'classification' => 'required',
+            'position' => 'required',
+            // 'job_level' => 'required',
+            'religion' => 'required',
+            'birthdate' => 'required',
+            'homephone' => 'required',
+            'province' => 'required',
+            'mobile' => 'required',
+            'city' => 'required',
+            'barangay' => 'required',
+            'zipcode' => 'required',
+            'country' => 'required',
+            // 'agency' => 'required',
+            // 'hmo' => 'required',
+            'no_work_days' => 'required',
+            'date_hired' => 'required',
+            'basic'=>'required|numeric',
+            'allowance'=>'required|numeric',
+            
+            
+        ]);
+
+        if (!$validator->passes()) {
+            return response()->json(['status' => 201, 'error' => $validator->errors()->toArray()]);
+        }
+
+        DB::beginTransaction();
+        try {
+            /**
+             * 🔒 Generate safe, unique empID
+             * Format: COMPANYCODE-YYYY-0001
+             */
+            $companyCode = strtoupper($request->company);
+            $year = now()->format('Y');
+
+            // Lock table to prevent race conditions
+            $latestEmp = DB::table('users')
+                ->where('empID', 'LIKE', "{$companyCode}-{$year}-%")
+                ->lockForUpdate()
+                ->orderBy('empID', 'desc')
+                ->first();
+
+            if ($latestEmp) {
+                // Extract last 4 digits
+                $lastNumber = (int) substr($latestEmp->empID, -4);
+                $nextNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
+            } else {
+                $nextNumber = '0001';
+            }
+
+            /**
+             * 👇 Insert operations
+             */
+            $valuesUser = [
+                'email' => $request->email,
+                'status' => '1',
+                'suffix' => $request->suffix,
+                'lname' => $request->lastname,
+                'fname' => $request->firstname,
+                'mname' => $request->middlename,
+                'role' => "3",
+            ];
+
+            $valueInfos = [
+                'empEmail' => $request->email,
+                'gender' => $request->gender,
+                'citizenship' => $request->citizenship,
+                'empBdate' => $request->birthdate,
+                'empCStatus' => $request->status,
+                'empReligion' => $request->religion,
+                'empPContact' => $request->homephone,
+                'empHContact' => $request->mobile,
+                'empAddStreet' => $request->street,
+                'empAddCityDesc' => $request->citydesc,
+                'empAddCity' => $request->city,
+                'empAddBrgyDesc' => $request->brgydesc,
+                'empAddBrgy' => $request->barangay,
+                'empProvDesc' => $request->provdesc,
+                'empProv' => $request->province,
+                'empZipcode' => $request->zipcode,
+                'empCountry' => $request->country,
+            ];
+
+            $valueEdu = collect([
+                [
+                    'empID' => $request->empID,
+                    'schoolLevel' => "Primary",
+                    'schoolName' => $request->primary_school,
+                    'schoolYearStarted' => $request->primary_year_started,
+                    'schoolYearEnded' => $request->primary_year_graduated,
+                    'schoolAddress' => $request->primary_school_address,
+                ],
+                [
+                    'empID' => $request->empID,
+                    'schoolLevel' => "Secondary",
+                    'schoolName' => $request->secondary_school,
+                    'schoolYearStarted' => $request->secondary_year_started,
+                    'schoolYearEnded' => $request->secondary_year_graduated,
+                    'schoolAddress' => $request->secondary_school_address,
+                ],
+                [
+                    'empID' => $request->empID,
+                    'schoolLevel' => "Tertiary",
+                    'schoolName' => $request->tertiary_school,
+                    'schoolYearStarted' => $request->tertiary_year_started,
+                    'schoolYearEnded' => $request->tertiary_year_graduated,
+                    'schoolAddress' => $request->tertiary_school_address,
+                ]
+            ])->toArray();
+
+            $valueDetails = [
+                'empISID' => $request->immediate,
+                'empDepID' => $request->department,
+                'empCompID' => $request->company,
+                'empClassification' => $request->classification,
+                'empPos' => $request->position,
+                'empBasic' => $request->basic,
+                'empStatus' => $request->status,
+                'empAllowance' => $request->allowance,
+                'empHrate' => $request->hourly_rate,
+                'empWday' => $request->no_work_days,
+                'empJobLevel' => $request->job_level,
+                'empAgencyID' => $request->agency,
+                'empHMOID' => $request->hmo,
+                'empHMONo' => $request->hmo_number,
+                'empDateHired' => $request->date_hired,
+                'empDateResigned' => $request->date_resigned,
+                'empDateRegular' => $request->date_regularization,
+                'empPrevPos' => $request->previous_position,
+                'empPrevDep' => $request->previous_department,
+                'empPrevDesignation' => $request->previous_designation,
+                'empPrevWorkStartDate' => $request->start_date,
+                'empPassport' => $request->passport_no,
+                'empPassportExpDate' => $request->passport_exp_date,
+                'empPassportIssueAuth' => $request->issuing_authority,
+                'empPagibig' => $request->pagibig,
+                'empPhilhealth' => $request->philhealth,
+                'empSSS' => $request->sss,
+                'empTIN' => $request->tin,
+                'empUMID' => $request->umid,
+            ];
+
+
+            $user->education()->delete();
+
+            // Insert all data
+            DB::table('users')
+                ->where('empID', $request->empID)
+                ->update($valuesUser);
+            DB::table('emp_infos')
+                ->where('empID', $request->empID)
+                ->update($valueInfos);
+            DB::table('emp_educations')->insert($valueEdu);
+            DB::table('emp_details')
+                ->where('empID', $request->empID)
+                ->update($valueDetails);
+
+            if ($request->hasFile('path')) {
+                $imageName = $request->path->getClientOriginalName();
+                $request->path->move('img/profile/', $imageName);
+                DB::table('emp_details')
+                    ->where('empID', $request->empID)
+                    ->update([
+                        'empPicPath' => $request->path->getClientOriginalName(),
+                    ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 200,
+                'msg' => 'The employee was added successfully!',
+                'empID' => $request->empID
             ]);
         } catch (\Exception $e) {
             DB::rollback();

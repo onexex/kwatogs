@@ -206,6 +206,7 @@
                                     <div class="card-body p-4">
                                         <div class="row g-4 px-2">
                                             <div class="col-lg-3 col-md-6">
+                                                <input type="hidden" class="form-control form-control-lg bg-light border-0 fs-6" value="{{ $user->empID }}" id="userId" name="empID"  >
                                                 <label for="txtfname" class="form-label small fw-semibold text-muted">First Name <span class="text-danger">*</span></label>
                                                 <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" value="{{ $user->fname }}" id="txtfname" name="firstname"  >
                                                 <span class="text-danger error-text firstname_error"></span>
@@ -232,7 +233,7 @@
                                                 <label for="selGender" class="form-label small fw-semibold text-muted">Gender <span class="text-danger">*</span></label>
                                                 <select class="form-select form-control-lg bg-light border-0 fs-6" name="gender" id="selGender">
                                                     <option {{ $user->employeeInformation->gender == 'Female' ? 'selected' : '' }} value="Female">Female</option>
-                                                    <option {{ $user->employeeInformation->gender == 'Male' ? 'selected' : '' }}  value="">Male</option>
+                                                    <option {{ $user->employeeInformation->gender == 'Male' ? 'selected' : '' }}  value="Male">Male</option>
                                                 </select>
                                             </div>
 
@@ -250,7 +251,7 @@
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtDOB" class="form-label small fw-semibold text-muted">Date of Birth <span class="text-danger">*</span></label>
-                                                <input type="date" class="form-control form-control-lg bg-light border-0 fs-6" id="txtDOB" value="{{ $user->employeeInformation->empBdate }}" name="birthdate">
+                                                <input type="date" class="form-control form-control-lg bg-light border-0 fs-6" id="txtDOB" value="{{ substr($user->employeeInformation->empBdate, 0, 10) }}" name="birthdate">
                                                 <span class="text-danger small error-text birthdate_error"></span>
                                             </div>
 
@@ -748,10 +749,12 @@
             $(document).on('change', '#txtProvince ', function(e) {
                 var provCode = $(this).val();
                 var txtProvince = $('#txtCity').data('selected');
-            
+                loadCity(provCode)
             });
 
             $(document).on('change', '#txtCity ', function(e) {
+                var code = $(this).val();
+                loadBrgy(code)
             });
 
             function loadCity(prov) {
@@ -837,8 +840,68 @@
                 })
                 .then(function () {});  
             }
+
+            $(document).on('click', '#btnSaveAll', function(e) {
+                var datas = $('#frmEnrolment');
+                var city=$("#txtCity option:selected" ).text();
+                var brgy=$("#txtBrgy option:selected" ).text();
+                var prov=$("#txtProvince option:selected" ).text();
+                var formData = new FormData($(datas)[0]);
+                formData.append('citydesc', city);
+                formData.append('brgydesc', brgy);
+                formData.append('provdesc', prov);
+
+                axios.post('/employee/update',formData)  
+                    .then(function (response) {
+
+                        if (response.data.status == 201) {
+                            $.each(response.data.error, function(prefix, val) {
+                                $('input[name='+ prefix +']').addClass(" border border-danger") ;
+                                $('span.' + prefix + '_error').text(val[0]);
+                            });
+                            dialog.alert({
+                                message: 'Please complete all required fields highlighted in red.'
+                            });
+                        }
+
+                        if(response.data.status == 200){
+                            $('span.error-text').text("");
+                            $('input.border').removeClass('border border-danger');
+                            $('#frmEnrolment')[0].reset();
+                            dialog.alert({
+                                message: response.data.msg
+                            });
+
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1000);
+                        }
+                        //success respose
+                        if(response.data.status == 202){
+                            $('span.error-text').text("");
+                            $('input.border').removeClass('border border-danger');
+                            dialog.alert({
+                                message: response.data.msg
+                            });
+                        }
+
+                        if(response.data.status == 203){
+                        
+                            dialog.alert({
+                                message: response.data.msg
+                            });
+                        }
+                    })
+                    .catch(function (error) {
+                        dialog.alert({
+                            message: error
+                        });  
+                    })
+                    .then(function () {});   
+            
+            });
         })
-     
+
     </script>
  {{-- <script src="{{ asset('js/modules/enrollment.js') }}" defer></script> --}}
 @endsection

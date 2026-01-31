@@ -107,6 +107,7 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     //functions
     Route::post('/function/generateEmpid',[registerCtrl::class, 'generateEmpID']);
     Route::post('/enroll/save',[registerCtrl::class, 'create']);
+    Route::post('/employee/update',[registerCtrl::class, 'update']);
 
 
     // JMC
