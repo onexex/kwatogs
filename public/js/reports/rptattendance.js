@@ -52,68 +52,81 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     function fetchAttendance() {
-        const empID = empSelect.val();
-        const from = dateFrom.val();
-        const to = dateTo.val();
+    const empID = empSelect.val();
+    const from = dateFrom.val();
+    const to = dateTo.val();
 
-        tableBody.html(`<tr><td colspan="11" class="text-center">Loading...</td></tr>`);
+    // Updated colspan to 13 to match the new columns
+    tableBody.html(`<tr><td colspan="13" class="text-center"><div class="spinner-border spinner-border-sm"></div> Loading...</td></tr>`);
 
-        axios.post("/attendance/fetch", {
-            empID: empID,
-            dateFrom: from,
-            dateTo: to,
-        })
-        .then(response => {
-            const res = response.data;
-            if (res.status === "success") {
-                renderTable(res.data);
-            } else {
-                tableBody.html(`<tr><td colspan="11" class="text-center text-danger">No records found</td></tr>`);
-            }
-        })
-        .catch(error => {
-            console.error(error);
-            tableBody.html(`<tr><td colspan="11" class="text-center text-danger">Error fetching data</td></tr>`);
-        });
+    axios.post("/attendance/fetch", {
+        empID: empID,
+        dateFrom: from,
+        dateTo: to,
+    })
+    .then(response => {
+        const res = response.data;
+        if (res.status === "success") {
+            renderTable(res.data);
+        } else {
+            tableBody.html(`<tr><td colspan="13" class="text-center text-danger">No records found</td></tr>`);
+        }
+    })
+    .catch(error => {
+        console.error(error);
+        tableBody.html(`<tr><td colspan="13" class="text-center text-danger">Error fetching data</td></tr>`);
+    });
+}
+
+function renderTable(data) {
+    if (!data.length) {
+        tableBody.html(`<tr><td colspan="13" class="text-center">No records found</td></tr>`);
+        return;
     }
 
-    function renderTable(data) {
-        if (!data.length) {
-            tableBody.html(`<tr><td colspan="11" class="text-center">No records found</td></tr>`);
-            return;
+    let rows = "";
+    data.forEach((item, i) => {
+        const empName = item.employee ? `${item.employee.lname}, ${item.employee.fname}` : "N/A";
+
+        // 1. Calculate Manual Deductions
+        let totalDeductedMins = 0;
+        if (item.manual_deductions && item.manual_deductions.length > 0) {
+            totalDeductedMins = item.manual_deductions.reduce((sum, d) => sum + parseInt(d.deduction_minutes || 0), 0);
         }
 
-        let rows = "";
-        data.forEach((item, i) => {
-            const empName = item.employee ? `${item.employee.lname}, ${item.employee.fname}` : "N/A";
+        // 2. Calculate Net Hours (Gross - [Mins/60])
+        let grossHours = parseFloat(item.total_hours ?? 0);
+        let netHours = (grossHours - (totalDeductedMins / 60)).toFixed(2);
 
-            // Build logs list
-            let logRows = "-";
-            if (item.logs && item.logs.length > 0) {
-                const logArray = item.logs.map(log => {
-                    return `${formatTime(log.time_in)} - ${formatTime(log.time_out)}`;
-                });
-                logRows = logArray.join("<br>");
-            }
+        // Build logs list
+        let logRows = "-";
+        if (item.logs && item.logs.length > 0) {
+            const logArray = item.logs.map(log => {
+                return `${formatTime(log.time_in)} - ${formatTime(log.time_out)}`;
+            });
+            logRows = logArray.join("<br>");
+        }
 
-            rows += `
-                <tr>
-                    <td>${i + 1}</td>
-                    <td>${empName}</td>
-                    <td>${item.formatted_date ?? '-'}</td>
-                    <td colspan="2">${logRows}</td>
-                    <td>${item.total_hours ?? 0}</td>
-                    <td>${item.mins_late ?? 0}</td>
-                    <td>${item.mins_undertime ?? 0}</td>
-                    <td>${item.mins_night_diff ?? 0}</td>
-                    <td>${item.outpass_minutes ?? 0}</td>
-                    <td>${item.over_break_minutes ?? 0}</td>
-                </tr>
-            `;
-        });
+        rows += `
+            <tr>
+                <td>${i + 1}</td>
+                <td class="text-start">${empName}</td>
+                <td>${item.formatted_date ?? '-'}</td>
+                <td colspan="2">${logRows}</td>
+                <td class="fw-bold">${grossHours.toFixed(2)}</td>
+                <td class="text-danger fw-bold">${totalDeductedMins > 0 ? totalDeductedMins + 'm' : '-'}</td>
+                <td class="text-primary fw-bold">${netHours}</td>
+                <td>${item.mins_late ?? 0}m</td>
+                <td>${item.mins_undertime ?? 0}m</td>
+                <td>${item.mins_night_diff ?? 0}m</td>
+                <td>${item.outpass_minutes ?? 0}m</td>
+                <td>${item.over_break_minutes ?? 0}m</td>
+            </tr>
+        `;
+    });
 
-        tableBody.html(rows);
-    }
+    tableBody.html(rows);
+}
 
     function formatTime(timeString) {
         if (!timeString) return "-";

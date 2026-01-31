@@ -52,5 +52,6 @@ enum PagePermissionsEnum: string
     case loanmanagement = 'Loan Management';
     case admine201 = 'Admin E-201';
     case leavecreditallocation = 'Leave Credit Allocations';
+    case manual_entry = 'HR Manual Time Adjustment';
     
 }

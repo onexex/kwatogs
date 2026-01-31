@@ -265,6 +265,209 @@ class homeAttendance extends Model
 
     //     return $result;
     // }
+
+    public function logTimeOut($timeOut = null)
+    {
+        $timeOut = Carbon::parse($timeOut ?: now());
+        $this->time_out = $timeOut;
+
+        if (!$this->time_in) {
+            $this->duration_hours = 0;
+            $this->night_diff_hours = 0;
+            $this->remarks = 'Invalid (No time-in found)';
+            $this->save();
+            $this->updateDailySummary();
+            return $this;
+        }
+
+        $actualIn = Carbon::parse($this->time_in);
+        $actualOut = $timeOut->copy();
+
+        // 🛑 Prevent reversed times
+        if ($actualOut->lt($actualIn)) {
+            $actualOut = $actualIn->copy();
+            $this->time_out = $actualOut;
+        }
+
+        // 🧭 1. Retrieve Schedule First
+        $schedule = $this->schedule;
+        if (!$schedule) {
+            $schedule = EmployeeSchedule::where('employee_id', $this->employee_id)
+                ->whereDate('sched_start_date', '<=', $actualIn->toDateString())
+                ->whereDate('sched_end_date', '>=', $actualIn->toDateString())
+                ->first();
+        }
+        $this->schedule_id = $schedule?->id ?? $this->schedule_id;
+
+        // ⚡ 2. CLAMP PUNCH TIMES TO SCHEDULE (Core logic change)
+        if ($schedule && $schedule->sched_in && $schedule->sched_out) {
+            // Construct Schedule Objects (Handling potential overnight shift logic)
+            $schedIn = Carbon::parse($actualIn->toDateString() . ' ' . $schedule->sched_in);
+            $schedOut = Carbon::parse($actualIn->toDateString() . ' ' . $schedule->sched_out);
+
+            // Handle overnight shift: If sched_out is earlier than sched_in, it's the next day
+            if ($schedOut->lt($schedIn)) {
+                $schedOut->addDay();
+            }
+
+            /**
+             * Logic: Rendered time must be BETWEEN SchedIn and SchedOut.
+             * If user in at 7am for 8am shift, we use 8am.
+             * If user out at 6pm for 5pm shift, we use 5pm.
+             */
+            $workingIn = $actualIn->gt($schedIn) ? $actualIn : $schedIn;   // Use the later time
+            $workingOut = $actualOut->lt($schedOut) ? $actualOut : $schedOut; // Use the earlier time
+
+            // If they clocked out before the shift even started, or in after it ended
+            if ($workingIn->gt($workingOut)) {
+                $workingIn = $workingOut; 
+            }
+
+            // 🍱 LUNCH BREAK HANDLING (Inside scheduled time only)
+            $breakDuration = 0;
+            if ($schedule->break_start && $schedule->break_end) {
+                $breakStart = Carbon::parse($actualIn->toDateString() . ' ' . $schedule->break_start);
+                $breakEnd = Carbon::parse($actualIn->toDateString() . ' ' . $schedule->break_end);
+
+                // Handle overnight break
+                if ($breakEnd->lt($breakStart)) { $breakEnd->addDay(); }
+
+                // Calculate overlap between working hours and break hours
+                if ($workingIn->lt($breakEnd) && $workingOut->gt($breakStart)) {
+                    $overlapStart = $workingIn->gt($breakStart) ? $workingIn : $breakStart;
+                    $overlapEnd = $workingOut->lt($breakEnd) ? $workingOut : $breakEnd;
+                    $breakDuration = $overlapEnd->diffInMinutes($overlapStart);
+                }
+            }
+
+            // Evaluate punch using the "clamped" times
+            $evaluated = $this->evaluatePunch($workingIn, $workingOut);
+            
+            $totalMinutes = ($workingOut->diffInMinutes($workingIn)) - $breakDuration;
+            $this->duration_hours = max($totalMinutes / 60, 0);
+            $this->night_diff_hours = $evaluated['night_diff_hours']; // evaluatePunch should use workingIn/Out
+            $this->remarks = $evaluated['remarks'];  
+            // If actual logout is a different day than the scheduled logout
+            if ($actualOut->toDateString() !== $schedOut->toDateString() && $actualOut->gt($schedOut)) {
+                $this->remarks .= ' [Logout Next Day - Capped]';
+            }
+        } else {
+            // No schedule fallback (Actual time)
+            $evaluated = $this->evaluatePunch($actualIn, $actualOut);
+            $this->duration_hours = $actualOut->diffInMinutes($actualIn) / 60;
+            $this->night_diff_hours = $evaluated['night_diff_hours'];
+            $this->remarks = $evaluated['remarks'] . ' (No Schedule)';
+        }
+
+        $this->save();
+        $this->updateDailySummary();
+
+        return $this;
+    }
+
+    // ==============================================================
+    //  📌 MAIN LOG TIME-IN FUNCTION (with overnight-safe logic)
+    // ==============================================================
+    public static function logTimeIn($employeeId)
+    {
+
+        $now = now();
+        $today = $now->toDateString();
+        $yesterday = $now->copy()->subDay()->toDateString();
+    
+
+        // 1️⃣ Auto-close any previous open logs from older days
+        $previousOpenLogs = self::where('employee_id', $employeeId)
+            ->whereNull('time_out')
+            ->whereDate('attendance_date', '<', $today)
+            ->get();
+
+        foreach ($previousOpenLogs as $log) {
+            $evaluated = $log->evaluatePunch(Carbon::parse($log->time_in), $now);
+            $log->time_out = $evaluated['time_out'] ?? $now;
+            $log->duration_hours = $evaluated['duration_hours'] ?? 0;
+            $log->night_diff_hours = $evaluated['night_diff_hours'] ?? 0;
+            $log->remarks = $evaluated['remarks'] ?? 'Auto-closed (Missed logout)';
+            $log->save();
+        }
+
+        // 2️⃣ Prevent duplicate open punches
+        $openPunch = self::where('employee_id', $employeeId)
+            ->whereNull('time_out')
+            ->first();
+
+        if ($openPunch) {
+            $lastIn = Carbon::parse($openPunch->time_in);
+            if ($now->diffInHours($lastIn) < 16) {
+                throw new \Exception('You still have an active punch. Please log out before punching in again.');
+            }
+        }
+
+        // 3️⃣ Match an active schedule (supports overnight)
+        $bufferMinutes = 60; // Allow 1 hour early login before shift
+
+        $candidates = EmployeeSchedule::where('employee_id', $employeeId)
+            ->where(function ($q) use ($today, $yesterday) {
+                // Only consider today's and yesterday's schedules
+                $q->whereDate('sched_start_date', $today)
+                ->orWhereDate('sched_start_date', $yesterday);
+            })
+            ->get();
+
+        $matchedSchedule = null;
+
+        foreach ($candidates as $s) {
+            // Build datetime for schedule in/out
+            $schedIn = Carbon::parse($s->sched_start_date . ' ' . $s->sched_in);
+            $schedOut = Carbon::parse($s->sched_end_date . ' ' . $s->sched_out);
+
+            // Handle overnight shifts
+            if ($schedOut->lessThanOrEqualTo($schedIn)) {
+                $schedOut->addDay();
+            }
+
+            // Allow time-in from 1 hour before start until actual schedOut (no post-shift)
+            $windowStart = $schedIn->copy()->subMinutes($bufferMinutes);
+            $windowEnd = $schedOut->copy();
+
+            if ($now->between($windowStart, $windowEnd)) {
+                $matchedSchedule = $s;
+                break;
+            }
+        }
+
+        if (!$matchedSchedule) {
+            throw new \Exception('No active schedule found for your time-in window.');
+        }
+
+        // 4️⃣ Check break restriction
+        if ($matchedSchedule->break_start && $matchedSchedule->break_end) {
+            $breakStart = Carbon::parse($today . ' ' . $matchedSchedule->break_start);
+            $breakEnd = Carbon::parse($today . ' ' . $matchedSchedule->break_end);
+            $earlyReturn = $breakEnd->copy()->subMinutes(10);
+
+            if ($now->between($breakStart, $earlyReturn)) {
+                throw new \Exception("You are still on lunch break. Time-in allowed after {$earlyReturn->format('H:i')}.");
+            }
+
+            if ($now->between($earlyReturn, $breakEnd)) {
+                $now = $breakEnd->copy(); // Snap to break end
+            }
+        }
+
+        // 5️⃣ Use schedule start as the "work day"
+        $attendanceDate = Carbon::parse($matchedSchedule->sched_start_date)->toDateString();
+
+        // 6️⃣ Save new punch (multiple punches allowed)
+        return self::create([
+            'employee_id'     => $employeeId,
+            'schedule_id'     => $matchedSchedule->id,
+            'attendance_date' => $attendanceDate,
+            'time_in'         => $now,
+            'status'          => 'Present',
+        ]);
+    }
+
     protected function evaluatePunch($actualIn, $actualOut)
     {
         $result = [
@@ -559,204 +762,7 @@ class homeAttendance extends Model
     //     return $this;
     // }
 
-    public function logTimeOut($timeOut = null)
-    {
-        $timeOut = Carbon::parse($timeOut ?: now());
-        $this->time_out = $timeOut;
-
-        if (!$this->time_in) {
-            $this->duration_hours = 0;
-            $this->night_diff_hours = 0;
-            $this->remarks = 'Invalid (No time-in found)';
-            $this->save();
-            $this->updateDailySummary();
-            return $this;
-        }
-
-        $actualIn = Carbon::parse($this->time_in);
-        $actualOut = $timeOut->copy();
-
-        // 🛑 Prevent reversed times
-        if ($actualOut->lt($actualIn)) {
-            $actualOut = $actualIn->copy();
-            $this->time_out = $actualOut;
-        }
-
-        // 🧭 1. Retrieve Schedule First
-        $schedule = $this->schedule;
-        if (!$schedule) {
-            $schedule = EmployeeSchedule::where('employee_id', $this->employee_id)
-                ->whereDate('sched_start_date', '<=', $actualIn->toDateString())
-                ->whereDate('sched_end_date', '>=', $actualIn->toDateString())
-                ->first();
-        }
-        $this->schedule_id = $schedule?->id ?? $this->schedule_id;
-
-        // ⚡ 2. CLAMP PUNCH TIMES TO SCHEDULE (Core logic change)
-        if ($schedule && $schedule->sched_in && $schedule->sched_out) {
-            // Construct Schedule Objects (Handling potential overnight shift logic)
-            $schedIn = Carbon::parse($actualIn->toDateString() . ' ' . $schedule->sched_in);
-            $schedOut = Carbon::parse($actualIn->toDateString() . ' ' . $schedule->sched_out);
-
-            // Handle overnight shift: If sched_out is earlier than sched_in, it's the next day
-            if ($schedOut->lt($schedIn)) {
-                $schedOut->addDay();
-            }
-
-            /**
-             * Logic: Rendered time must be BETWEEN SchedIn and SchedOut.
-             * If user in at 7am for 8am shift, we use 8am.
-             * If user out at 6pm for 5pm shift, we use 5pm.
-             */
-            $workingIn = $actualIn->gt($schedIn) ? $actualIn : $schedIn;   // Use the later time
-            $workingOut = $actualOut->lt($schedOut) ? $actualOut : $schedOut; // Use the earlier time
-
-            // If they clocked out before the shift even started, or in after it ended
-            if ($workingIn->gt($workingOut)) {
-                $workingIn = $workingOut; 
-            }
-
-            // 🍱 LUNCH BREAK HANDLING (Inside scheduled time only)
-            $breakDuration = 0;
-            if ($schedule->break_start && $schedule->break_end) {
-                $breakStart = Carbon::parse($actualIn->toDateString() . ' ' . $schedule->break_start);
-                $breakEnd = Carbon::parse($actualIn->toDateString() . ' ' . $schedule->break_end);
-
-                // Handle overnight break
-                if ($breakEnd->lt($breakStart)) { $breakEnd->addDay(); }
-
-                // Calculate overlap between working hours and break hours
-                if ($workingIn->lt($breakEnd) && $workingOut->gt($breakStart)) {
-                    $overlapStart = $workingIn->gt($breakStart) ? $workingIn : $breakStart;
-                    $overlapEnd = $workingOut->lt($breakEnd) ? $workingOut : $breakEnd;
-                    $breakDuration = $overlapEnd->diffInMinutes($overlapStart);
-                }
-            }
-
-            // Evaluate punch using the "clamped" times
-            $evaluated = $this->evaluatePunch($workingIn, $workingOut);
-            
-            $totalMinutes = ($workingOut->diffInMinutes($workingIn)) - $breakDuration;
-            $this->duration_hours = max($totalMinutes / 60, 0);
-            $this->night_diff_hours = $evaluated['night_diff_hours']; // evaluatePunch should use workingIn/Out
-            $this->remarks = $evaluated['remarks'];
-        } else {
-            // No schedule fallback (Actual time)
-            $evaluated = $this->evaluatePunch($actualIn, $actualOut);
-            $this->duration_hours = $actualOut->diffInMinutes($actualIn) / 60;
-            $this->night_diff_hours = $evaluated['night_diff_hours'];
-            $this->remarks = $evaluated['remarks'] . ' (No Schedule)';
-        }
-
-        $this->save();
-        $this->updateDailySummary();
-
-        return $this;
-    }
-
-
-    // ==============================================================
-    //  📌 MAIN LOG TIME-IN FUNCTION (with overnight-safe logic)
-    // ==============================================================
-    public static function logTimeIn($employeeId)
-    {
-
-        $now = now();
-        $today = $now->toDateString();
-        $yesterday = $now->copy()->subDay()->toDateString();
     
-
-        // 1️⃣ Auto-close any previous open logs from older days
-        $previousOpenLogs = self::where('employee_id', $employeeId)
-            ->whereNull('time_out')
-            ->whereDate('attendance_date', '<', $today)
-            ->get();
-
-        foreach ($previousOpenLogs as $log) {
-            $evaluated = $log->evaluatePunch(Carbon::parse($log->time_in), $now);
-            $log->time_out = $evaluated['time_out'] ?? $now;
-            $log->duration_hours = $evaluated['duration_hours'] ?? 0;
-            $log->night_diff_hours = $evaluated['night_diff_hours'] ?? 0;
-            $log->remarks = $evaluated['remarks'] ?? 'Auto-closed (Missed logout)';
-            $log->save();
-        }
-
-        // 2️⃣ Prevent duplicate open punches
-        $openPunch = self::where('employee_id', $employeeId)
-            ->whereNull('time_out')
-            ->first();
-
-        if ($openPunch) {
-            $lastIn = Carbon::parse($openPunch->time_in);
-            if ($now->diffInHours($lastIn) < 16) {
-                throw new \Exception('You still have an active punch. Please log out before punching in again.');
-            }
-        }
-
-        // 3️⃣ Match an active schedule (supports overnight)
-        $bufferMinutes = 60; // Allow 1 hour early login before shift
-
-        $candidates = EmployeeSchedule::where('employee_id', $employeeId)
-            ->where(function ($q) use ($today, $yesterday) {
-                // Only consider today's and yesterday's schedules
-                $q->whereDate('sched_start_date', $today)
-                ->orWhereDate('sched_start_date', $yesterday);
-            })
-            ->get();
-
-        $matchedSchedule = null;
-
-        foreach ($candidates as $s) {
-            // Build datetime for schedule in/out
-            $schedIn = Carbon::parse($s->sched_start_date . ' ' . $s->sched_in);
-            $schedOut = Carbon::parse($s->sched_end_date . ' ' . $s->sched_out);
-
-            // Handle overnight shifts
-            if ($schedOut->lessThanOrEqualTo($schedIn)) {
-                $schedOut->addDay();
-            }
-
-            // Allow time-in from 1 hour before start until actual schedOut (no post-shift)
-            $windowStart = $schedIn->copy()->subMinutes($bufferMinutes);
-            $windowEnd = $schedOut->copy();
-
-            if ($now->between($windowStart, $windowEnd)) {
-                $matchedSchedule = $s;
-                break;
-            }
-        }
-
-        if (!$matchedSchedule) {
-            throw new \Exception('No active schedule found for your time-in window.');
-        }
-
-        // 4️⃣ Check break restriction
-        if ($matchedSchedule->break_start && $matchedSchedule->break_end) {
-            $breakStart = Carbon::parse($today . ' ' . $matchedSchedule->break_start);
-            $breakEnd = Carbon::parse($today . ' ' . $matchedSchedule->break_end);
-            $earlyReturn = $breakEnd->copy()->subMinutes(10);
-
-            if ($now->between($breakStart, $earlyReturn)) {
-                throw new \Exception("You are still on lunch break. Time-in allowed after {$earlyReturn->format('H:i')}.");
-            }
-
-            if ($now->between($earlyReturn, $breakEnd)) {
-                $now = $breakEnd->copy(); // Snap to break end
-            }
-        }
-
-        // 5️⃣ Use schedule start as the "work day"
-        $attendanceDate = Carbon::parse($matchedSchedule->sched_start_date)->toDateString();
-
-        // 6️⃣ Save new punch (multiple punches allowed)
-        return self::create([
-            'employee_id'     => $employeeId,
-            'schedule_id'     => $matchedSchedule->id,
-            'attendance_date' => $attendanceDate,
-            'time_in'         => $now,
-            'status'          => 'Present',
-        ]);
-    }
 
 
 
