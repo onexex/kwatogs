@@ -47,7 +47,6 @@ public function fetchAttendance(Request $request)
         ->orderBy('attendance_date', 'asc')
         ->get();
 
-    // Fetch HomeAttendance logs for the same employees and date range
     $logs = \App\Models\homeAttendance::whereBetween('attendance_date', [$dateFrom, $dateTo])
         ->when($empId !== 'All', fn($q) => $q->where('employee_id', $empId))
         ->orderBy('attendance_date')
