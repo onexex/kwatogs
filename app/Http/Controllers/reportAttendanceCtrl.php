@@ -34,19 +34,19 @@ class reportAttendanceCtrl extends Controller
     //     return response()->json($query->get());
     // }
 
-    public function fetchAttendance(Request $request)
+public function fetchAttendance(Request $request)
 {
     $empId = $request->input('empID');
     $dateFrom = $request->input('dateFrom');
     $dateTo = $request->input('dateTo');
 
-    $summaries = AttendanceSummary::with('employee')
+    // Added manualDeductions to the with() call
+    $summaries = AttendanceSummary::with(['employee', 'manualDeductions'])
         ->whereBetween('attendance_date', [$dateFrom, $dateTo])
         ->when($empId !== 'All', fn($q) => $q->where('employee_id', $empId))
         ->orderBy('attendance_date', 'asc')
         ->get();
 
-    // Fetch HomeAttendance logs for the same employees and date range
     $logs = \App\Models\homeAttendance::whereBetween('attendance_date', [$dateFrom, $dateTo])
         ->when($empId !== 'All', fn($q) => $q->where('employee_id', $empId))
         ->orderBy('attendance_date')
@@ -54,12 +54,10 @@ class reportAttendanceCtrl extends Controller
         ->get()
         ->groupBy(['employee_id', fn($log) => $log->attendance_date->format('Y-m-d')]);
 
-    // Attach logs to each summary
     $summaries->each(function ($summary) use ($logs) {
         $emp = $summary->employee_id;
         $date = $summary->attendance_date->format('Y-m-d');
         $summary->logs = $logs[$emp][$date] ?? collect([]);
-        // Clean date for frontend
         $summary->formatted_date = $summary->attendance_date->format('Y-m-d');
     });
 
