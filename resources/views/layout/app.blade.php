@@ -154,6 +154,7 @@
                     'payroll'          => ['name' => 'Payroll System', 'url' => '/pages/modules/payroll', 'icon' => 'fa-file-invoice-dollar'],
                     'debitadvise'      => ['name' => 'Debit Advise', 'url' => '/pages/modules/debitAdvise', 'icon' => 'fa-receipt'],
                     'sendobt'          => ['name' => 'Send to OBT', 'url' => '/pages/modules/sendOBT', 'icon' => 'fa-paper-plane'],
+                    'manual_entry'          => ['name' => 'Adjustment Time', 'url' => '/pages/modules/adjustmentTime', 'icon' => 'fa-paper-plane'],
                 ];
                 
                 // 1. Sort the main array first

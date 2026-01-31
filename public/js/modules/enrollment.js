@@ -19,63 +19,63 @@ $(document).ready(function() {
  
      }
  
-   $(document).on('click', '#btnSaveAll', function(e) {
-        var datas = $('#frmEnrolment');
-        var city=$("#txtCity option:selected" ).text();
-        var brgy=$("#txtBrgy option:selected" ).text();
-        var prov=$("#txtProvince option:selected" ).text();
-        var formData = new FormData($(datas)[0]);
-        formData.append('citydesc', city);
-        formData.append('brgydesc', brgy);
-        formData.append('provdesc', prov);
+//    $(document).on('click', '#btnSaveAll', function(e) {
+//         var datas = $('#frmEnrolment');
+//         var city=$("#txtCity option:selected" ).text();
+//         var brgy=$("#txtBrgy option:selected" ).text();
+//         var prov=$("#txtProvince option:selected" ).text();
+//         var formData = new FormData($(datas)[0]);
+//         formData.append('citydesc', city);
+//         formData.append('brgydesc', brgy);
+//         formData.append('provdesc', prov);
 
-        //create script
-            axios.post('/enroll/save',formData)  
-            .then(function (response) {
+//         //create script
+//             axios.post('/enroll/save',formData)  
+//             .then(function (response) {
 
-                // console.log(response);
-                // return false;
-                //error response
-                if (response.data.status == 201) {
-                    $.each(response.data.error, function(prefix, val) {
-                        $('input[name='+ prefix +']').addClass(" border border-danger") ;
-                        $('span.' + prefix + '_error').text(val[0]);
-                    });
-                }
-                //success respose
-                if(response.data.status == 200){
-                    $('span.error-text').text("");
-                    $('input.border').removeClass('border border-danger');
-                    $('#frmEnrolment')[0].reset();
-                    empNumberGenerate();
-                    dialog.alert({
-                        message: response.data.msg
-                    });
-                }
-                 //success respose
-                 if(response.data.status == 202){
-                    $('span.error-text').text("");
-                    $('input.border').removeClass('border border-danger');
-                    dialog.alert({
-                        message: response.data.msg
-                    });
-                }
+//                 // console.log(response);
+//                 // return false;
+//                 //error response
+//                 if (response.data.status == 201) {
+//                     $.each(response.data.error, function(prefix, val) {
+//                         $('input[name='+ prefix +']').addClass(" border border-danger") ;
+//                         $('span.' + prefix + '_error').text(val[0]);
+//                     });
+//                 }
+//                 //success respose
+//                 if(response.data.status == 200){
+//                     $('span.error-text').text("");
+//                     $('input.border').removeClass('border border-danger');
+//                     $('#frmEnrolment')[0].reset();
+//                     empNumberGenerate();
+//                     dialog.alert({
+//                         message: response.data.msg
+//                     });
+//                 }
+//                  //success respose
+//                  if(response.data.status == 202){
+//                     $('span.error-text').text("");
+//                     $('input.border').removeClass('border border-danger');
+//                     dialog.alert({
+//                         message: response.data.msg
+//                     });
+//                 }
 
-                if(response.data.status == 203){
+//                 if(response.data.status == 203){
                    
-                    dialog.alert({
-                        message: response.data.msg
-                    });
-                }
-            })
-            .catch(function (error) {
-                dialog.alert({
-                    message: error
-                });  
-            })
-            .then(function () {});   
+//                     dialog.alert({
+//                         message: response.data.msg
+//                     });
+//                 }
+//             })
+//             .catch(function (error) {
+//                 dialog.alert({
+//                     message: error
+//                 });  
+//             })
+//             .then(function () {});   
        
-    });
+//     });
 
     $(document).on('change', '#txtProvince ', function(e) {
         var provCode = $(this).val();
@@ -164,5 +164,77 @@ $(document).ready(function() {
         $('.spin').removeClass('active');
         $('.spin').removeAttr("disabled");
     }
+
+
+    $(document).on('click', '#btnSaveAll', function(e) {
+    var btn = $(this);
+    var datas = $('#frmEnrolment');
+    
+    // 1. Disable button & show loading state
+    btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Saving...');
+
+    var city = $("#txtCity option:selected").text();
+    var brgy = $("#txtBrgy option:selected").text();
+    var prov = $("#txtProvince option:selected").text();
+
+    var formData = new FormData($(datas)[0]);
+    formData.append('citydesc', city);
+    formData.append('brgydesc', brgy);
+    formData.append('provdesc', prov);
+
+    axios.post('/enroll/save', formData)
+        .then(function (response) {
+            // Reset validation visuals
+            $('span.error-text').text("");
+            $('input.border').removeClass('border border-danger');
+
+            // Validation Error (201)
+            if (response.data.status == 201) {
+                $.each(response.data.error, function(prefix, val) {
+                    $('input[name=' + prefix + ']').addClass(" border border-danger");
+                    $('span.' + prefix + '_error').text(val[0]);
+                });
+                
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Validation Error',
+                    text: 'Please check the required fields.'
+                });
+            }
+
+            // Success (200)
+            if (response.data.status == 200) {
+                $('#frmEnrolment')[0].reset();
+                empNumberGenerate();
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: response.data.msg,
+                    timer: 2000
+                });
+            }
+
+            // Warning or Other (202, 203)
+            if (response.data.status == 202 || response.data.status == 203) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Notice',
+                    text: response.data.msg
+                });
+            }
+        })
+        .catch(function (error) {
+            Swal.fire({
+                icon: 'error',
+                title: 'System Error',
+                text: 'Could not connect to the server.'
+            });
+        })
+        .finally(function () {
+            // 2. Re-enable button
+            btn.prop('disabled', false).text('Save All');
+        });
+});
 });
 

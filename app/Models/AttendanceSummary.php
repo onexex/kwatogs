@@ -34,4 +34,26 @@ class AttendanceSummary extends Model
     protected $casts = [
         'attendance_date' => 'date', // ← This makes it a Carbon instance
     ];
+
+    // Inside class AttendanceSummary extends Model
+
+    public function manualDeductions()
+    {
+        return $this->hasMany(AttendanceDeduction::class, 'attendance_summary_id');
+    }
+
+    /**
+     * Accessor to get the Net Hours (Total - Deductions)
+     * Access it using: $summary->net_hours
+     */
+    public function getNetHoursAttribute()
+    {
+        // Sum all minutes from the related deductions table
+        $totalDeductedMins = $this->manualDeductions->sum('deduction_minutes');
+        
+        // Convert mins to hours (e.g. 30 mins = 0.5 hours)
+        $deductedHours = $totalDeductedMins / 60;
+
+        return $this->total_hours - $deductedHours;
+    }
 }

@@ -262,7 +262,7 @@ class registerCtrl extends Controller
             // 'job_level' => 'required',
             'religion' => 'required',
             'birthdate' => 'required',
-            'homephone' => 'required',
+            // 'homephone' => 'required',
             'province' => 'required',
             'mobile' => 'required',
             'city' => 'required',

@@ -101,19 +101,21 @@
             <div class="table-responsive" style="max-height: 70vh;">
                 <table class="table table-hover align-middle mb-0 table-sticky-header">
                     <thead class="text-center">
-                        <tr>
-                            <th scope="col" class="ps-4">No</th>
-                            <th scope="col">Employee Name</th>
-                            <th scope="col">Date</th>
-                            <th scope="col" class="text-primary">Time-in</th>
-                            <th scope="col" class="text-danger">Time-out</th>
-                            <th scope="col">Duration</th>
-                            <th scope="col">Late</th>
-                            <th scope="col">Undertime</th>
-                            <th scope="col">Night Diff</th>
-                            <th scope="col">Passout</th>
-                            <th scope="col" class="pe-4">Over Break</th>
-                        </tr>
+                       <tr>
+                        <th scope="col" class="ps-4">No</th>
+                        <th scope="col">Employee Name</th>
+                        <th scope="col">Date</th>
+                        <th scope="col" class="text-primary">Time-in</th>
+                        <th scope="col" class="text-danger">Time-out</th>
+                        <th scope="col">Duration (Gross)</th>
+                        <th scope="col" class="text-danger">Deductions (Min)</th> {{-- New Column --}}
+                        <th scope="col" class="text-success">Net Duration</th> {{-- New Column --}}
+                        <th scope="col">Late</th>
+                        <th scope="col">Undertime</th>
+                        <th scope="col">Night Diff</th>
+                        <th scope="col">Passout</th>
+                        <th scope="col" class="pe-4">Over Break</th>
+                    </tr>
                     </thead>
                     <tbody id="tbl_rptattendance" name="tbl_rptattendance" class="text-center">
                         </tbody>
