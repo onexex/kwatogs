@@ -108,6 +108,8 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     Route::post('/function/generateEmpid',[registerCtrl::class, 'generateEmpID']);
     Route::post('/enroll/save',[registerCtrl::class, 'create']);
     Route::post('/employee/update',[registerCtrl::class, 'update']);
+    Route::get('admin/e201/fetch/{empID}', [EmployeeRecordController::class, 'getEmployeeDetails']);
+    Route::get('admin/e201/edit/{user}', [EmployeeRecordController::class, 'editEmployee']);
 
 
     // JMC
@@ -375,8 +377,6 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     
 
 // Ensure this is OUTSIDE any other conflicting groups
-    Route::get('admin/e201/fetch/{empID}', [EmployeeRecordController::class, 'getEmployeeDetails']);
-    Route::get('admin/e201/edit/{user}', [EmployeeRecordController::class, 'editEmployee']);
 
 // Route to view the table
 Route::get('/pages/modules/adjustmentTime', [AttendanceController::class, 'index'])->name('attendance.index');

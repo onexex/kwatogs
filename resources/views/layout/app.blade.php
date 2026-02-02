@@ -197,7 +197,7 @@ $hasPagesAccess = collect($modulePages)->keys()->some(fn($key) => auth()->user()
                     'departments'         => ['name' => 'Departments', 'url' => '/pages/management/departments', 'icon' => 'fa-sitemap'],
                     'employeestatus'      => ['name' => 'Emp Status', 'url' => '/pages/management/employeestatus', 'icon' => 'fa-user-tag'],
                     'hmo'                 => ['name' => 'HMOs', 'url' => '/pages/management/hmo', 'icon' => 'fa-heart-pulse'],
-                    'holidaylogger'       => ['name' => 'Holidays', 'url' => '/pages/management/holidaylogger', 'icon' => 'fa-calendar-star'],
+                    'holidaylogger'       => ['name' => 'Holidays', 'url' => '/pages/management/holidaylogger', 'icon' => 'fa-calendar'],
                     'joblevels'           => ['name' => 'Job Levels', 'url' => '/pages/management/joblevels', 'icon' => 'fa-layer-group'],
                     'leavevalidations'    => ['name' => 'Leave Valid.', 'url' => '/pages/management/leavevalidations', 'icon' => 'fa-calendar-check'],
                     'lilovalidations'     => ['name' => 'Lilo Valid.', 'url' => '/pages/management/lilovalidations', 'icon' => 'fa-clock-rotate-left'],
