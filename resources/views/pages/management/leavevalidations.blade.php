@@ -1,4 +1,6 @@
-@extends('layout.app')
+@extends('layout.app', [
+    'title' => 'Leave Validation'
+])
 @section('content')
 
 <!--SHAIRA-->
@@ -6,7 +8,7 @@
 <div class="container-fluid">
     <div class="mb-2">
         <h4 class="text-gray-800 mb-3">Leave Validations</h4>
-        <button class=" mt-3 btn btn-danger radius-1" name="btnCreateLeave" id="btnCreateLeave" data-bs-toggle="modal" data-bs-target="#mdlUpdateLeave"> <i class="fa fa-plus"></i> Leave Validation</button>
+        <button class=" mt-3 btn radius-1 btn-blue" name="btnCreateLeave" id="btnCreateLeave" data-bs-toggle="modal" data-bs-target="#mdlUpdateLeave"> <i class="fa fa-plus"></i> Leave Validation</button>
     </div>
 
      <!-- Content Row dar -->
@@ -30,6 +32,7 @@
                                         <th class="text-dark" scope="col">File Before</th>
                                         <th class="text-dark" scope="col">File After</th>
                                         <th class="text-dark" scope="col">File HalfDay</th>
+                                        <th class="text-dark" scope="col">Pre Allocated</th>
                                         <th class="text-dark" scope="col">Action</th>
                                     </tr>
                                 </thead>
@@ -177,6 +180,16 @@
                                                 </div>
                                             </div>
 
+                                            <div class="col-lg-12 mb-1">
+                                                <div class="form-floating">
+                                                    <select  class="form-control" name="pre_allocated" id="selpreAllocated"  >
+                                                        <option value="1">Yes</option>
+                                                        <option selected value="0">No</option>
+                                                    </select>
+                                                    <label  class="form-check-label" for="selpreAllocated" class="text-muted">Is Pre-Allocated<label for="" class="text-danger">*</label></label>
+                                                    <span class="text-danger small error-text preAllocated_error"></span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
