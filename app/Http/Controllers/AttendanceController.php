@@ -25,11 +25,7 @@ class AttendanceController extends Controller
         $from = $request->get('from', now()->subDays(10)->toDateString());
         $to   = $request->get('to', now()->toDateString());
 
-<<<<<<< HEAD
-        $punches = HomeAttendance::where('employee_id', $empID)
-=======
         $punches = homeAttendance::where('employee_id', $empID)
->>>>>>> 01cd4020dea42afea2742bbba03a1adf1880e770
                     ->whereBetween('attendance_date', [$from, $to])
                     ->orderBy('attendance_date' , 'desc')
                     ->orderBy('time_in','desc')
