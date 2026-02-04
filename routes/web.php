@@ -177,6 +177,7 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     // leave application
     Route::get('/pages/modules/leaveApplication',[pageCtrl::class, 'leaveApplication']);
     Route::get('/pages/modules/leave-check-credit',[LeaveController::class, 'checkLeaveCredit'])->name('leave.credit.check');
+    Route::post('/pages/modules/leave',[LeaveController::class, 'store'])->name('leave.store');
 
     //joblevel
     Route::post('/joblevel/create_update',[jobleveCtrl::class, 'create_update']);

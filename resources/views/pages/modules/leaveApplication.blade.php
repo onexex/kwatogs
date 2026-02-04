@@ -148,17 +148,17 @@
 
                                                 <div class="col-lg-12 mb-2">
                                                     <div class="form-floating">
-                                                        <input class="form-control" id="txtLStartEnd" name="date" type="date" placeholder="-"/>
-                                                        <label class="form-check-label" for="txtLStartEnd">From <label for="" class="text-danger">*</label></label>
-                                                        <span class="text-danger small error-text date_error"></span>
+                                                        <input class="form-control" id="date_from" name="date_from" type="date" placeholder="-"/>
+                                                        <label class="form-check-label" for="date_from">From <label for="" class="text-danger">*</label></label>
+                                                        <span class="text-danger small error-text date_from_error"></span>
                                                     </div>
                                                 </div>
 
                                                 <div class="col-lg-12 mb-2">
                                                     <div class="form-floating">
-                                                        <input class="form-control" id="txtLEndDate" name="date" type="date" placeholder="-"/>
+                                                        <input class="form-control" id="date_to" name="date_to" type="date" placeholder="-"/>
                                                         <label class="form-check-label" for="txtLEndDate">To<label for="" class="text-danger">*</label></label>
-                                                        <span class="text-danger small error-text date_error"></span>
+                                                        <span class="text-danger small error-text date_to_error"></span>
                                                     </div>
                                                 </div>
 
@@ -196,7 +196,26 @@
     <script>
         $(document).ready(function() {
 
+            $(document).on('click', '#btnSaveLeave', function(e) {
+                var datas = $('#frmLeaveApp');
+                var formData = new FormData($(datas)[0]);
+
+                axios.post('/pages/modules/leave',formData) 
+                .then(function (response) {
+                    if (response.data.status == 201) {
+                        $.each(response.data.error, function(prefix, val) {
+                            $('input[name='+ prefix +']').addClass(" border border-danger") ;
+                            $('span.' + prefix + '_error').text(val[0]);
+                        });
+
+                        return
+                    }
+                })
+                
+            })
+
             $(document).on('change', '#selLeaveType', function(e) {
+                var leaveCredit = document.getElementById("txtLeaveCredits");
                 const leaveKind = document.getElementById("selLeaveKind").value;
                 if (leaveKind == 0) {
                     axios.get('/pages/modules/leave-check-credit', {
@@ -204,7 +223,6 @@
                             leave_id: $(this).val()
                         }
                     }).then((response) => {
-                        var leaveCredit = document.getElementById("txtLeaveCredits");
                         if (response.data.status == 404) {
                             if (leaveCredit) {
                                 leaveCredit.value = response.data.message
@@ -213,12 +231,38 @@
                             leaveCredit.value = response.data.leave_credit
                         }
                     })
+                } else {
+                    leaveCredit.value = 0
                 }
             })
 
-            $(document).on('click', '#btnSaveLeave', function(e) {
-                
-            })
+            $(document).on('change', '#date_from, #date_to', function(e) {
+
+                var startDate = document.getElementById("date_from").value;
+                var endDate = document.getElementById("date_to").value;
+
+                if (startDate !== "" && endDate !== "") {
+
+                    var start = new Date(startDate);
+                    var end = new Date(endDate);
+
+                    start.setHours(0,0,0,0);
+                    end.setHours(0,0,0,0);
+
+                    var diffTime = end - start;
+
+                    var diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+                    if (diffDays < 1) diffDays = 1;
+
+                    document.getElementById("txtDurationDays").value = diffDays;
+
+                } else {
+                    document.getElementById("txtDurationDays").value = 0;
+                }
+            });
+
+
         })
     </script>
 @endsection
