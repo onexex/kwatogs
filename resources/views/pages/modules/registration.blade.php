@@ -520,7 +520,7 @@
                                                             @endforeach
                                                         @endif
                                                     </select>
-                                                    <span class="text-danger small error-text classification_error"></span>
+                                                    <span class="text-danger small error-text immediate_error"></span>
                                                 </div>
 
                                                 <div class="form-group mb-3">
