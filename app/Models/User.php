@@ -6,6 +6,7 @@ use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
@@ -70,5 +71,15 @@ class User extends Authenticatable
     public function employeeInformation()
     {
         return $this->belongsTo(emp_info::class, 'empID', 'empID');
+    }
+
+   
+
+    protected function empID(): Attribute
+    {
+        return Attribute::make(
+            // Pag kinuha ang data, i-format bilang 3 digits (e.g. 1 -> 001)
+            get: fn ($value) => str_pad($value, 3, '0', STR_PAD_LEFT),
+        );
     }
 }

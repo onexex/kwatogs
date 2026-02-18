@@ -447,7 +447,7 @@
                                     <div class="card-body p-4">
                                         <div class="row g-4 px-2">
                                             <div class="col-lg-4">
-                                                <div class="form-group mb-3">
+                                                <div class="form-group mb-3 d-none">
                                                     <label for="txtEmployeeNo" class="form-label small fw-semibold text-muted">Employee No. <span class="text-danger">*</span></label>
                                                     <input class="form-control form-control-lg bg-light border-0 fs-6 fw-bold" id="txtEmployeeNo" name="employee_number" type="text" readonly />
                                                     <span class="text-danger small error-text employee_number_error"></span>

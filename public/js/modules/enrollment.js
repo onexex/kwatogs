@@ -1,6 +1,6 @@
 $(document).ready(function() {
      //employee number fetch
-     empNumberGenerate();
+    //  empNumberGenerate();
      loadprovince();
      function empNumberGenerate(){
          axios.post('/function/generateEmpid',)  
