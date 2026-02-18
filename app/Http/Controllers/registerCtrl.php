@@ -657,6 +657,18 @@ class registerCtrl extends Controller
             return response()->json(['status' => 203, 'msg' => $e->getMessage()]);
         }
     }
+    // Check if email is already taken (AJAX) Feb 18 2026
+    public function checkEmailAvailability(Request $request) {
+
+        $email = $request->email;  
+        $userExists = User::where('email', $email)->exists();
+
+        if ($userExists) {
+            echo json_encode(['exists' => true]);
+        } else {
+            echo json_encode(['exists' => false]);
+        }
+    }
 
 }
 
