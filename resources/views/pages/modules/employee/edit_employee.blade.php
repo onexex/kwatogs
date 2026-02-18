@@ -146,7 +146,7 @@
         <div class="row mb-3">
            <div class="d-flex align-items-center justify-content-between mb-4">
                 <div>
-                    <h4 class="fw-bold text-dark m-0 text-capitalize">Edit Information of {{ $user->fname }} {{ $user->lname }}</h4>
+                    <h4 class="fw-bold text-dark m-0 text-capitalize">Edit Information of : {{ $user->fname }} {{ $user->lname }}</h4>
                     <nav aria-label="breadcrumb">
                         <ol class="breadcrumb mb-0">
                             <li class="breadcrumb-item text-muted">Operation</li>
@@ -244,12 +244,6 @@
                                             </div>
 
                                             <div class="col-lg-3 col-md-6">
-                                                <label for="txtReligion" class="form-label small fw-semibold text-muted">Religion<span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" value="{{ $user->employeeInformation->empReligion }}" id="txtReligion" name="religion">
-                                                <span class="text-danger small error-text religion_error"></span>
-                                            </div>
-
-                                            <div class="col-lg-3 col-md-6">
                                                 <label for="txtDOB" class="form-label small fw-semibold text-muted">Date of Birth <span class="text-danger">*</span></label>
                                                 <input type="date" class="form-control form-control-lg bg-light border-0 fs-6" id="txtDOB" value="{{ substr($user->employeeInformation->empBdate, 0, 10) }}" name="birthdate">
                                                 <span class="text-danger small error-text birthdate_error"></span>
@@ -267,12 +261,12 @@
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtHomePhone" class="form-label small fw-semibold text-muted">Home Phone</label>
-                                                <input type="number" class="form-control form-control-lg bg-light border-0 fs-6" value="{{ $user->employeeInformation->empHContact }}"  id="txtHomePhone" name="homephone">
+                                                <input type="number" class="form-control form-control-lg bg-light border-0 fs-6" value="{{ $user->employeeInformation->empPContact }}"  id="txtHomePhone" name="homephone">
                                             </div>
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtMobileNumber" class="form-label small fw-semibold text-muted">Mobile Number <span class="text-danger">*</span></label>
-                                                <input type="number" class="form-control form-control-lg bg-light border-0 fs-6"  value="{{ $user->employeeInformation->empPContact }}" id="txtMobileNumber" name="mobile">
+                                                <input type="number" class="form-control form-control-lg bg-light border-0 fs-6"  value="{{ $user->employeeInformation->empHContact }}" id="txtMobileNumber" name="mobile">
                                                 <span class="text-danger small error-text mobile_error"></span>
                                             </div>
 
@@ -396,11 +390,6 @@
                                     <div class="card-body p-4">
                                         <div class="row g-4 px-2">
                                             <div class="col-lg-4">
-                                                <div class="form-group mb-3">
-                                                    <label for="txtEmployeeNo" class="form-label small fw-semibold text-muted">Employee No. <span class="text-danger">*</span></label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6 fw-bold" id="txtEmployeeNo" value="{{ $user->empID }}" name="employee_number" type="text" readonly />
-                                                    <span class="text-danger small error-text employee_number_error"></span>
-                                                </div>
 
                                                 <div class="form-group mb-3">
                                                     <label for="selCompany" class="form-label small fw-semibold text-muted">Company <span class="text-danger">*</span></label>
@@ -479,61 +468,16 @@
                                                     </select>
                                                     <span class="text-danger small error-text status_error"></span>
                                                 </div>
-
-                                                <div class="form-group mb-3">
-                                                    <label for="selJobLevel" class="form-label small fw-semibold text-muted">Job Level <span class="text-danger"></span></label>
-                                                    <select class="form-select form-control-lg bg-light border-0 fs-6" name="job_level" id="selJobLevel">
-                                                        <option value="">Select Job Level</option>
-                                                        @if (count($joblevelData) > 0)
-                                                            @foreach ($joblevelData as $joblevelDatas)
-                                                                <option {{ $user->empDetail->empJobLevel == $joblevelDatas->id ? 'selected' : '' }} value='{{ $joblevelDatas->id }}'>{{ $joblevelDatas->job_desc }}</option>
-                                                            @endforeach
-                                                        @endif
-                                                    </select>
-                                                    <span class="text-danger small error-text job_level_error"></span>
-                                                </div>
                                             </div>
 
                                             <div class="col-lg-4">
-                                                <div class="form-group mb-3">
-                                                    <label for="selAgency" class="form-label small fw-semibold text-muted">Agency <span class="text-danger"></span></label>
-                                                    <select class="form-select form-control-lg bg-light border-0 fs-6" name="agency" id="selAgency">
-                                                        <option value="">Select Agency</option>
-                                                        @if (count($agencyData) > 0)
-                                                            @foreach ($agencyData as $agencyDatas)
-                                                                <option {{ $user->empDetail->empAgencyID == $agencyDatas->id ? 'selected' : '' }} value='{{ $agencyDatas->id }}'>{{ $agencyDatas->ag_name }}</option>
-                                                            @endforeach
-                                                        @endif
-                                                    </select>
-                                                    <span class="text-danger small error-text agency_error"></span>
-                                                </div>
-
-                                                <div class="form-group mb-3">
-                                                    <label for="selHMO" class="form-label small fw-semibold text-muted">HMO Provider <span class="text-danger"></span></label>
-                                                    <select class="form-select form-control-lg bg-light border-0 fs-6" name="hmo" id="selHMO">
-                                                        <option value="">Select HMO Provider</option>
-
-                                                        @if (count($hmoData) > 0)
-                                                            @foreach ($hmoData as $hmoDatas)
-                                                                <option {{ $user->empDetail->empHMOID == $hmoDatas->idNo ? 'selected' : '' }} value='{{ $hmoDatas->idNo }}'>{{ $hmoDatas->hmoName }}</option>
-                                                            @endforeach
-                                                        @endif
-                                                    </select>
-                                                    <span class="text-danger small error-text hmo_error"></span>
-                                                </div>
-
-                                                <div class="form-group mb-3">
-                                                    <label for="selHMONo" class="form-label small fw-semibold text-muted">HMO Number <span class="text-danger"></span></label>
-                                                    <input type="text" value="{{ $user->empDetail->empHMONo }}" class="form-control form-control-lg bg-light border-0 fs-6" name="hmo_number" id="selHMONo" placeholder="Enter number" />
-                                                    <span class="text-danger small error-text hmo_number_error"></span>
-                                                </div>
-
                                                 <div class="form-group mb-3">
                                                     <label for="selWorkDays" class="form-label small fw-semibold text-muted">Work Days <span class="text-danger">*</span></label>
                                                     <select class="form-select form-control-lg bg-light border-0 fs-6" name="no_work_days" id="selWorkDays">
                                                         <option value="">Select Work Days</option>
                                                         <option {{ $user->empDetail->empWday == 4 ? 'selected' : '' }} value="4">4 Days</option>
                                                         <option {{ $user->empDetail->empWday == 5 ? 'selected' : '' }} value="5">5 Days</option>
+                                                        <option {{ $user->empDetail->empWday == 6 ? 'selected' : '' }} value="6">6 Days</option>
                                                     </select>
                                                     <span class="text-danger small error-text no_work_days_error"></span>
                                                 </div>
@@ -607,25 +551,7 @@
                                     </div>
                                     
                                     <div class="card-body p-4">
-                                        <div class="row g-4"> <div class="col-lg-4">
-                                                <div class="form-group mb-3">
-                                                    <label for="txtPassportNo" class="form-label small fw-semibold text-muted">Passport Number <span class="text-danger"></span></label>
-                                                    <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" value="{{ $user->empDetail->empPassport }}" name="passport_no" id="txtPassportNo" placeholder="Enter number">
-                                                    <span class="text-danger small error-text passport_no_error"></span>
-                                                </div>
-
-                                                <div class="form-group mb-3">
-                                                    <label for="txtPassportExpDate" class="form-label small fw-semibold text-muted">Passport Expiry Date <span class="text-danger"></span></label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtPassportExpDate" value="{{ substr($user->empDetail->empPassportExpDate, 0, 10) }}" name="passport_exp_date" type="date">
-                                                    <span class="text-danger small error-text passport_exp_date_error"></span>
-                                                </div>
-
-                                                <div class="form-group mb-3">
-                                                    <label for="txtIssuingAuth" class="form-label small fw-semibold text-muted">Issuing Authority <span class="text-danger"></span></label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtIssuingAuth" value="{{ $user->empDetail->empPassportIssueAuth }}" name="issuing_authority" type="text" placeholder="e.g. DFA">
-                                                    <span class="text-danger small error-text issuing_authority_error"></span>
-                                                </div>
-                                            </div>
+                                        <div class="row g-4"> 
 
                                             <div class="col-lg-4">
                                                 <div class="form-group mb-3">
