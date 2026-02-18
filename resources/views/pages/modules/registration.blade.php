@@ -579,7 +579,7 @@
                                                     <span class="text-danger small error-text hmo_number_error"></span>
                                                 </div> --}}
 
-                                                <div class="form-group mb-3">
+                                                {{-- <div class="form-group mb-3">
                                                     <label for="selWorkDays" class="form-label small fw-semibold text-muted">Work Days <span class="text-danger">*</span></label>
                                                     <select class="form-select form-control-lg bg-light border-0 fs-6" name="no_work_days" id="selWorkDays">
                                                         <option value="">Select Work Days</option>
@@ -588,7 +588,7 @@
                                                         <option value="6">6 Days</option>
                                                     </select>
                                                     <span class="text-danger small error-text no_work_days_error"></span>
-                                                </div>
+                                                </div> --}}
                                             </div>
                                         </div>
 
