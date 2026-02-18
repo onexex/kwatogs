@@ -8,23 +8,21 @@
         select {
             text-transform: uppercase;
             }
-            textarea {
+
+        textarea {
             text-transform: uppercase;
             }
-        /* Force inactive tabs to zero height and hide overflow */
-.tab-content > .tab-pane:not(.active) {
-    display: none !important;
-    height: 0;
-    overflow: hidden;
-}
+          
+        .tab-content > .tab-pane:not(.active) {
+            display: none !important;
+            height: 0;
+            overflow: hidden;
+        }
 
-/* Ensure the active tab resets to auto height */
-.tab-content > .active {
-    display: block !important;
-    height: auto !important;
-}
-        
-        
+        .tab-content > .active {
+            display: block !important;
+            height: auto !important;
+        }
         
         :root {
             --primary-color: #696cff; /* Modern Blue/Indigo */
@@ -161,8 +159,7 @@
                 </div>
             </div>
                 
-
-       
+ 
             <div class="col-12">
                 <ul class="nav nav-pills mb-3" id="enrollmentTabs" role="tablist">
                     <li class="nav-item" role="presentation">
@@ -196,7 +193,8 @@
 
       
             <div class="col-12">
-               <form id="frmEnrolment" class="py-4 px-0">
+               <form id="frmEnrolment" class="py-4 px-0" autocomplete="off">
+                @csrf
                     <div class="tab-content" id="myTabContent">
 
                         <div class="tab-pane fade show active" id="home-tab-pane" role="tabpanel" tabindex="0">
@@ -211,25 +209,25 @@
                                         <div class="row g-4 px-2">
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtfname" class="form-label small fw-semibold text-muted">First Name <span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtfname" name="firstname"  >
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtfname" name="firstname" autocomplete="disabled-suggestion" >
                                                 <span class="text-danger error-text firstname_error"></span>
                                             </div>
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtMiddleName" class="form-label small fw-semibold text-muted">Middle Name <span class="text-danger"></span></label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtMiddleName" name="middlename">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtMiddleName" name="middlename" autocomplete="disabled-suggestion">
                                                 <span class="text-danger error-text middlename_error"></span>
                                             </div>
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtLastName" class="form-label small fw-semibold text-muted">Last Name <span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtLastName" name="lastname">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtLastName" name="lastname" autocomplete="disabled-suggestion">
                                                 <span class="text-danger error-text lastname_error"></span>
                                             </div>
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtSuffix" class="form-label small fw-semibold text-muted">Suffix</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtSuffix" name="suffix" placeholder="e.g. Jr.">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtSuffix" name="suffix" placeholder="e.g. Jr." autocomplete="disabled-suggestion">
                                             </div>
 
                                             <div class="col-lg-3 col-md-6">
@@ -242,25 +240,25 @@
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtCitizenship" class="form-label small fw-semibold text-muted">Citizenship <span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtCitizenship" name="citizenship">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtCitizenship" name="citizenship" autocomplete="disabled-suggestion">
                                                 <span class="text-danger error-text citizenship_error"></span>
                                             </div>
 
-                                            <div class="col-lg-3 col-md-6">
+                                            {{-- <div class="col-lg-3 col-md-6">
                                                 <label for="txtReligion" class="form-label small fw-semibold text-muted">Religion<span class="text-danger">*</span></label>
                                                 <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtReligion" name="religion">
                                                 <span class="text-danger small error-text religion_error"></span>
-                                            </div>
+                                            </div> --}}
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtDOB" class="form-label small fw-semibold text-muted">Date of Birth <span class="text-danger">*</span></label>
-                                                <input type="date" class="form-control form-control-lg bg-light border-0 fs-6" id="txtDOB" name="birthdate">
+                                                <input type="date" class="form-control form-control-lg bg-light border-0 fs-6" id="txtDOB" name="birthdate" autocomplete="disabled-suggestion">
                                                 <span class="text-danger small error-text birthdate_error"></span>
                                             </div>
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="selCivilStatus" class="form-label small fw-semibold text-muted">Civil Status <span class="text-danger">*</span></label>
-                                                <select class="form-select form-control-lg bg-light border-0 fs-6" name="status" id="selCivilStatus">
+                                                <select class="form-select form-control-lg bg-light border-0 fs-6" name="status" id="selCivilStatus" autocomplete="disabled-suggestion">
                                                     <option value="0">Single</option>
                                                     <option value="1">Married</option>
                                                     <option value="2">Divorced</option>
@@ -270,19 +268,19 @@
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtHomePhone" class="form-label small fw-semibold text-muted">Home Phone</label>
-                                                <input type="number" class="form-control form-control-lg bg-light border-0 fs-6" id="txtHomePhone" name="homephone">
+                                                <input type="number" class="form-control form-control-lg bg-light border-0 fs-6" id="txtHomePhone" name="homephone" autocomplete="disabled-suggestion"> 
                                                 <span class="text-danger small error-text homephone_error"></span>
                                             </div>
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtMobileNumber" class="form-label small fw-semibold text-muted">Mobile Number <span class="text-danger">*</span></label>
-                                                <input type="number" class="form-control form-control-lg bg-light border-0 fs-6" id="txtMobileNumber" name="mobile">
+                                                <input type="number" class="form-control form-control-lg bg-light border-0 fs-6" id="txtMobileNumber" name="mobile" autocomplete="disabled-suggestion">
                                                 <span class="text-danger small error-text mobile_error"></span>
                                             </div>
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtEmailAddress" class="form-label small fw-semibold text-muted">Email Address <span class="text-danger">*</span></label>
-                                                <input type="email" class="form-control form-control-lg bg-light border-0 fs-6" id="txtEmailAddress" name="email">
+                                                <input type="email" class="form-control form-control-lg bg-light border-0 fs-6" id="txtEmailAddress" name="email" autocomplete="disabled-suggestion">
                                                 <span class="text-danger small error-text email_error"></span>
                                                 
                                             </div>
@@ -314,11 +312,11 @@
                                             </div>
                                             <div class="col-lg-6">
                                                 <label for="txtStreet" class="form-label small fw-semibold text-muted">Street No / Subdivision <span class="text-danger"></span></label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtStreet" name="street">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtStreet" name="street" autocomplete="disabled-suggestion">
                                             </div>
                                             <div class="col-lg-3">
                                                 <label for="txtZipCode" class="form-label small fw-semibold text-muted">Zip Code <span class="text-danger">*</span></label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtZipCode" name="zipcode">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtZipCode" name="zipcode" autocomplete="disabled-suggestion">
                                             <span class="text-danger small error-text zipcode_error"></span>
                                             </div>
                                             <div class="col-lg-3">
@@ -354,22 +352,22 @@
                                             
                                             <div class="col-md-6">
                                                 <label for="txtPrimarySchool" class="form-label small fw-semibold text-muted">Name of School</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtPrimarySchool" name="primary_school" placeholder="Enter school name">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtPrimarySchool" name="primary_school" placeholder="Enter school name" autocomplete="disabled-suggestion">
                                             </div>
                                             
                                             <div class="col-md-3">
                                                 <label for="txtPrimaryStarted" class="form-label small fw-semibold text-muted">Year Started</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtPrimaryStarted" name="primary_year_started" placeholder="YYYY">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtPrimaryStarted" name="primary_year_started" placeholder="YYYY" autocomplete="disabled-suggestion">
                                             </div>
                                             
                                             <div class="col-md-3">
                                                 <label for="txtPrimaryGraduated" class="form-label small fw-semibold text-muted">Year Graduated</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtPrimaryGraduated" name="primary_year_graduated" placeholder="YYYY">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtPrimaryGraduated" name="primary_year_graduated" placeholder="YYYY" autocomplete="disabled-suggestion">
                                             </div>
                                             
                                             <div class="col-12 mt-3">
                                                 <label for="txtPrimaryAddress" class="form-label small fw-semibold text-muted">School Address</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtPrimaryAddress" name="primary_school_address" placeholder="Street, City, Province">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtPrimaryAddress" name="primary_school_address" placeholder="Street, City, Province" autocomplete="disabled-suggestion">
                                                 <span class="text-danger small error-text primary_address_error"></span>
                                             </div>
                                         </div>
@@ -384,22 +382,22 @@
                                             
                                             <div class="col-md-6">
                                                 <label for="txtSecondarySchool" class="form-label small fw-semibold text-muted">Name of School</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtSecondarySchool" name="secondary_school" placeholder="Enter school name">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtSecondarySchool" name="secondary_school" placeholder="Enter school name" autocomplete="disabled-suggestion">
                                             </div>
                                             
                                             <div class="col-md-3">
                                                 <label for="txtSecondaryStarted" class="form-label small fw-semibold text-muted">Year Started</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtSecondaryStarted" name="secondary_year_started" placeholder="YYYY">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtSecondaryStarted" name="secondary_year_started" placeholder="YYYY" autocomplete="disabled-suggestion">
                                             </div>
                                             
                                             <div class="col-md-3">
                                                 <label for="txtSecondaryGraduated" class="form-label small fw-semibold text-muted">Year Graduated</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtSecondaryGraduated" name="secondary_year_graduated" placeholder="YYYY">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtSecondaryGraduated" name="secondary_year_graduated" placeholder="YYYY" autocomplete="disabled-suggestion">
                                             </div>
                                             
                                             <div class="col-12 mt-3">
                                                 <label for="txtSecondaryAddress" class="form-label small fw-semibold text-muted">School Address</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtSecondaryAddress" name="secondary_school_address" placeholder="Street, City, Province">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtSecondaryAddress" name="secondary_school_address" placeholder="Street, City, Province" autocomplete="disabled-suggestion">
                                                 <span class="text-danger small error-text secondary_address_error"></span>
                                             </div>
                                         </div>
@@ -414,22 +412,22 @@
                                             
                                             <div class="col-md-6">
                                                 <label for="txtTertiarySchool" class="form-label small fw-semibold text-muted">Name of School</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtTertiarySchool" name="tertiary_school" placeholder="Enter school name">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtTertiarySchool" name="tertiary_school" placeholder="Enter school name" autocomplete="disabled-suggestion">
                                             </div>
                                             
                                             <div class="col-md-3">
                                                 <label for="txtTertiaryStarted" class="form-label small fw-semibold text-muted">Year Started</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtTertiaryStarted" name="tertiary_year_started" placeholder="YYYY">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtTertiaryStarted" name="tertiary_year_started" placeholder="YYYY" autocomplete="disabled-suggestion">
                                             </div>
                                             
                                             <div class="col-md-3">
                                                 <label for="txtTertiaryGraduated" class="form-label small fw-semibold text-muted">Year Graduated</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtTertiaryGraduated" name="tertiary_year_graduated" placeholder="YYYY">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtTertiaryGraduated" name="tertiary_year_graduated" placeholder="YYYY" autocomplete="disabled-suggestion">
                                             </div>
                                             
                                             <div class="col-12 mt-3">
                                                 <label for="txtTertiaryAddress" class="form-label small fw-semibold text-muted">School Address</label>
-                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtTertiaryAddress" name="tertiary_school_address" placeholder="Street, City, Province">
+                                                <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" id="txtTertiaryAddress" name="tertiary_school_address" placeholder="Street, City, Province" autocomplete="disabled-suggestion">
                                                 <span class="text-danger small error-text tertiary_address_error"></span>
                                             </div>
                                         </div>
@@ -533,7 +531,7 @@
                                                     <span class="text-danger small error-text status_error"></span>
                                                 </div>
 
-                                                <div class="form-group mb-3">
+                                                {{-- <div class="form-group mb-3">
                                                     <label for="selJobLevel" class="form-label small fw-semibold text-muted">Job Level <span class="text-danger"></span></label>
                                                     <select class="form-select form-control-lg bg-light border-0 fs-6" name="job_level" id="selJobLevel">
                                                         <option value="">Select Job Level</option>
@@ -544,11 +542,11 @@
                                                         @endif
                                                     </select>
                                                     <span class="text-danger small error-text job_level_error"></span>
-                                                </div>
+                                                </div> --}}
                                             </div>
 
                                             <div class="col-lg-4">
-                                                <div class="form-group mb-3">
+                                                {{-- <div class="form-group mb-3">
                                                     <label for="selAgency" class="form-label small fw-semibold text-muted">Agency <span class="text-danger"></span></label>
                                                     <select class="form-select form-control-lg bg-light border-0 fs-6" name="agency" id="selAgency">
                                                         <option value="">Select Agency</option>
@@ -559,8 +557,8 @@
                                                         @endif
                                                     </select>
                                                     <span class="text-danger small error-text agency_error"></span>
-                                                </div>
-
+                                                </div> --}}
+{{-- 
                                                 <div class="form-group mb-3">
                                                     <label for="selHMO" class="form-label small fw-semibold text-muted">HMO Provider <span class="text-danger"></span></label>
                                                     <select class="form-select form-control-lg bg-light border-0 fs-6" name="hmo" id="selHMO">
@@ -573,13 +571,13 @@
                                                         @endif
                                                     </select>
                                                     <span class="text-danger small error-text hmo_error"></span>
-                                                </div>
+                                                </div> --}}
 
-                                                <div class="form-group mb-3">
+                                                {{-- <div class="form-group mb-3">
                                                     <label for="selHMONo" class="form-label small fw-semibold text-muted">HMO Number <span class="text-danger"></span></label>
                                                     <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" name="hmo_number" id="selHMONo" placeholder="Enter number" />
                                                     <span class="text-danger small error-text hmo_number_error"></span>
-                                                </div>
+                                                </div> --}}
 
                                                 <div class="form-group mb-3">
                                                     <label for="selWorkDays" class="form-label small fw-semibold text-muted">Work Days <span class="text-danger">*</span></label>
@@ -587,6 +585,7 @@
                                                         <option value="">Select Work Days</option>
                                                         <option value="4">4 Days</option>
                                                         <option value="5">5 Days</option>
+                                                        <option value="6">6 Days</option>
                                                     </select>
                                                     <span class="text-danger small error-text no_work_days_error"></span>
                                                 </div>
@@ -616,17 +615,17 @@
                                             <div class="col-lg-4">
                                                 <div class="form-group mb-3">
                                                     <label for="txtBasic" class="form-label small fw-semibold text-muted">Basic Salary <span class="text-danger">*</span></label>
-                                                    <input type="number" class="form-control form-control-lg bg-light border-0 fs-6" name="basic" id="txtBasic"   />
+                                                    <input type="number" class="form-control form-control-lg bg-light border-0 fs-6" name="basic" id="txtBasic"  autocomplete="disabled-suggestion" />
                                                     <span class="text-danger small error-text basic_error"></span>
                                                 </div>
                                                 <div class="form-group mb-3">
                                                     <label for="txtAllowance" class="form-label small fw-semibold text-muted">Allowance <span class="text-danger">*</span></label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtAllowance" name="allowance" type="number"   />
+                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtAllowance" name="allowance" type="number"  autocomplete="disabled-suggestion" />
                                                     <span class="text-danger small error-text allowance_error"></span>
                                                 </div>
                                                 <div class="form-group mb-3">
                                                     <label for="txtHourlyRate" class="form-label small fw-semibold text-muted">Hourly Rate <span class="text-danger"></span></label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtHourlyRate" name="hourly_rate" type="number" value="0"  />
+                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtHourlyRate" name="hourly_rate" type="number" value="0"  autocomplete="disabled-suggestion" />
                                                     <span class="text-danger small error-text hourly_rate_error"></span>
                                                 </div>
                                             </div>
@@ -634,15 +633,15 @@
                                             <div class="col-lg-4">
                                                 <div class="form-group mb-3">
                                                     <label for="selPreviousPosition" class="form-label small fw-semibold text-muted">Previous Position</label>
-                                                    <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" name="previous_position" id="selPreviousPosition" />
+                                                    <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" name="previous_position" id="selPreviousPosition"  autocomplete="disabled-suggestion" />
                                                 </div>
                                                 <div class="form-group mb-3">
                                                     <label for="txtPreviousDepartment" class="form-label small fw-semibold text-muted">Previous Department</label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtPreviousDepartment" name="previous_department" type="text" />
+                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtPreviousDepartment" name="previous_department" type="text" autocomplete="disabled-suggestion" />
                                                 </div>
                                                 <div class="form-group mb-3">
                                                     <label for="txtPreviousDesignation" class="form-label small fw-semibold text-muted">Previous Designation</label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtPreviousDesignation" name="previous_designation" type="text" />
+                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtPreviousDesignation" name="previous_designation" type="text" autocomplete="disabled-suggestion" />
                                                 </div>
                                             </div>
                                         </div>
@@ -660,7 +659,8 @@
                                     </div>
                                     
                                     <div class="card-body p-4">
-                                        <div class="row g-4"> <div class="col-lg-4">
+                                        <div class="row g-4">
+                                             {{-- <div class="col-lg-4">
                                                 <div class="form-group mb-3">
                                                     <label for="txtPassportNo" class="form-label small fw-semibold text-muted">Passport Number <span class="text-danger"></span></label>
                                                     <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" name="passport_no" id="txtPassportNo" placeholder="Enter number">
@@ -678,24 +678,24 @@
                                                     <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtIssuingAuth" name="issuing_authority" type="text" placeholder="e.g. DFA">
                                                     <span class="text-danger small error-text issuing_authority_error"></span>
                                                 </div>
-                                            </div>
+                                            </div> --}}
 
                                             <div class="col-lg-4">
                                                 <div class="form-group mb-3">
                                                     <label for="txtPhilhealth" class="form-label small fw-semibold text-muted">PhilHealth <span class="text-danger"></span></label>
-                                                    <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" name="philhealth" id="txtPhilhealth" placeholder="00-000000000-0">
+                                                    <input type="text" class="form-control form-control-lg bg-light border-0 fs-6" name="philhealth" id="txtPhilhealth" placeholder="00-000000000-0" autocomplete="disabled-suggestion">
                                                     <span class="text-danger small error-text philhealth_error"></span>
                                                 </div>
 
                                                 <div class="form-group mb-3">
                                                     <label for="txtSSS" class="form-label small fw-semibold text-muted">SSS No. <span class="text-danger"></span></label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtSSS" name="sss" type="text" placeholder="00-0000000-0">
+                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtSSS" name="sss" type="text" placeholder="00-0000000-0" autocomplete="disabled-suggestion">
                                                     <span class="text-danger small error-text sss_error"></span>
                                                 </div>
 
                                                 <div class="form-group mb-3">
                                                     <label for="txtPagibig" class="form-label small fw-semibold text-muted">Pag-IBIG No. <span class="text-danger"></span></label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtPagibig" name="pagibig" type="text" placeholder="0000-0000-0000">
+                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtPagibig" name="pagibig" type="text" placeholder="0000-0000-0000" autocomplete="disabled-suggestion">
                                                     <span class="text-danger small error-text pagibig_error"></span>
                                                 </div>
                                             </div>
@@ -703,13 +703,13 @@
                                             <div class="col-lg-4">
                                                 <div class="form-group mb-3">
                                                     <label for="txtTIN" class="form-label small fw-semibold text-muted">TIN No. <span class="text-danger"></span></label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtTIN" name="tin" type="text" placeholder="000-000-000-000">
+                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtTIN" name="tin" type="text" placeholder="000-000-000-000" autocomplete="disabled-suggestion">
                                                     <span class="text-danger small error-text tin_error"></span>
                                                 </div>
 
                                                 <div class="form-group mb-3">
                                                     <label for="txtUMIDNo" class="form-label small fw-semibold text-muted">UMID <span class="text-danger"></span></label>
-                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtUMIDNo" name="umid" type="text" placeholder="0000-0000000-0">
+                                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtUMIDNo" name="umid" type="text" placeholder="0000-0000000-0" autocomplete="disabled-suggestion">
                                                     <span class="text-danger small error-text umid_error"></span>
                                                 </div>
                                             </div>
