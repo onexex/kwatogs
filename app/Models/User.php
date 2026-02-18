@@ -73,7 +73,6 @@ class User extends Authenticatable
         return $this->belongsTo(emp_info::class, 'empID', 'empID');
     }
 
-   
 
     protected function empID(): Attribute
     {
