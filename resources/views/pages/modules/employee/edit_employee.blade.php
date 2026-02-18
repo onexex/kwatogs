@@ -261,12 +261,12 @@
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtHomePhone" class="form-label small fw-semibold text-muted">Home Phone</label>
-                                                <input type="number" class="form-control form-control-lg bg-light border-0 fs-6" value="{{ $user->employeeInformation->empHContact }}"  id="txtHomePhone" name="homephone">
+                                                <input type="number" class="form-control form-control-lg bg-light border-0 fs-6" value="{{ $user->employeeInformation->empPContact }}"  id="txtHomePhone" name="homephone">
                                             </div>
 
                                             <div class="col-lg-3 col-md-6">
                                                 <label for="txtMobileNumber" class="form-label small fw-semibold text-muted">Mobile Number <span class="text-danger">*</span></label>
-                                                <input type="number" class="form-control form-control-lg bg-light border-0 fs-6"  value="{{ $user->employeeInformation->empPContact }}" id="txtMobileNumber" name="mobile">
+                                                <input type="number" class="form-control form-control-lg bg-light border-0 fs-6"  value="{{ $user->employeeInformation->empHContact }}" id="txtMobileNumber" name="mobile">
                                                 <span class="text-danger small error-text mobile_error"></span>
                                             </div>
 
