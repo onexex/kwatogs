@@ -469,19 +469,6 @@
                                                     <span class="text-danger small error-text status_error"></span>
                                                 </div>
                                             </div>
-
-                                            <div class="col-lg-4">
-                                                <div class="form-group mb-3">
-                                                    <label for="selWorkDays" class="form-label small fw-semibold text-muted">Work Days <span class="text-danger">*</span></label>
-                                                    <select class="form-select form-control-lg bg-light border-0 fs-6" name="no_work_days" id="selWorkDays">
-                                                        <option value="">Select Work Days</option>
-                                                        <option {{ $user->empDetail->empWday == 4 ? 'selected' : '' }} value="4">4 Days</option>
-                                                        <option {{ $user->empDetail->empWday == 5 ? 'selected' : '' }} value="5">5 Days</option>
-                                                        <option {{ $user->empDetail->empWday == 6 ? 'selected' : '' }} value="6">6 Days</option>
-                                                    </select>
-                                                    <span class="text-danger small error-text no_work_days_error"></span>
-                                                </div>
-                                            </div>
                                         </div>
 
                                         <hr class="opacity-50 my-4 mx-2">
