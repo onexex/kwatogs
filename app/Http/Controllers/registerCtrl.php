@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\access;
-use App\Models\emp_education;
-use App\Models\emp_info;
+// use App\Models\access;
+// use App\Models\emp_education;
+// use App\Models\emp_info;
 
-use App\Models\empDetail;
+// use App\Models\empDetail;
 use App\Models\User;
 use Carbon\Carbon;
 use Exception;
