@@ -2,18 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use Exception;
-use Carbon\Carbon;
-use App\Models\User;
-
 use App\Models\access;
-use App\Models\emp_info;
-use App\Models\empDetail;
-use Illuminate\Http\Request;
 use App\Models\emp_education;
+use App\Models\emp_info;
+
+use App\Models\empDetail;
+use App\Models\User;
+use Carbon\Carbon;
+use Exception;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 
 class registerCtrl extends Controller
@@ -66,7 +67,13 @@ class registerCtrl extends Controller
 
         $validator = Validator::make($request->all(), [
             'email' => 'required|unique:users',
-            'firstname' => 'required',
+            'firstname' => [
+                'required',
+                Rule::unique('users')->where(function ($query) use ($request) {
+                    return $query->where('firstname', $request->firstname)
+                                ->where('lastname', $request->lastname);
+                }),
+            ],
             'lastname' => 'required',
             'company' => 'required',
             'gender' => 'required',
@@ -485,6 +492,13 @@ class registerCtrl extends Controller
         } else {
             echo json_encode(['exists' => false]);
         }
+    }
+
+    public function checkFullName(Request $request) {
+        $exists = User::where('fname', $request->firstname)
+                    ->where('lname', $request->lastname)
+                    ->exists();
+        return response()->json(['exists' => $exists]);
     }
 
 }

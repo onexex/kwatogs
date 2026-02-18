@@ -291,6 +291,40 @@ $(document).ready(function() {
         const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return re.test(email);
     }
+
+    let timeout = null;
+
+    $('#txtfname, #txtLastName').on('keyup', function() {
+        clearTimeout(timeout);
+
+        timeout = setTimeout(function() {
+            let fname = $('#txtfname').val().trim();
+            let lname = $('#txtLastName').val().trim();
+
+            // Mag-check lang kung parehong may laman
+            if (fname !== '' && lname !== '') {
+                $.ajax({
+                    url: '/check-fullname',
+                    method: 'GET',
+                    data: { firstname: fname, lastname: lname },
+                    beforeSend: function() {
+                        // Opsyonal: Pwedeng magpakita ng "Checking..." dito
+                    },
+                    success: function(res) {
+                        if (res.exists) {
+                            $('.firstname_error').text('Full name already exists in our records.');
+                            $('#txtfname, #txtLastName').addClass('is-invalid').removeClass('bg-light');
+                            $('#btnSaveAll').attr('disabled', true); // I-disable ang submit button
+                        } else {
+                            $('.firstname_error').text('');
+                            $('#txtfname, #txtLastName').removeClass('is-invalid').addClass('bg-light');
+                            $('#btnSaveAll').attr('disabled', false);
+                        }
+                    }
+                });
+            }
+        }, 500); // 500ms delay (Debounce)
+    });
  
 
 });

@@ -386,6 +386,7 @@ Route::group(['middleware'=>['AuthCheck']], function(){
 
     // validate email availability Feb 18 2026
     Route::post('/registerCtrl/checkEmailAvailability', [registerCtrl::class, 'checkEmailAvailability']);
+    Route::get('/check-fullname', [registerCtrl::class, 'checkFullName']);
 
 });
 
