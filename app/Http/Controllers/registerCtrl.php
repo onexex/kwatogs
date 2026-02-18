@@ -69,12 +69,22 @@ class registerCtrl extends Controller
             'email' => 'required|unique:users',
             'firstname' => [
                 'required',
-                Rule::unique('users')->where(function ($query) use ($request) {
-                    return $query->where('firstname', $request->firstname)
-                                ->where('lastname', $request->lastname);
+                 'string',
+                'min:2',           
+                'max:50',          
+                'regex:/^[a-zA-Z\sñÑ-]+$/', 
+                Rule::unique('users', 'fname')->where(function ($query) use ($request) {
+                    return $query->where('lname', $request->lastname);
                 }),
             ],
-            'lastname' => 'required',
+            // 'lastname' => 'required',
+            'lastname' => [
+                'required',
+                'string',
+                'min:2',           
+                'max:50',          
+                'regex:/^[a-zA-Z\sñÑ-]+$/', 
+            ],
             'company' => 'required',
             'gender' => 'required',
             'citizenship' => 'required',
@@ -88,18 +98,43 @@ class registerCtrl extends Controller
             'birthdate' => 'required',
             // 'homephone' => 'required',
             'province' => 'required',
-            'mobile' => 'required',
+            'mobile' => [
+                'required',
+                'numeric',
+                'digits:11',
+                'regex:/^09\d{9}$/',
+            ],
             'city' => 'required',
             'barangay' => 'required',
-            'zipcode' => 'required',
+            'zipcode' => 'required|numeric',
             'country' => 'required',
             // 'agency' => 'required',
             // 'hmo' => 'required',
-            'no_work_days' => 'required',
+            // 'no_work_days' => 'required',
             'date_hired' => 'required',
             'basic'=>'required|numeric',
             'allowance'=>'required|numeric',
-            
+
+            //education
+            'primary_school' => 'string|nullable',
+            'primary_year_started' => 'nullable|numeric',
+            'primary_year_graduated' => 'nullable|numeric',
+            'secondary_school' => 'string|nullable',
+            'secondary_year_started' => 'nullable|numeric',
+            'secondary_year_graduated' => 'nullable|numeric',
+            'tertiary_school' => 'string|nullable',
+            'tertiary_year_started' => 'nullable|numeric',
+            'tertiary_year_graduated' => 'nullable|numeric',
+
+            //compliance
+            'philhealth' => 'nullable|digits:12', // PhilHealth PIN is 12 digits
+            'pagibig'    => 'nullable|digits:12', // Pag-IBIG MID is 12 digits
+            'sss'        => 'nullable|digits:10', // SSS Number is 10 digits
+            'tin'        => 'nullable|digits:9',  // Standard TIN is 9 (minsan 12 kung may branch code)
+            'umid'       => 'nullable|digits:12', // UMID is 12 digits
+
+             //profile picture
+             'path' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
             
         ]);
 
@@ -217,7 +252,8 @@ class registerCtrl extends Controller
                 'empStatus' => $request->status,
                 'empAllowance' => $request->allowance,
                 'empHrate' => $request->hourly_rate,
-                'empWday' => $request->no_work_days,
+                // 'empWday' => $request->no_work_days,
+                'empWday' => 8,
                 'empJobLevel' => $request->job_level,
                 'empAgencyID' => $request->agency,
                 'empHMOID' => $request->hmo,

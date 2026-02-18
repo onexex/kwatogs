@@ -160,8 +160,8 @@
                                     <div class="value-text text-success" id="view_salary">0.00</div>
                                 </div>
                                 <div class="col-12 col-md-4">
-                                    <div class="label-caps">HMO Number</div>
-                                    <div class="value-text" id="view_hmo">---</div>
+                                    <div class="label-caps">Allowance</div>
+                                    <div class="value-text" id="view_allowance">---</div>
                                 </div>
                             </div>
                         </div>

@@ -75,10 +75,12 @@ $(document).ready(function() {
             $('#view_class').text(detail.classification.class_desc);
             // Currency Formatting
             const basic = parseFloat(detail.empBasic || 0);
+            const basicAllowance = parseFloat(detail.empAllowance || 0);
             $('#view_salary').text(basic.toLocaleString('en-US', { minimumFractionDigits: 2 }));
 
             // Statutory
-            $('#view_hmo').text(detail.empHMONo ?? '---');
+            $('#view_allowance').text(basicAllowance.toLocaleString('en-US', { minimumFractionDigits: 2 }));
+
             $('#view_sss').text(detail.empSSS ?? '---');
             $('#view_phil').text(detail.empPhilhealth ?? '---');
             $('#view_pagibig').text(detail.empPagibig ?? '---');

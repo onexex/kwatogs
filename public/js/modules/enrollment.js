@@ -19,64 +19,6 @@ $(document).ready(function() {
  
      }
  
-    //$(document).on('click', '#btnSaveAll', function(e) {
-//         var datas = $('#frmEnrolment');
-//         var city=$("#txtCity option:selected" ).text();
-//         var brgy=$("#txtBrgy option:selected" ).text();
-//         var prov=$("#txtProvince option:selected" ).text();
-//         var formData = new FormData($(datas)[0]);
-//         formData.append('citydesc', city);
-//         formData.append('brgydesc', brgy);
-//         formData.append('provdesc', prov);
-
-//         //create script
-//             axios.post('/enroll/save',formData)  
-//             .then(function (response) {
-
-//                 // console.log(response);
-//                 // return false;
-//                 //error response
-//                 if (response.data.status == 201) {
-//                     $.each(response.data.error, function(prefix, val) {
-//                         $('input[name='+ prefix +']').addClass(" border border-danger") ;
-//                         $('span.' + prefix + '_error').text(val[0]);
-//                     });
-//                 }
-//                 //success respose
-//                 if(response.data.status == 200){
-//                     $('span.error-text').text("");
-//                     $('input.border').removeClass('border border-danger');
-//                     $('#frmEnrolment')[0].reset();
-//                     empNumberGenerate();
-//                     dialog.alert({
-//                         message: response.data.msg
-//                     });
-//                 }
-//                  //success respose
-//                  if(response.data.status == 202){
-//                     $('span.error-text').text("");
-//                     $('input.border').removeClass('border border-danger');
-//                     dialog.alert({
-//                         message: response.data.msg
-//                     });
-//                 }
-
-//                 if(response.data.status == 203){
-                   
-//                     dialog.alert({
-//                         message: response.data.msg
-//                     });
-//                 }
-//             })
-//             .catch(function (error) {
-//                 dialog.alert({
-//                     message: error
-//                 });  
-//             })
-//             .then(function () {});   
-       
-//     });
-
     $(document).on('change', '#txtProvince ', function(e) {
         var provCode = $(this).val();
         axios.get('/get_city',{
@@ -204,7 +146,7 @@ $(document).ready(function() {
                 // Success (200)
                 if (response.data.status == 200) {
                     $('#frmEnrolment')[0].reset();
-                    empNumberGenerate();
+                    // empNumberGenerate();
                     
                     Swal.fire({
                         icon: 'success',
