@@ -38,6 +38,7 @@
                                             <th class="text-dark" scope="col">DateTo</th>
                                             <th class="text-dark" scope="col">Duration</th>
                                             <th class="text-dark" scope="col">Purpose</th>
+                                            <th class="text-dark" scope="col">Leave Kind</th>
                                             <th class="text-dark" scope="col">Status</th>
                                             <th class="text-dark" scope="col">Delete</th>
                                         </tr>
@@ -209,6 +210,17 @@
                         });
 
                         return
+                    } else {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: response.data.message || 'Your leave application has been submitted successfully.',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                        $('#mdlLeaveApp').modal('hide');
+                        datas[0].reset();
+                        fetchLeaves();
                     }
                 })
                 
@@ -262,7 +274,104 @@
                 }
             });
 
+            $(document).on('click', '.delete-leave', function(e) {
+                const leaveId = $(this).data('leave-id');
 
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: 'Do you want to delete this leave application?',
+                    icon: 'warning',
+                    buttons: true,
+                    dangerMode: true,
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, delete!'
+                }).then((willDelete) => {
+
+                    if (willDelete.isConfirmed) {
+                        axios.delete(`/pages/modules/leave/delete/${leaveId}`)
+                            .then((response) => {
+                                if (response.data.status == 200) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Deleted!',
+                                        text: response.data.message || 'The leave has been removed successfully.',
+                                        timer: 2000,
+                                        showConfirmButton: false
+                                    });
+
+                                    fetchLeaves();
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Error!',
+                                        text: response.data.message || 'An error occurred while deleting the leave.',
+                                        timer: 2000,
+                                        showConfirmButton: false
+                                    });
+                                }
+                        })
+                        .catch((error) => {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error!',
+                                text: error.response?.data?.message || 'An error occurred while deleting the leave.',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                            console.error('Error deleting leave application:', error);
+                        });
+                    }
+                })
+            });
+
+            fetchLeaves()
+
+            async function fetchLeaves() {
+                try {
+                    const response = await axios.get('/pages/modules/leave/getall');
+                    const leaves = response.data.leaves;
+                    const tblLeaveApp = document.getElementById('tblLeaveApp');
+                    tblLeaveApp.innerHTML = '';
+
+                    leaves.forEach(leave => {
+                        let buttonAction = '';
+                        let status = '';
+
+                        if (leave.status === 'APPROVED') {
+                            status = `<span class="badge bg-success">APPROVED</span>`;
+                        } else if (leave.status === 'DISAPPROVED') {
+                            status = `<span class="badge bg-danger">DISAPPROVED</span>`;
+                        } else if (leave.status === 'FORAPPROVAL') {
+                            status = `<span class="badge bg-warning text-dark p-2">FOR APPROVAL</span>`;
+                        }
+
+                        if (leave.status === 'FORAPPROVAL') {
+                            buttonAction = `<button class="btn btn-danger btn-sm bg-danger text-white delete-leave" data-leave-id="${leave.id}">Delete</button>`;
+                        } 
+
+                        const row = `
+                            <tr>
+                                <td>${leave.leave_type.type_leave}</td>
+                                <td>${new Date(leave.created_at).toLocaleDateString()}</td>
+                                <td>${new Date(leave.start_date).toLocaleDateString()}</td>
+                                <td>${new Date(leave.end_date).toLocaleDateString()}</td>
+                                <td>${leave.total_hrs / 8}</td>
+                                <td>${leave.reason}</td>
+                                <td>${leave.leave_kind == 0 ? 'Paid' : 'Unpaid'}</td>
+                                <td>
+                                    ${status}
+                                </td>
+                                <td>
+                                    ${buttonAction}
+                                </td>
+                            </tr>
+                        `;
+                        tblLeaveApp.insertAdjacentHTML('beforeend', row);
+                    });
+                } catch (error) {
+                    console.error('Error fetching leave history:', error);
+                }
+            }
         })
     </script>
 @endsection

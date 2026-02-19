@@ -15,6 +15,16 @@ use Illuminate\Support\Facades\Validator;
 
 class LeaveController extends Controller
 {
+    public function getAllLeaves()
+    {
+        $user = Auth::user();
+        $leaves = $user->leaves()->with(['leaveType'])->orderBy('created_at', 'desc')->get();
+
+        return response()->json([
+            'leaves' => $leaves
+        ]); 
+    }
+
     public function store(Request $request)
     {
         $user = Auth::user();
@@ -149,5 +159,22 @@ class LeaveController extends Controller
                 ]);
             }
         }
+    }
+
+    public function destroy(Leave $leave)
+    {
+        if ($leave->status != LeaveStatusEnum::FORAPPROVAL->name) {
+            return response()->json([
+                'status' => 400,
+                'message' => 'Only leaves with status "FOR APPROVAL" can be deleted.'
+            ]);
+        }
+
+        $leave->delete();
+
+        return response()->json([
+            'status' => 200,
+            'message' => 'Leave deleted successfully.'
+        ]);
     }
 }

@@ -178,6 +178,8 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     Route::get('/pages/modules/leaveApplication',[pageCtrl::class, 'leaveApplication']);
     Route::get('/pages/modules/leave-check-credit',[LeaveController::class, 'checkLeaveCredit'])->name('leave.credit.check');
     Route::post('/pages/modules/leave',[LeaveController::class, 'store'])->name('leave.store');
+    Route::get('/pages/modules/leave/getall',[LeaveController::class, 'getAllLeaves'])->name('leave.getall');
+    Route::delete('/pages/modules/leave/delete/{leave}', [LeaveController::class, 'destroy'])->name('leave.delete');
 
     //joblevel
     Route::post('/joblevel/create_update',[jobleveCtrl::class, 'create_update']);
