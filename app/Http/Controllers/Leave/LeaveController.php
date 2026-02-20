@@ -263,6 +263,7 @@ class LeaveController extends Controller
 
         if ($leave) {
             $leaveValidation = leavevalidationModel::where('leave_type', $leave->id)
+                ->where('compID', $user->empDetail->empCompID)
                 ->first();
             $empDetail = $user->empDetail;
             if ($leaveValidation) {
