@@ -58,7 +58,7 @@ class LeaveController extends Controller
                                     ->where('end_date', '>=', $request->date_to);
                           });
                 })
-                ->where('status', '!=', LeaveStatusEnum::CANCELED->name)
+                ->where('status', '!=', LeaveStatusEnum::DISAPPROVED->name)
                 ->first();
 
             if ($leavel) {
@@ -186,7 +186,103 @@ class LeaveController extends Controller
                         }
                     } else {
                         // leave credit is based on validation credits
-                        dd(1);
+                        $yearlyCredit = $leaveValidation->credits; // example: 5
+
+                        $start = Carbon::parse($request->date_from);
+                        $leaveDurationDays = Carbon::parse($request->date_to)->diffInDays($start) + 1;
+
+                        // months earned up to that month
+                        $monthsElapsed = $start->month; // April = 4
+
+                        $monthlyAccrual = $yearlyCredit / 12;
+
+                        $earnedCredits = round($monthlyAccrual * $monthsElapsed, 2);
+
+                        $usedHours = Leave::where('employee_id', $user->empID)
+                            ->where('leave_type', $request->leavetype)
+                            ->where('leave_kind', $request->leavekind)
+                            ->where('status', '!=',  LeaveStatusEnum::DISAPPROVED->name)
+                            ->sum('total_hrs');
+
+                        $usedDays = $usedHours / 8;
+
+                        $remainingCredits = $earnedCredits - $usedDays;
+
+                        if ($remainingCredits <= 0) {
+                            return response()->json([
+                                'status' => 201,
+                                'error' => ['leavetype' => ['Insufficient leave balance. Contact supervisor.']]
+                            ]);
+                        } else if ($remainingCredits < Carbon::parse($request->date_to)->diffInDays(Carbon::parse($request->date_from)) + 1) {
+                            return response()->json([
+                                'status' => 201,
+                                'error' => ['leavetype' => ['Applying for this leave will exceed your available balance. Contact supervisor.']]
+                            ]);
+                        }
+
+                        if ($leaveDurationDays > $remainingCredits) {
+                            return response()->json([
+                                'status' => 201,
+                                'error' => ['leavetype' => ['Applying for this leave will exceed your available balance. Contact supervisor.']]
+                            ]);
+                        } 
+
+                        $start = $request->date_from;
+                        $end = $request->date_to;
+                        $halfday = isset($request->halfday) ? $request->halfday : 0;
+
+                        $durationHours = 0;
+
+                        if ($halfday) {
+                            $durationHours = 4;
+                        } else {
+                            $startDate = \Carbon\Carbon::parse($start);
+                            $endDate = \Carbon\Carbon::parse($end);
+
+                            $diffDays = $startDate->diffInDays($endDate) + 1;
+
+                            if ($diffDays == 1) {
+                                $durationHours = 8;  
+                            } else {
+                                $durationHours = $diffDays * 8; 
+                            }
+                        }
+
+                        $leave = Leave::create([
+                            'employee_id' => $user->empID,
+                            'start_date' => $start,
+                            'end_date' => $end,
+                            'leave_type' => $request->leavetype,
+                            'total_hrs' => $durationHours,
+                            'reason' => $request->purpose,
+                            'status' => LeaveStatusEnum::FORAPPROVAL->name,
+                            'is_half_day' => $halfday,
+                            'leave_kind' => $request->leavekind,
+                        ]);
+
+                        $dateFrom = Carbon::parse($request->date_from);
+                        $dateTo   = Carbon::parse($request->date_to);
+                            
+                        while ($dateFrom->lte($dateTo)) {
+                            $durationHours = 8; 
+
+                            if ($halfday && $request->date_from == $request->date_to) {
+                                $durationHours = 4;
+                            }
+
+                            LeaveDetail::create([
+                                'employee_id' => $user->empID,
+                                'leave_id' => $leave->id,
+                                'leavetype_id' => $request->leavetype,
+                                'date' => $dateFrom->format('Y-m-d'),
+                                'leave_kind' => $request->leavekind,
+                                'total_hours' => $durationHours,
+                                'status' => LeaveStatusEnum::FORAPPROVAL->name,
+                            ]);
+
+                            $dateFrom->addDay();
+                        }
+
                     }
                 } else {
                     return response()->json([
@@ -290,8 +386,22 @@ class LeaveController extends Controller
                         ]);
                     }
                 } else {
+
+                    $yearlyCredit = $leaveValidation->credits; 
+                    $monthsElapsed = now()->month; 
+
+                    $monthlyAccrual = $yearlyCredit / 12;
+
+                    $usedHours = Leave::where('employee_id', $user->empID)
+                        ->where('leave_type', $request->leave_id)
+                        ->where('leave_kind', 0)
+                        ->where('status', '!=',  LeaveStatusEnum::DISAPPROVED->name)
+                        ->whereDate('start_date', '<=', now())
+                        ->whereYear('start_date', now()->year)
+                        ->sum('total_hrs');
+
                     return response()->json([
-                        'leave_credit' =>  $leaveValidation->credits
+                        'leave_credit' =>  round($monthlyAccrual * $monthsElapsed - $usedHours / 8, 2) 
                     ]);
                 }
             } else {
