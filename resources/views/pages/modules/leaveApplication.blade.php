@@ -201,6 +201,9 @@
                 var datas = $('#frmLeaveApp');
                 var formData = new FormData($(datas)[0]);
 
+                $('.error-text').text('');
+                $('.form-control').removeClass('border border-danger') ;
+
                 axios.post('/pages/modules/leave',formData) 
                 .then(function (response) {
                     if (response.data.status == 201) {

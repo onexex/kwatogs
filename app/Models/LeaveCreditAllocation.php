@@ -14,6 +14,7 @@ class LeaveCreditAllocation extends Model
         'leavetype_id',
         'year',
         'credits_allocated',
+        'balance',
     ];
 
     public function user()

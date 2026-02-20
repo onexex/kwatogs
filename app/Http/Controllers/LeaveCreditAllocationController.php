@@ -50,6 +50,7 @@ class LeaveCreditAllocationController extends Controller
             $newAllocation->leavetype_id = $request->leave_type;
             $newAllocation->year = $request->year;
             $newAllocation->credits_allocated = $request->leave_credit;
+            $newAllocation->balance = $request->leave_credit; // Set initial balance equal to allocated credits
             $newAllocation->save();
 
             return response()->json(['status' => 'success', 'message' => 'Leave credit allocation created successfully.']);
@@ -81,6 +82,7 @@ class LeaveCreditAllocationController extends Controller
             'employee_id' => $request->employee_id,
             'leavetype_id' => $request->leave_type,
             'credits_allocated' => $request->leave_credit,
+            'balance' => $request->leave_credit, // Update balance to match new allocated credits
             'year' => $request->year,
         ]);
 
