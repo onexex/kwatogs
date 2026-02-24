@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Leave extends Model
 {
@@ -22,6 +23,8 @@ class Leave extends Model
         'approved_by',
         'approved_at',
         'remarks',
+        'is_half_day',
+        'leave_kind',
     ];
 
     protected $casts = [
@@ -29,6 +32,11 @@ class Leave extends Model
         'end_date'    => 'date',
         'approved_at' => 'datetime',
     ];
+
+    public function leaveType(): BelongsTo
+    {
+        return $this->belongsTo(leavetype::class, 'leave_type', 'id');
+    }
 
     // ==============================
     // 🔗 RELATIONSHIPS

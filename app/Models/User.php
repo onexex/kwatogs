@@ -73,7 +73,11 @@ class User extends Authenticatable
         return $this->belongsTo(emp_info::class, 'empID', 'empID');
     }
 
-
+    public function leaves()
+    {
+        return $this->hasMany(Leave::class, 'employee_id', 'empID');
+    }
+    
     protected function empID(): Attribute
     {
         return Attribute::make(

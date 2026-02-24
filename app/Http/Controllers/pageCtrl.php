@@ -297,6 +297,7 @@ class pageCtrl extends Controller
         $user = Auth::user();
         $empployeeDetails = $user->empDetail;
         $leaveTypes = leavetype::all();
+
         return view('pages.modules.leaveApplication', [
             'employeeDetails' => $empployeeDetails,
             'user' => $user,

@@ -10,7 +10,6 @@ class leavevalidationModel extends Model
     use HasFactory;
     protected $table = 'leavevalidation_models';
     protected $primaryKey = 'id ';
-    public $timestamps = true;
 
     protected $fillable = [
         'compID',
@@ -22,5 +21,6 @@ class leavevalidationModel extends Model
         'file_before',
         'file_after',
         'file_halfday',
+        'pre_allocated',
     ];
 }

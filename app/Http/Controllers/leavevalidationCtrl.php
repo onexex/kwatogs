@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use DB;
 
-use Validator;
 use Illuminate\Http\Request;
 use App\Models\leavevalidationModel;
+use Illuminate\Support\Facades\Validator;
 
 class leavevalidationCtrl extends Controller
 {
@@ -21,6 +21,7 @@ class leavevalidationCtrl extends Controller
             'file_before'=>$request->filebefore,
             'file_after'=>$request->fileafter,
             'file_halfday'=>$request->halfday,
+            'pre_allocated' => $request->pre_allocated,
         ];
         $validator = Validator::make($request->all(),[
             'company'=>'required',

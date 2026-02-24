@@ -29,9 +29,8 @@ $(document).ready(function() {
                             }else{
                                 htmlData += "<td class='text-lowercase'>No</td>";
                             }
+                            htmlData += "<td class='text-lowercase'>" + (row.pre_allocated == 1 ? 'Yes' : 'No') +  "</td>" ;
                             
-                           
-              
                 htmlData +="<td >" +  '<button type="button" value='+ row.ids +' class="btn btn-danger" data-toggle="tooltip" data-placement="bottom"  id="btnUpdateModal" data-bs-toggle="modal" data-bs-target="#mdlUpdateLeave" > <i class="fa fa-pencil"></i> </button></td>' ;                                                         
                 htmlData += "</tr>";  
             })
@@ -68,6 +67,7 @@ $(document).ready(function() {
           })  
         .then(function (response) {
             $(response.data.data).each(function(index, row) {
+                console.log(row.pre_allocated)
                 $('span.error-text').text("");
                 $('input.border').removeClass('border border-danger');
                 $('#selCompanyNameU').val(row.compID);
@@ -79,7 +79,7 @@ $(document).ready(function() {
                 $('#txtDaysAfter').val(row.no_after_file);
                 $('#selFileAfter').val(row.file_after);
                 $('#txtCreditsU').val(row.credits);
-                
+                $('#selpreAllocated').val(row.pre_allocated);
               
             })
         })

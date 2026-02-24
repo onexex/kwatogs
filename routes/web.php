@@ -42,11 +42,12 @@ use App\Http\Controllers\liloValidationsCtrl;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\parentalSettingsCtrl;
 use App\Http\Controllers\reportAttendanceCtrl;
+use App\Http\Controllers\Leave\LeaveController;
 use App\Http\Controllers\Roles\RolesController;
 use App\Http\Controllers\EmployeeRecordController;
 use App\Http\Controllers\EmployeeScheduleController;
-use App\Http\Controllers\LeaveCreditAllocationController;
 use App\Http\Controllers\Roles\EmployeeRoleController;
+use App\Http\Controllers\LeaveCreditAllocationController;
 
 Route::get('/r', function () {
     $updated = User::where('id', 1)->update([
@@ -108,6 +109,8 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     Route::post('/function/generateEmpid',[registerCtrl::class, 'generateEmpID']);
     Route::post('/enroll/save',[registerCtrl::class, 'create']);
     Route::post('/employee/update',[registerCtrl::class, 'update']);
+    Route::get('admin/e201/fetch/{empID}', [EmployeeRecordController::class, 'getEmployeeDetails']);
+    Route::get('admin/e201/edit/{user}', [EmployeeRecordController::class, 'editEmployee']);
 
 
     // JMC
@@ -168,9 +171,15 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     Route::get('/pages/modules/sendOBT',[pageCtrl::class, 'sendOBT']);
     Route::get('/pages/modules/overtime',[OvertimeController::class, 'index']);
     Route::get('/pages/modules/earlyout',[pageCtrl::class, 'earlyout']);
-    Route::get('/pages/modules/leaveApplication',[pageCtrl::class, 'leaveApplication']);
     Route::get('/pages/modules/debitAdvise',[pageCtrl::class, 'debitAdvise']);
     Route::get('/pages/modules/checkRegister',[pageCtrl::class, 'checkRegister']);
+
+    // leave application
+    Route::get('/pages/modules/leaveApplication',[pageCtrl::class, 'leaveApplication']);
+    Route::get('/pages/modules/leave-check-credit',[LeaveController::class, 'checkLeaveCredit'])->name('leave.credit.check');
+    Route::post('/pages/modules/leave',[LeaveController::class, 'store'])->name('leave.store');
+    Route::get('/pages/modules/leave/getall',[LeaveController::class, 'getAllLeaves'])->name('leave.getall');
+    Route::delete('/pages/modules/leave/delete/{leave}', [LeaveController::class, 'destroy'])->name('leave.delete');
 
     //joblevel
     Route::post('/joblevel/create_update',[jobleveCtrl::class, 'create_update']);
@@ -374,6 +383,7 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     // Route::get('/admin/e201/fetch/{id}', [EmployeeRecordController::class, 'getE201Data'])->name('e201.fetch');
     
 
+// Ensure this is OUTSIDE any other conflicting groups
     // Ensure this is OUTSIDE any other conflicting groups
     Route::get('admin/e201/fetch/{empID}', [EmployeeRecordController::class, 'getEmployeeDetails']);
     Route::get('admin/e201/edit/{user}', [EmployeeRecordController::class, 'editEmployee']);

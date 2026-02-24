@@ -14,7 +14,7 @@ enum PagePermissionsEnum: string
     case e201 = 'E-201';
     // case earlyout = 'Earlyout';
     case enrollemployee = 'Enroll Employee';
-    // case leaveapplication = 'Leave Application';
+    case leaveapplication = 'Leave Application';
     // case memorandum = 'Memo Generator';
     case obttracker = 'Official Business Trip';
     case overtime = 'Overtime';
