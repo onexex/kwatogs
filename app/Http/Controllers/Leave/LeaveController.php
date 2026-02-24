@@ -68,17 +68,52 @@ class LeaveController extends Controller
                 ]); 
             }
 
-            $leaveCredit = 0;
             if ($request->leavekind == 0) {
 
                 $leave = leavetype::where('id', $request->leavetype)
                     ->first();
 
-                $leaveValidation = leavevalidationModel::where('leave_type', $leave->id)
-                            ->first();
                 $empDetail = $user->empDetail;
 
+                $leaveValidation = leavevalidationModel::where('leave_type', $leave->id)
+                    ->where('compID', $empDetail->empCompID)
+                    ->first();
+
                 if ($leaveValidation) {
+                    $today = Carbon::now()->startOfDay();
+
+                    $targetDate = Carbon::parse($request->date_from);
+
+                    $diff = $today->diffInDays($targetDate, false); // negative = past, positive = future
+
+                    $daysAfter = $diff < 0 ? abs($diff) : 0; // days already passed
+                    $daysBefore  = $diff > 0 ? $diff : 0;  
+                    if ($leaveValidation->file_before == 1 && $leaveValidation->no_before_file > 0) {
+                        if ($daysBefore > $leaveValidation->no_before_file) {
+                            return response()->json([
+                                'status' => 201,
+                                'error' => ['leavetype' => ['This leave type requires filing at least ' . $leaveValidation->no_before_file . ' days before the leave start date. Contact supervisor.']]
+                            ]);
+                        }
+                    } else if ($leaveValidation->file_before == 0 && $daysBefore > 0) {
+                        return response()->json([
+                            'status' => 201,
+                            'error' => ['leavetype' => ['This leave type cannot be filed before. Contact supervisor.']]
+                        ]);
+                    }
+                    if ($leaveValidation->file_after == 1 && $leaveValidation->no_after_file > 0) {
+                        if ($daysAfter > $leaveValidation->no_after_file) {
+                            return response()->json([
+                                'status' => 201,
+                                'error' => ['leavetype' => ['This leave type requires filing within ' . $leaveValidation->no_after_file . ' days after. Contact supervisor.']]
+                            ]);
+                        }
+                    } else if ($leaveValidation->file_after == 0 && $daysAfter > 0) {
+                        return response()->json([
+                            'status' => 201,
+                            'error' => ['leavetype' => ['This leave type cannot be filed after. Contact supervisor.']]
+                        ]);
+                    }
                     if (!$empDetail->empDateRegular) {
                         return response()->json([
                             'status' => 201,
