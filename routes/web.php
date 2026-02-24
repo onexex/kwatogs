@@ -384,14 +384,19 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     
 
 // Ensure this is OUTSIDE any other conflicting groups
+    // Ensure this is OUTSIDE any other conflicting groups
+    Route::get('admin/e201/fetch/{empID}', [EmployeeRecordController::class, 'getEmployeeDetails']);
+    Route::get('admin/e201/edit/{user}', [EmployeeRecordController::class, 'editEmployee']);
+    // Route to view the table
+    Route::get('/pages/modules/adjustmentTime', [AttendanceController::class, 'index'])->name('attendance.index');
+    // Route to handle the AJAX deduction save
+    Route::post('/attendance/deductions', [AttendanceController::class, 'storeDeduction'])->name('attendance.deductions.store');
+    // Route to delete a specific deduction
+    Route::delete('/attendance/deductions/{id}', [AttendanceController::class, 'destroyDeduction'])->name('attendance.deductions.destroy');
 
-// Route to view the table
-Route::get('/pages/modules/adjustmentTime', [AttendanceController::class, 'index'])->name('attendance.index');
-
-// Route to handle the AJAX deduction save
-Route::post('/attendance/deductions', [AttendanceController::class, 'storeDeduction'])->name('attendance.deductions.store');
-// Route to delete a specific deduction
-Route::delete('/attendance/deductions/{id}', [AttendanceController::class, 'destroyDeduction'])->name('attendance.deductions.destroy');
+    // validate email availability Feb 18 2026
+    Route::post('/registerCtrl/checkEmailAvailability', [registerCtrl::class, 'checkEmailAvailability']);
+    Route::get('/check-fullname', [registerCtrl::class, 'checkFullName']);
 
 });
 

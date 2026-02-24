@@ -51,6 +51,7 @@
                         </tr>
                     </thead>
                     <tbody class="border-top-0">
+                        
                         @foreach($loans as $loan)
                         <tr>
                             <td class="ps-4 fw-bold text-dark text-uppercase small">

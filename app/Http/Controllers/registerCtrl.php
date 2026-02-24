@@ -2,18 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use Exception;
-use Carbon\Carbon;
-use App\Models\User;
+// use App\Models\access;
+// use App\Models\emp_education;
+// use App\Models\emp_info;
 
-use App\Models\access;
-use App\Models\emp_info;
-use App\Models\empDetail;
+// use App\Models\empDetail;
+use App\Models\User;
+use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\Request;
-use App\Models\emp_education;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 
 class registerCtrl extends Controller
@@ -57,189 +58,6 @@ class registerCtrl extends Controller
         return json_encode(array('status'=>200,'data'=>$data));
     }
 
-    // public function create(Request $request){
-    //     //insert to user table
-    //     $defaultpass="123456";
-    //     $current_date_time = Carbon::now()->toDateTimeString();
-
-    //     $empID=$request->company .'-'. $request->employee_number;
-
-
-    //         $validator = Validator::make($request->all(),[
-    //             'email'=>'required|unique:users',
-    //             'firstname'=>'required',
-    //             // 'middlename'=>'required',
-    //             'lastname'=>'required',
-    //             'company'=>'required',
-    //             //infos
-    //             'gender'=>'required',
-    //             'citizenship'=>'required',
-    //             // 'religion'=>'required',
-    //             // 'birthdate'=>'required',
-    //             'status'=>'required',
-    //             // 'homephone'=>'required',
-    //             // 'province'=>'required',
-    //             // 'mobile'=>'required',
-    //             // 'city'=>'required',
-    //             // 'barangay'=>'required',
-    //             // 'zipcode'=>'required',
-    //             // 'country'=>'required',
-    //             //empDetails
-    //             'immediate'=>'required',
-    //             'department'=>'required',
-    //             'company'=>'required',
-    //             'classification'=>'required',
-    //             'position'=>'required',
-    //             // 'basic'=>'required',
-    //             // 'allowance'=>'required',
-    //             // 'hourly_rate'=>'required',
-    //             // 'no_work_days'=>'required',
-    //             'status'=>'required',
-    //             // 'date_hired'=>'required',
-    //             'job_level'=>'required',
-
-    //         ]);
-
-    //         if(!$validator->passes()){
-    //             return response()->json(['status'=>201, 'error'=>$validator->errors()->toArray()]);
-    //         }else{
-    //                 $valuesUser = [
-    //                     'email'=>$request->email,
-    //                     'empID'=> $empID,
-    //                     'status'=>'1',//active meaning
-    //                     'suffix'=>$request->suffix,
-    //                     'lname'=>$request->lastname,
-    //                     'fname'=>$request->firstname,
-    //                     'mname'=>$request->middlename,
-    //                     'password'=>hash::make($defaultpass),
-    //                     'role' => "3",//normal user
-    //                     'created_at' =>  $current_date_time,
-    //                     'updated_at' =>  $current_date_time,
-    //                 ];
-    //                 $valueInfos=[
-    //                     'empEmail'=>$request->email,
-    //                     'empID'=> $empID,
-    //                     'empBdate'=>$request->birthdate,
-    //                     'empCStatus'=>$request->status,
-    //                     'empReligion'=>$request->religion,
-    //                     'empPContact'=>$request->homephone,
-    //                     'empHContact'=>$request->mobile,
-    //                     'empAddStreet'=>$request->street,
-    //                     'empAddCityDesc'=>$request->citydesc,
-    //                     'empAddCity'=>$request->city,
-    //                     'empAddBrgyDesc'=>$request->brgydesc,
-    //                     'empAddBrgy'=>$request->barangay,
-    //                     'empProvDesc'=>$request->provdesc,
-    //                     'empProv'=>$request->province,
-    //                     'empZipcode'=>$request->zipcode,
-    //                     'empCountry'=>$request->country,
-    //                     'created_at' =>  $current_date_time,
-    //                     'updated_at' =>  $current_date_time,
-    //                 ];
-    //                 $valueEdu1 = [
-    //                     'empID'=> $empID,
-    //                     'schoolLevel'=>"Primary",
-    //                     'schoolName'=>$request->primary_school,
-    //                     'schoolYearStarted'=>$request->primary_year_started,
-    //                     'schoolYearEnded'=>$request->primary_year_graduated,
-    //                     'schoolAddress'=>$request->primary_school_address,
-    //                     'created_at' =>  $current_date_time,
-    //                     'updated_at' =>  $current_date_time,
-
-    //                 ];
-    //                 $valueEdu2 = [
-    //                     'empID'=> $empID,
-    //                     'schoolLevel'=>"Secondary",
-    //                     'schoolName'=>$request->secondary_school,
-    //                     'schoolYearStarted'=>$request->secondary_year_started,
-    //                     'schoolYearEnded'=>$request->secondary_year_graduated,
-    //                     'schoolAddress'=>$request->secondary_year_graduated,
-    //                     'created_at' =>  $current_date_time,
-    //                     'updated_at' =>  $current_date_time,
-    //                 ];
-    //                 $valueEdu3 = [
-    //                     'empID'=> $empID,
-    //                     'schoolLevel'=>"Tertiary",
-    //                     'schoolName'=>$request->teriary_school,
-    //                     'schoolYearStarted'=>$request->tertiary_year_started,
-    //                     'schoolYearEnded'=>$request->teriary_year_graduated,
-    //                     'schoolAddress'=>$request->teriary_school_address,
-    //                     'created_at' =>  $current_date_time,
-    //                     'updated_at' =>  $current_date_time,
-
-    //                 ];
-    //                 $valueDetails=[
-    //                     'empID'=> $empID,
-    //                     'empISID'=> $request->immediate,
-    //                     'empDepID'=> $request->department,
-    //                     'empCompID'=> $request->company,
-    //                     'empClassification'=> $request->classification,
-    //                     'empPos'=> $request->position,
-    //                     'empBasic'=> $request->basic,
-    //                     'empStatus'=> $request->status,
-    //                     'empAllowance'=> $request->allowance,
-    //                     'empHrate'=> $request->hourly_rate,
-    //                     'empWday'=> $request->no_work_days,
-    //                     'empJobLevel'=> $request->job_level,
-    //                     'empAgencyID'=> $request->agency,
-    //                     'empHMOID'=> $request->hmo,
-    //                     'empHMONo'=> $request->hmo_number,
-    //                     'empPicPath'=> $request->path,
-    //                     'empDateHired'=> $request->date_hired,
-    //                     'empDateResigned'=> $request->date_resingned,
-    //                     'empDateRegular'=> $request->date_regularization,
-    //                     'empPrevPos'=> $request->previous_position,
-    //                     'empPrevDep'=> $request->previous_department,
-    //                     'empPrevDesignation'=>$request->previous_designation,
-    //                     'empPrevWorkStartDate'=> $request->start_date,
-
-    //                     //compliance
-    //                     'empPassport'=> $request->passport_no,
-    //                     'empPassportExpDate'=> $request->passport_exp_date,
-    //                     'empPassportIssueAuth'=> $request->issuing_authority,
-    //                     'empPagibig'=> $request->pagibig,
-    //                     'empPhilhealth'=> $request->philhealth,
-    //                     'empSSS'=> $request->sss,
-    //                     'empTIN'=> $request->tin,
-    //                     'empUMID'=> $request->umid,
-    //                     'created_at' =>  $current_date_time,
-    //                     'updated_at' =>  $current_date_time,
-
-    //                 ];
-    //                 $valueCompliance=[
-    //                     'empID'=> $empID,
-    //                 ];
-    //                 #insert also access rights
-    //                     //user
-
-    //                 $valuessysaccess = [
-    //                     'empID'=> $empID,
-    //                     'home'=>1,
-    //                     'settings'=>0,
-    //                     'rpt_attend'=>0,
-    //                 ];
-
-    //                 DB::beginTransaction();
-    //             try {
-    //                     DB::table('users')->insert( $valuesUser);
-    //                     DB::table('emp_infos')->insert( $valueInfos);
-    //                     DB::table('emp_educations')->insert( $valueEdu1);
-    //                     DB::table('emp_educations')->insert( $valueEdu2);
-    //                     DB::table('emp_educations')->insert( $valueEdu3);
-    //                     DB::table('emp_details')->insert( $valueDetails);
-    //                     DB::table('access')->insert( $valuessysaccess);
-    //                     $imageName= $request->path->getClientOriginalName();
-
-    //                     $request->path->move('img/profile/',$imageName);
-    //                     DB::commit();
-    //                     return response()->json(['status'=>200,'msg'=>'The employee was added successfully!' ]);
-    //                 } catch (\Exception $e) {
-    //                     DB::rollback();
-    //                     return response()->json(['status'=>203,'msg'=>$e->getMessage() ]);
-    //                 }
-    //         }
-    // }
-
     public function create(Request $request)
     {
        
@@ -249,8 +67,24 @@ class registerCtrl extends Controller
 
         $validator = Validator::make($request->all(), [
             'email' => 'required|unique:users',
-            'firstname' => 'required',
-            'lastname' => 'required',
+            'firstname' => [
+                'required',
+                 'string',
+                'min:2',           
+                'max:50',          
+                'regex:/^[a-zA-Z\sñÑ-]+$/', 
+                Rule::unique('users', 'fname')->where(function ($query) use ($request) {
+                    return $query->where('lname', $request->lastname);
+                }),
+            ],
+            // 'lastname' => 'required',
+            'lastname' => [
+                'required',
+                'string',
+                'min:2',           
+                'max:50',          
+                'regex:/^[a-zA-Z\sñÑ-]+$/', 
+            ],
             'company' => 'required',
             'gender' => 'required',
             'citizenship' => 'required',
@@ -260,22 +94,47 @@ class registerCtrl extends Controller
             'classification' => 'required',
             'position' => 'required',
             // 'job_level' => 'required',
-            'religion' => 'required',
+            // 'religion' => 'required',
             'birthdate' => 'required',
             // 'homephone' => 'required',
             'province' => 'required',
-            'mobile' => 'required',
+            'mobile' => [
+                'required',
+                'numeric',
+                'digits:11',
+                'regex:/^09\d{9}$/',
+            ],
             'city' => 'required',
             'barangay' => 'required',
-            'zipcode' => 'required',
+            'zipcode' => 'required|numeric',
             'country' => 'required',
             // 'agency' => 'required',
             // 'hmo' => 'required',
-            'no_work_days' => 'required',
+            // 'no_work_days' => 'required',
             'date_hired' => 'required',
             'basic'=>'required|numeric',
             'allowance'=>'required|numeric',
-            
+
+            //education
+            'primary_school' => 'string|nullable',
+            'primary_year_started' => 'nullable|numeric',
+            'primary_year_graduated' => 'nullable|numeric',
+            'secondary_school' => 'string|nullable',
+            'secondary_year_started' => 'nullable|numeric',
+            'secondary_year_graduated' => 'nullable|numeric',
+            'tertiary_school' => 'string|nullable',
+            'tertiary_year_started' => 'nullable|numeric',
+            'tertiary_year_graduated' => 'nullable|numeric',
+
+            //compliance
+            'philhealth' => 'nullable|digits:12', // PhilHealth PIN is 12 digits
+            'pagibig'    => 'nullable|digits:12', // Pag-IBIG MID is 12 digits
+            'sss'        => 'nullable|digits:10', // SSS Number is 10 digits
+            'tin'        => 'nullable|digits:9',  // Standard TIN is 9 (minsan 12 kung may branch code)
+            'umid'       => 'nullable|digits:12', // UMID is 12 digits
+
+             //profile picture
+             'path' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
             
         ]);
 
@@ -393,7 +252,8 @@ class registerCtrl extends Controller
                 'empStatus' => $request->status,
                 'empAllowance' => $request->allowance,
                 'empHrate' => $request->hourly_rate,
-                'empWday' => $request->no_work_days,
+                // 'empWday' => $request->no_work_days,
+                'empWday' => 8,
                 'empJobLevel' => $request->job_level,
                 'empAgencyID' => $request->agency,
                 'empHMOID' => $request->hmo,
@@ -481,7 +341,6 @@ class registerCtrl extends Controller
             'classification' => 'required',
             'position' => 'required',
             // 'job_level' => 'required',
-            'religion' => 'required',
             'birthdate' => 'required',
             'province' => 'required',
             'mobile' => 'required',
@@ -491,7 +350,7 @@ class registerCtrl extends Controller
             'country' => 'required',
             // 'agency' => 'required',
             // 'hmo' => 'required',
-            'no_work_days' => 'required',
+            // 'no_work_days' => 'required',
             'date_hired' => 'required',
             'basic'=>'required|numeric',
             'allowance'=>'required|numeric',
@@ -546,7 +405,7 @@ class registerCtrl extends Controller
                 'citizenship' => $request->citizenship,
                 'empBdate' => $request->birthdate,
                 'empCStatus' => $request->status,
-                'empReligion' => $request->religion,
+                // 'empReligion' => $request->religion,
                 'empPContact' => $request->homephone,
                 'empHContact' => $request->mobile,
                 'empAddStreet' => $request->street,
@@ -597,11 +456,12 @@ class registerCtrl extends Controller
                 'empStatus' => $request->status,
                 'empAllowance' => $request->allowance,
                 'empHrate' => $request->hourly_rate,
-                'empWday' => $request->no_work_days,
-                'empJobLevel' => $request->job_level,
-                'empAgencyID' => $request->agency,
-                'empHMOID' => $request->hmo,
-                'empHMONo' => $request->hmo_number,
+                // 'empWday' => $request->no_work_days,
+                'empWday' => 8,
+                // 'empJobLevel' => $request->job_level,
+                // 'empAgencyID' => $request->agency,
+                // 'empHMOID' => $request->hmo,
+                // 'empHMONo' => $request->hmo_number,
                 'empDateHired' => $request->date_hired,
                 'empDateResigned' => $request->date_resigned,
                 'empDateRegular' => $request->date_regularization,
@@ -609,9 +469,9 @@ class registerCtrl extends Controller
                 'empPrevDep' => $request->previous_department,
                 'empPrevDesignation' => $request->previous_designation,
                 'empPrevWorkStartDate' => $request->start_date,
-                'empPassport' => $request->passport_no,
-                'empPassportExpDate' => $request->passport_exp_date,
-                'empPassportIssueAuth' => $request->issuing_authority,
+                // 'empPassport' => $request->passport_no,
+                // 'empPassportExpDate' => $request->passport_exp_date,
+                // 'empPassportIssueAuth' => $request->issuing_authority,
                 'empPagibig' => $request->pagibig,
                 'empPhilhealth' => $request->philhealth,
                 'empSSS' => $request->sss,
@@ -655,6 +515,25 @@ class registerCtrl extends Controller
             DB::rollback();
             return response()->json(['status' => 203, 'msg' => $e->getMessage()]);
         }
+    }
+    // Check if email is already taken (AJAX) Feb 18 2026
+    public function checkEmailAvailability(Request $request) {
+
+        $email = $request->email;  
+        $userExists = User::where('email', $email)->exists();
+
+        if ($userExists) {
+            echo json_encode(['exists' => true]);
+        } else {
+            echo json_encode(['exists' => false]);
+        }
+    }
+
+    public function checkFullName(Request $request) {
+        $exists = User::where('fname', $request->firstname)
+                    ->where('lname', $request->lastname)
+                    ->exists();
+        return response()->json(['exists' => $exists]);
     }
 
 }

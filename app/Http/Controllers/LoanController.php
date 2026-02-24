@@ -11,7 +11,7 @@ class LoanController extends Controller
     public function index()
     {
         $loans = Loan::with('employee')->latest()->get();
-        $employees = User::select('empID', 'fname')->orderBy('fname')->get();
+        $employees = User::select('empID','lname', 'fname')->orderBy('fname')->get();
 
         return view('pages.management.loan', compact('loans', 'employees'));
     }
