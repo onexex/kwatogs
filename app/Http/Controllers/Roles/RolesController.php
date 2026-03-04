@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Roles;
 
+use App\Enums\Permissions\LeavePermissionEnum;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
 use App\Http\Services\RoleServices;
@@ -101,7 +102,12 @@ class RolesController extends Controller
         $permissionEnums = [
             'Overtime Permissions' => OvertimePermissionEnum::class,
         ];
-    } else {
+    }  
+    if ($request->permission == 'leave') {
+        $permissionEnums = [
+            'Leave Permissions' => LeavePermissionEnum::class,
+        ];
+    }else {
         // Default to Page Permissions
         $permissionEnums = [
             'Page Permissions' => PagePermissionsEnum::class,

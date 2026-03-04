@@ -109,6 +109,9 @@
         border: 1px solid #dee2e6;
         margin-right: 10px;
     }
+    .nav-pills .nav-link:hover {
+        color: #008080 !important;
+    }
     .nav-pills .nav-link.active {
         background-color: #008080 !important;
         border-color: #008080 !important;
@@ -143,7 +146,13 @@
                    <i class="fas fa-file-alt me-2"></i> Page Permissions
                 </a>
             </li>
-            </ul>
+            <li class="nav-item">
+                <a href="{{ route('user-roles.show', ['user_role' => $role->id, 'permission' => 'leave']) }}"
+                   class="nav-link {{ $permissiontab === 'leave' ? 'active' : '' }}">
+                   <i class="fas fa-file-alt me-2"></i> Leave Permissions
+                </a>
+            </li>
+        </ul>
     </div>
 
     <div class="card border-0 shadow-sm rounded-4 overflow-hidden">

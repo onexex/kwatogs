@@ -100,6 +100,10 @@
             border: 1px solid #008080 !important;
         }
     </style>
+    
+    <script>
+        window.userPermissions = {!! json_encode(auth()->user()?->getAllPermissions()->pluck('name')) !!};
+    </script>
 </head>
 
 <body id="page-top">
@@ -148,7 +152,8 @@
                     'earlyout'         => ['name' => 'Earlyout', 'url' => '/pages/modules/earlyout', 'icon' => 'fa-door-open'],
                     'enrollemployee'   => ['name' => 'Enroll Employee', 'url' => '/pages/modules/registration', 'icon' => 'fa-user-gear'],
                     'loanmanagement'   => ['name' => 'Loans & Charges', 'url' => '/pages/modules/loanManagement', 'icon' => 'fa-hand-holding-dollar'],
-                    'leaveapplication' => ['name' => 'Leave App', 'url' => '/pages/modules/leaveApplication', 'icon' => 'fa-calendar-day'],
+                    'leaveapplication' => ['name' => 'Leave Application', 'url' => '/pages/modules/leaveApplication', 'icon' => 'fa-calendar-day'],
+                    'pendingleaverequests' => ['name' => 'Pending Leave Requests', 'url' => '/pages/modules/leaverequests', 'icon' => 'fa-calendar-day'],
                     'obttracker'       => ['name' => 'OB Tracker', 'url' => '/pages/modules/obtTracker', 'icon' => 'fa-map-location-dot'],
                     'overtime'         => ['name' => 'Overtime', 'url' => '/pages/modules/overtime', 'icon' => 'fa-user-clock'],
                     'payroll'          => ['name' => 'Payroll System', 'url' => '/pages/modules/payroll', 'icon' => 'fa-file-invoice-dollar'],
@@ -158,12 +163,12 @@
                 ];
                 
                 // 1. Sort the main array first
-$modulePages = collect($modulePages)->sort()->toArray();
+                $modulePages = collect($modulePages)->sort()->toArray();
 
-// 2. Use the sorted array for your check
-$hasPagesAccess = collect($modulePages)->keys()->some(fn($key) => auth()->user()?->can($key));
+                // 2. Use the sorted array for your check
+                $hasPagesAccess = collect($modulePages)->keys()->some(fn($key) => auth()->user()?->can($key));
 
-// 3. Pass $modulePages to your view—it will now be alphabetical!
+                // 3. Pass $modulePages to your view—it will now be alphabetical!
             @endphp
 
             @if ($hasPagesAccess)

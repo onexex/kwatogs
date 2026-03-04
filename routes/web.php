@@ -1,53 +1,52 @@
 <?php
 
 
-use App\Models\User;
-use App\Http\Controllers\hmoCtrl;
-use App\Http\Controllers\silCtrl;
-use App\Http\Controllers\sssCtrl;
-use App\Http\Controllers\pageCtrl;
-use App\Http\Controllers\roleCtrl;
-use App\Http\Controllers\loginCtrl;
-use Illuminate\Support\Facades\Hash;
-use App\Http\Controllers\archiveCtrl;
-use App\Http\Controllers\companyCtrl;
-use App\Http\Controllers\empStatCtrl;
-use App\Http\Controllers\homeDarCtrl;
-use App\Http\Controllers\jobleveCtrl;
-use App\Http\Controllers\pagibigCtrl;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\agenciesCtrl;
-use App\Http\Controllers\earlyoutCtrl;
-use App\Http\Controllers\positionCtrl;
-use App\Http\Controllers\registerCtrl;
-use App\Http\Controllers\workTimeCtrl;
-use App\Http\Controllers\leavetypeCtrl;
-use App\Http\Controllers\otfillingCtrl;
-use App\Http\Controllers\departmentCtrl;
-use App\Http\Controllers\LoanController;
-use App\Http\Controllers\philhealthCtrl;
-use App\Http\Controllers\empSchedulerCtrl;
-use App\Http\Controllers\eovalidationCtrl;
-use App\Http\Controllers\relationshipCtrl;
-use App\Http\Controllers\holidayLoggerCtrl;
-use App\Http\Controllers\obValidationsCtrl;
-use App\Http\Controllers\PayrollController;
-use App\Http\Controllers\classiticationCtrl;
-use App\Http\Controllers\homeAttendanceCtrl;
-
- 
-use App\Http\Controllers\OvertimeController;
-use App\Http\Controllers\leavevalidationCtrl;
-use App\Http\Controllers\liloValidationsCtrl;
+use App\Http\Controllers\archiveCtrl;
 use App\Http\Controllers\AttendanceController;
-use App\Http\Controllers\parentalSettingsCtrl;
-use App\Http\Controllers\reportAttendanceCtrl;
-use App\Http\Controllers\Leave\LeaveController;
-use App\Http\Controllers\Roles\RolesController;
+use App\Http\Controllers\classiticationCtrl;
+use App\Http\Controllers\companyCtrl;
+use App\Http\Controllers\departmentCtrl;
+use App\Http\Controllers\earlyoutCtrl;
 use App\Http\Controllers\EmployeeRecordController;
 use App\Http\Controllers\EmployeeScheduleController;
-use App\Http\Controllers\Roles\EmployeeRoleController;
+use App\Http\Controllers\empSchedulerCtrl;
+use App\Http\Controllers\empStatCtrl;
+use App\Http\Controllers\eovalidationCtrl;
+use App\Http\Controllers\hmoCtrl;
+use App\Http\Controllers\holidayLoggerCtrl;
+use App\Http\Controllers\homeAttendanceCtrl;
+use App\Http\Controllers\homeDarCtrl;
+use App\Http\Controllers\jobleveCtrl;
+use App\Http\Controllers\Leave\LeaveController;
+use App\Http\Controllers\Leave\LeaveRequestContoller;
 use App\Http\Controllers\LeaveCreditAllocationController;
+use App\Http\Controllers\leavetypeCtrl;
+use App\Http\Controllers\leavevalidationCtrl;
+use App\Http\Controllers\liloValidationsCtrl;
+use App\Http\Controllers\LoanController;
+use App\Http\Controllers\loginCtrl;
+use App\Http\Controllers\obValidationsCtrl;
+use App\Http\Controllers\otfillingCtrl;
+use App\Http\Controllers\OvertimeController;
+use App\Http\Controllers\pageCtrl;
+use App\Http\Controllers\pagibigCtrl;
+use App\Http\Controllers\parentalSettingsCtrl;
+use App\Http\Controllers\PayrollController;
+use App\Http\Controllers\philhealthCtrl;
+use App\Http\Controllers\positionCtrl;
+use App\Http\Controllers\registerCtrl;
+use App\Http\Controllers\relationshipCtrl;
+use App\Http\Controllers\reportAttendanceCtrl;
+use App\Http\Controllers\roleCtrl;
+use App\Http\Controllers\Roles\EmployeeRoleController;
+use App\Http\Controllers\Roles\RolesController;
+use App\Http\Controllers\silCtrl;
+use App\Http\Controllers\sssCtrl;
+use App\Http\Controllers\workTimeCtrl;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/r', function () {
     $updated = User::where('id', 1)->update([
@@ -180,6 +179,10 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     Route::post('/pages/modules/leave',[LeaveController::class, 'store'])->name('leave.store');
     Route::get('/pages/modules/leave/getall',[LeaveController::class, 'getAllLeaves'])->name('leave.getall');
     Route::delete('/pages/modules/leave/delete/{leave}', [LeaveController::class, 'destroy'])->name('leave.delete');
+
+    // leavel approval
+    Route::get('/pages/modules/leaverequests', [LeaveRequestContoller::class, 'index'])->name('leave-requests.index')->middleware('can:pendingleaverequests');
+    Route::get('/leaverequests/getAll', [LeaveRequestContoller::class, 'getAll'])->name('leave-requests.get')->middleware('can:pendingleaverequests');
 
     //joblevel
     Route::post('/joblevel/create_update',[jobleveCtrl::class, 'create_update']);
