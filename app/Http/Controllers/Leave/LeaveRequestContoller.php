@@ -3,6 +3,7 @@ namespace App\Http\Controllers\Leave;
 
 use App\Enums\LeaveStatusEnum;
 use App\Http\Controllers\Controller;
+use App\Http\Services\LeaveService;
 use App\Models\Leave;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -10,6 +11,11 @@ use Illuminate\Support\Facades\Auth;
 
 class LeaveRequestContoller extends Controller
 {
+    public function __construct(
+        private LeaveService $service
+    )
+    {
+    }
 
     public function index()
     {
@@ -57,5 +63,12 @@ class LeaveRequestContoller extends Controller
             ];
         });
         return response()->json($leaveLists);
+    }
+
+    public function updateStatus(Request $request)
+    {
+        $leaveStatus = $this->service->updateStatus($request->leave_id, $request->status);
+
+        return response()->json($leaveStatus);
     }
 }

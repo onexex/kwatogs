@@ -183,6 +183,7 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     // leavel approval
     Route::get('/pages/modules/leaverequests', [LeaveRequestContoller::class, 'index'])->name('leave-requests.index')->middleware('can:pendingleaverequests');
     Route::get('/leaverequests/getAll', [LeaveRequestContoller::class, 'getAll'])->name('leave-requests.get')->middleware('can:pendingleaverequests');
+    Route::post('/leaverequests/updateStatus', [LeaveRequestContoller::class, 'updateStatus'])->name('leave-requests.update');
 
     //joblevel
     Route::post('/joblevel/create_update',[jobleveCtrl::class, 'create_update']);
