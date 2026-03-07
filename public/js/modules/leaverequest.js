@@ -33,7 +33,7 @@
 
                 if (window.userPermissions.includes("approvecfoleave") && row.status === 'APPROVED') {
                     actionButtons += `
-                            <button class="btn btn-sm btn-primary ms-1" data-id="${row.id}" id="branchUpdateprice">
+                            <button class="btn btn-sm btn-primary ms-1 btnConfirmLeave" data-id="${row.id}" id="btnConfirmLeave">
                                 CONFIRM
                             </button>`;
                 }
@@ -80,23 +80,27 @@
                     reverseButtons: true,
                     customClass: { confirmButton: 'rounded-pill', cancelButton: 'rounded-pill' }
                 }).then((result) => {
-                    axios.post('/leaverequests/updateStatus', {
-                        leave_id: id,
-                        status: 'APPROVED'
-                    })
-                    .then(function (response) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Success!',
-                            text: response.data.message,
-                            timer: 2000,
-                            showConfirmButton: false
+
+                    if (result.isConfirmed) {
+                        axios.post('/leaverequests/updateStatus', {
+                            leave_id: id,
+                            status: 'APPROVED'
+                        })
+                        .then(function (response) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success!',
+                                text: response.data.message,
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                            loadLeave()
+                        })
+                        .catch(function (error) {
+                            console.log(error);
                         });
-                        loadLeave()
-                    })
-                    .catch(function (error) {
-                        console.log(error);
-                    });
+
+                    }
                 })
             }
 
@@ -115,25 +119,66 @@
                     reverseButtons: true,
                     customClass: { confirmButton: 'rounded-pill', cancelButton: 'rounded-pill' }
                 }).then((result) => {
-                    axios.post('/leaverequests/updateStatus', {
-                        leave_id: id,
-                        status: 'DISAPPROVED'
-                    })
-                    .then(function (response) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Success!',
-                            text: response.data.message,
-                            timer: 2000,
-                            showConfirmButton: false
+                    if (result.isConfirmed) {
+                        axios.post('/leaverequests/updateStatus', {
+                            leave_id: id,
+                            status: 'DISAPPROVED'
+                        })
+                        .then(function (response) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success!',
+                                text: response.data.message,
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                            loadLeave()
+                        })
+                        .catch(function (error) {
+                            console.log(error);
                         });
-                        loadLeave()
-                    })
-                    .catch(function (error) {
-                        console.log(error);
-                    });
+                    }
                 })
             }
+
+            const btnConfirmLeave = e.target.closest('.btnConfirmLeave');
+
+            if (btnConfirmLeave) {
+                const id = btnConfirmLeave.dataset.id;
+                Swal.fire({
+                    title: 'Confirm Leave Request',
+                    text: 'Are you sure you want to confirm this leave request?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, Confirm',
+                    confirmButtonColor: '#0d6efd',
+                    cancelButtonColor: '#6c757d',
+                    reverseButtons: true,
+                    customClass: { confirmButton: 'rounded-pill', cancelButton: 'rounded-pill' }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        axios.post('/leaverequests/updateStatus', {
+                            leave_id: id,
+                            status: 'APPROVEDBYCFO'
+                        })
+                        .then(function (response) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success!',
+                                text: response.data.message,
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                            loadLeave()
+                        })
+                        .catch(function (error) {
+                            console.log(error);
+                        });
+                                
+                    }
+                })
+            }
+            
         });
 
     })

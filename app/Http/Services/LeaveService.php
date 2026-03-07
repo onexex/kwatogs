@@ -13,6 +13,10 @@ class LeaveService
 
         if ($leave) {
 
+            $leave->leaveDetails()->update([
+                'status' => $status
+            ]);
+
             $leave->status = $status;
             $leave->save();
 

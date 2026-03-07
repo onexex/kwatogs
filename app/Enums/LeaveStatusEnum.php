@@ -14,7 +14,7 @@ enum LeaveStatusEnum: string
 
     case APPROVED = 'APPROVED';
 
-    case APPROVEDBYCEO = 'APPROVED BY CEO';
+    case APPROVEDBYCFO = 'APPROVED BY CFO';
 
     case DISAPPROVED = 'DISAPPROVED';
 }
