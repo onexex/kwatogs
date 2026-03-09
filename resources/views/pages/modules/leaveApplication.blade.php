@@ -346,6 +346,8 @@
                             status = `<span class="badge bg-danger">DISAPPROVED</span>`;
                         } else if (leave.status === 'FORAPPROVAL') {
                             status = `<span class="badge bg-warning text-dark p-2">FOR APPROVAL</span>`;
+                        }  else if (leave.status === 'APPROVEDBYCFO') {
+                            status = `<span class="badge bg-info p-2">APPROVED BY CFO</span>`;
                         }
 
                         if (leave.status === 'FORAPPROVAL') {
