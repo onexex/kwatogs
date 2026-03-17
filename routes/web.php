@@ -38,6 +38,7 @@ use App\Http\Controllers\positionCtrl;
 use App\Http\Controllers\registerCtrl;
 use App\Http\Controllers\relationshipCtrl;
 use App\Http\Controllers\reportAttendanceCtrl;
+use App\Http\Controllers\Reports\EmployeeInformationReportController;
 use App\Http\Controllers\roleCtrl;
 use App\Http\Controllers\Roles\EmployeeRoleController;
 use App\Http\Controllers\Roles\RolesController;
@@ -331,7 +332,7 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     ///REPORTS
     // Route::post('/ViewReportAttend',[reportAttendanceCtrl::class, 'viewreportattend']);
     Route::get('/task/search',[reportAttendanceCtrl::class,'searchTask']);
-
+    Route::get('/reports/employee-information',[EmployeeInformationReportController::class, 'index'])->name('employee.report.index');
 
     //v2 scheduler
     Route::prefix('employee-schedules')->group(function() {

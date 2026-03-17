@@ -152,6 +152,18 @@
                    <i class="fas fa-file-alt me-2"></i> Leave Permissions
                 </a>
             </li>
+            <li class="nav-item">
+                <a href="{{ route('user-roles.show', ['user_role' => $role->id, 'permission' => 'overtime']) }}"
+                   class="nav-link {{ $permissiontab === 'overtime' ? 'active' : '' }}">
+                   <i class="fas fa-file-alt me-2"></i> Overtime Permissions
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="{{ route('user-roles.show', ['user_role' => $role->id, 'permission' => 'report']) }}"
+                   class="nav-link {{ $permissiontab === 'report' ? 'active' : '' }}">
+                   <i class="fas fa-file-alt me-2"></i> Report Permissions
+                </a>
+            </li>
         </ul>
     </div>
 
