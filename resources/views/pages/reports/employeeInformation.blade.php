@@ -55,22 +55,74 @@
             <form action='' id="frmSearch">
                 <div class="row g-3 align-items-end">
 
-                    <div class="col-lg-5 col-md-6">
-                        <label class="form-label small fw-bold text-muted text-uppercase tracking-wider">Date Range</label>
-                        <div class="input-group">
-                            <input type="date" id="txtDateFrom" name="txtDateFrom" value="{{ date('Y-m-d', strtotime('-7 days')) }}" class="form-control bg-light border-0 rptdatefrom">
+                    <div class="col-lg-3 col-md-6">
+                        <label class="form-label small fw-bold text-muted text-uppercase tracking-wider">Date Hired Range</label>
+                        <div class="input-group ">
+                            <input value="{{ request('date_from') ? date('Y-m-d', strtotime(request('date_from'))) : '' }}" type="date" id="date_from" name="date_from" class="form-control bg-light border-0 rptdatefrom">
                             <span class="input-group-text bg-light border-0 text-muted">to</span>
-                            <input type="date" id="txtDateTo" name="txtDateto" value="{{ date('Y-m-d') }}" class="form-control bg-light border-0 rptdateto">
+                            <input value="{{ request('date_to') ? date('Y-m-d', strtotime(request('date_to'))) : '' }}" type="date" id="date_to" name="date_to" class="form-control bg-light border-0 rptdateto">
                         </div>
                     </div>
+                        
+                    <div class="col-lg-3 col-md-6 ">
+                        <label for="selClassification" class="form-label small fw-semibold text-muted">Classification <span class="text-danger">*</span></label>
+                        <select class="form-select form-control-lg bg-light border-0 fs-6" name="classification_id" id="selClassification">
+                            <option value="">Select Classification</option>
+                            @if (count($classifications) > 0)
+                                @foreach ($classifications as $employeeClassification)
+                                    <option {{ request('classification_id') == $employeeClassification->class_code ? 'selected' : '' }} value='{{ $employeeClassification->class_code }}'>{{ $employeeClassification->class_desc }}</option>
+                                @endforeach
+                            @endif
+                        </select>
+                        <span class="text-danger small error-text classification_error"></span>
+                    </div>
+                        
+                    <div class="col-lg-2 col-md-6 ">
+                        <label for="selCompany" class="form-label small fw-semibold text-muted">Company <span class="text-danger">*</span></label>
+                        <select class="form-select form-control-lg bg-light border-0 fs-6" name="company_id" id="selCompany">
+                            <option value="">Select Company</option>
+                            @if (count($companies) > 0)
+                                @foreach ($companies as $company)
+                                    <option {{ request('company_id') == $company->comp_id ? 'selected' : '' }} value='{{ $company->comp_id }}'>{{ $company->comp_name }}</option>
+                                @endforeach
+                            @endif
+                        </select>
+                        <span class="text-danger small error-text classification_error"></span>
+                    </div>
+                        
+                    <div class="col-lg-2 col-md-6 ">
+                        <label for="selCompany" class="form-label small fw-semibold text-muted">Department <span class="text-danger">*</span></label>
+                        <select class="form-select form-control-lg bg-light border-0 fs-6" name="department_id" id="selCompany">
+                            <option value="">Select Department</option>
+                            @if (count($departments) > 0)
+                                @foreach ($departments as $department)
+                                    <option {{ request('department_id') == $department->id ? 'selected' : '' }} value='{{ $department->id }}'>{{ $department->dep_name }}</option>
+                                @endforeach
+                            @endif
+                        </select>
+                        <span class="text-danger small error-text classification_error"></span>
+                    </div>
+                        
+                    <div class="col-lg-2 col-md-6 ">
+                        <label for="selCompany" class="form-label small fw-semibold text-muted">Position <span class="text-danger">*</span></label>
+                        <select class="form-select form-control-lg bg-light border-0 fs-6" name="position_id" id="selCompany">
+                            <option value="">Select Position</option>
+                            @if (count($positions) > 0)
+                                @foreach ($positions as $position)
+                                    <option {{ request('position_id') == $position->id ? 'selected' : '' }} value='{{ $position->id }}'>{{ $position->pos_desc }}</option>
+                                @endforeach
+                            @endif
+                        </select>
+                        <span class="text-danger small error-text classification_error"></span>
+                    </div>
 
-                    <div class="col-lg-3 col-md-12 text-end">
+                    <div class="col-lg-12 col-md-12 text-end">
                         <div class="d-flex gap-2 justify-content-lg-end">
-                            <button type="button" id="btn_rptrefresh" class="btn btn-outline-primary rounded-pill px-4 fw-bold flex-fill flex-lg-grow-0 rptbtnref">
-                                <i class="fa-solid fa-arrows-rotate me-2"></i>Refresh
+                            <button type="submit" id="btn_rptrefresh" class="btn btn-outline-primary rounded-pill px-4 fw-bold flex-fill flex-lg-grow-0 rptbtnref">
+                                <i class="fa-solid fa-arrows-rotate me-2"></i>Search
                             </button>
                             <button type="button" id="btn_rptprint" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm flex-fill flex-lg-grow-0 rptbtnprint">
-                                <i class="fa-solid fa-print me-2"></i>Print
+                                <i class="fa-solid fa-print me-2"></i>Export
                             </button>
                         </div>
                     </div>
@@ -115,9 +167,47 @@
                     </tr>
                     </thead>
                     <tbody id="tbl_rptattendance" name="tbl_rptattendance" class="text-center">
-                        </tbody>
+                        @foreach ($employees as $employee)
+                            <tr>
+                                <td>{{ $employee->empID }}</td>
+                                <td>{{ $employee->user?->fname }} {{ $employee->user?->lname }}</td>
+                                <td>{{ $employee->user?->suffix }}</td>
+                                <td>{{ $employee->employeeInformation?->gender }}</td>
+                                <td>{{ $employee->employeeInformation?->citizenship }}</td>
+                                <td>{{ $employee->employeeInformation?->empBdate ? date('F d, Y', strtotime($employee->employeeInformation?->empBdate)) : '' }}</td>
+                                <td>  {{
+                                    $employee->employeeInformation?->empCStatus == '0' ? 'Single' :
+                                    ($employee->employeeInformation?->empCStatus == '1' ? 'Married' :
+                                    ($employee->employeeInformation?->empCStatus == '2' ? 'Divorced' : 'N/A'))
+                                }}</td>
+                                <td>{{ $employee->employeeInformation?->empPContact }}</td>
+                                <td>{{ $employee->employeeInformation?->empEmail }}</td>
+                                <td>{{ $employee->employeeInformation?->empAddStreet }} {{ $employee->employeeInformation?->empAddBrgyDesc }} {{ $employee->employeeInformation?->empAddCityDesc }}</td>
+                                <td>{{ $employee->company?->comp_name }}</td>
+                                <td>{{ $employee->classification?->class_desc }}</td>
+                                <td>{{ $employee->department?->dep_name }}</td>
+                                <td>{{ $employee->position?->pos_desc }}</td>
+                                <td>{{ $employee->immediateSupervisor?->fname }} {{ $employee->immediateSupervisor?->lname }}</td>
+                                <td>  {{
+                                    $employee->empStatus == '1' ? 'Employed' : 'Resigned' 
+                                }}</td>
+                                <td>{{ $employee->empDateHired ? date('F d, Y', strtotime($employee->empDateHired)) : '' }}</td>
+                                <td>{{ $employee->empDateRegular ? date('F d, Y', strtotime($employee->empDateRegular)) : '' }}</td>
+                                <td>{{ $employee->empBasic }}</td>
+                                <td>{{ $employee->empAllowance }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
                 </table>
             </div>
+             
+            <nav>
+                <ul id="pagination" class="pagination pagination-sm justify-content-center mt-2">
+                </ul>
+                <div class="mt-3 p-2">
+                    {{ $employees->links('pagination::bootstrap-5') }}
+                </div>
+            </nav>
         </div>
     </div>
 </div>
