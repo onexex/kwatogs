@@ -121,7 +121,9 @@
                             <button type="submit" id="btn_rptrefresh" class="btn btn-outline-primary rounded-pill px-4 fw-bold flex-fill flex-lg-grow-0 rptbtnref">
                                 <i class="fa-solid fa-arrows-rotate me-2"></i>Search
                             </button>
-                            <button type="button" id="btn_rptprint" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm flex-fill flex-lg-grow-0 rptbtnprint">
+                            <button
+                                onclick="exportData()"   
+                                type="button" id="btn_rptprint" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm flex-fill flex-lg-grow-0 rptbtnprint">
                                 <i class="fa-solid fa-print me-2"></i>Export
                             </button>
                         </div>
@@ -211,5 +213,13 @@
         </div>
     </div>
 </div>
+<script id="3m6r9h">
+    function exportData() {
+        let form = document.getElementById('frmSearch');
 
+        let params = new URLSearchParams(new FormData(form)).toString();
+
+        window.location.href = "{{ route('employee.report.export') }}?" + params;
+    }
+</script>
 @endsection

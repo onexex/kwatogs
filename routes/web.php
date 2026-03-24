@@ -333,6 +333,7 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     // Route::post('/ViewReportAttend',[reportAttendanceCtrl::class, 'viewreportattend']);
     Route::get('/task/search',[reportAttendanceCtrl::class,'searchTask']);
     Route::get('/reports/employee-information',[EmployeeInformationReportController::class, 'index'])->name('employee.report.index');
+    Route::get('/reports/employee-information/export',[EmployeeInformationReportController::class, 'export'])->name('employee.report.export');
 
     //v2 scheduler
     Route::prefix('employee-schedules')->group(function() {

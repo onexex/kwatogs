@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Reports;
 
+use App\Exports\EmployeeInformationExport;
 use App\Http\Controllers\Controller;
 use App\Models\classification;
 use App\Models\company;
@@ -9,6 +10,7 @@ use App\Models\department;
 use App\Models\EmpDetail;
 use App\Models\position;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class EmployeeInformationReportController extends Controller
 {
@@ -51,5 +53,14 @@ class EmployeeInformationReportController extends Controller
             'departments' => $getDepartment,
             'positions' => $getPosition,
         ]);
+    }
+
+    public function export(Request $request)
+    {
+        return Excel::download(
+            new EmployeeInformationExport($request),
+            'employee_information.xlsx'
+        );
+
     }
 }
