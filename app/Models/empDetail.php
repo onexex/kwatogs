@@ -46,6 +46,11 @@ class EmpDetail extends Model
         return $this->belongsTo(department::class, 'empDepID', 'id');
     }
 
+    public function employeeInformation(): BelongsTo
+    {
+        return $this->belongsTo(emp_info::class, 'empID', 'empID');
+    }
+
     public function position(): BelongsTo
     {
         return $this->belongsTo(position::class, 'empPos', 'id');
@@ -74,6 +79,11 @@ class EmpDetail extends Model
     public function classification(): BelongsTo
     {
         return $this->belongsTo(classification::class, 'empClassification', 'class_code');
+    }
+   
+    public function immediateSupervisor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'empISID', 'empID');
     }
 
     public function getSalaryInfo()

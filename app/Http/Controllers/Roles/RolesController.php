@@ -9,6 +9,7 @@ use App\Http\Services\RoleServices;
 use App\Http\Controllers\Controller;
 use App\Enums\Permissions\PagePermissionsEnum;
 use App\Enums\Permissions\OvertimePermissionEnum;
+use App\Enums\Permissions\ReportPermissionEnum;
 
 class RolesController extends Controller
 {
@@ -103,11 +104,16 @@ class RolesController extends Controller
             'Overtime Permissions' => OvertimePermissionEnum::class,
         ];
     }  
-    if ($request->permission == 'leave') {
+    else if ($request->permission == 'report') {
+        $permissionEnums = [
+            'Report Permissions' => ReportPermissionEnum::class,
+        ];
+    } 
+    else if ($request->permission == 'leave') {
         $permissionEnums = [
             'Leave Permissions' => LeavePermissionEnum::class,
         ];
-    }else {
+    } else {
         // Default to Page Permissions
         $permissionEnums = [
             'Page Permissions' => PagePermissionsEnum::class,

@@ -251,7 +251,10 @@
             @endif
 
             @php
-                $moduleReports = ['attendance' => ['name' => 'Attendance Viewer', 'url' => '/pages/reports/attendance', 'icon' => 'fa-chart-column']];
+                $moduleReports = [
+                    'attendance' => ['name' => 'Attendance Viewer', 'url' => '/pages/reports/attendance', 'icon' => 'fa-chart-column'],
+                    'employeeinformation' => ['name' => 'Employee Information', 'url' => '/reports/employee-information', 'icon' => 'fa-chart-column']
+                ];
                 $hasReportAccess = collect($moduleReports)->keys()->some(fn($key) => auth()->user()?->can($key));
             @endphp
 
