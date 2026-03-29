@@ -19,6 +19,7 @@ enum PagePermissionsEnum: string
     // case memorandum = 'Memo Generator';
     case obttracker = 'Official Business Trip';
     case overtime = 'Overtime';
+    case pendingovertimerequests = 'Pending Overtime Requests';
     case payroll = 'Payroll System';
     // case debitadvise = 'Debit Advise';
     // case sendobt = 'Send to OBT';
