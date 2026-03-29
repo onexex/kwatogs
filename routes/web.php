@@ -28,6 +28,7 @@ use App\Http\Controllers\LoanController;
 use App\Http\Controllers\loginCtrl;
 use App\Http\Controllers\obValidationsCtrl;
 use App\Http\Controllers\otfillingCtrl;
+use App\Http\Controllers\Overtime\OvertimeRequestController;
 use App\Http\Controllers\OvertimeController;
 use App\Http\Controllers\pageCtrl;
 use App\Http\Controllers\pagibigCtrl;
@@ -185,6 +186,11 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     Route::get('/pages/modules/leaverequests', [LeaveRequestContoller::class, 'index'])->name('leave-requests.index')->middleware('can:pendingleaverequests');
     Route::get('/leaverequests/getAll', [LeaveRequestContoller::class, 'getAll'])->name('leave-requests.get')->middleware('can:pendingleaverequests');
     Route::post('/leaverequests/updateStatus', [LeaveRequestContoller::class, 'updateStatus'])->name('leave-requests.update');
+
+    // overtime approval
+    Route::get('/pages/modules/overtimerequests', [OvertimeRequestController::class, 'index'])->name('overtime-requests.index')->middleware('can:pendingovertimerequests');
+    Route::get('/overtimerequests/getAll', [OvertimeRequestController::class, 'getAll'])->name('overtime-requests.get')->middleware('can:pendingovertimerequests');
+    Route::post('/overtimerequests/updateStatus', [OvertimeRequestController::class, 'updateStatus'])->name('overtime-requests.update');
 
     //joblevel
     Route::post('/joblevel/create_update',[jobleveCtrl::class, 'create_update']);

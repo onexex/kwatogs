@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Overtime extends Model
 {
@@ -22,4 +23,9 @@ class Overtime extends Model
         'total_hrs',
         'total_pay'   
     ];
+
+    public function employee(): BelongsTo
+    {
+        return $this->belongsTo(EmpDetail::class, 'emp_detail_id', 'id');
+    }
 }

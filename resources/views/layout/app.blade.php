@@ -156,6 +156,7 @@
                     'pendingleaverequests' => ['name' => 'Pending Leave Requests', 'url' => '/pages/modules/leaverequests', 'icon' => 'fa-calendar-day'],
                     'obttracker'       => ['name' => 'OB Tracker', 'url' => '/pages/modules/obtTracker', 'icon' => 'fa-map-location-dot'],
                     'overtime'         => ['name' => 'Overtime', 'url' => '/pages/modules/overtime', 'icon' => 'fa-user-clock'],
+                    'pendingovertimerequests' => ['name' => 'Pending Overtime Requests', 'url' => '/pages/modules/overtimerequests', 'icon' => 'fa-calendar-day'],
                     'payroll'          => ['name' => 'Payroll System', 'url' => '/pages/modules/payroll', 'icon' => 'fa-file-invoice-dollar'],
                     'debitadvise'      => ['name' => 'Debit Advise', 'url' => '/pages/modules/debitAdvise', 'icon' => 'fa-receipt'],
                     'sendobt'          => ['name' => 'Send to OBT', 'url' => '/pages/modules/sendOBT', 'icon' => 'fa-paper-plane'],
