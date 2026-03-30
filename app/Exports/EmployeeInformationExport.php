@@ -2,7 +2,7 @@
 
 namespace App\Exports;
 
-use App\Models\EmpDetail;
+use App\Models\empDetail;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 
@@ -17,7 +17,7 @@ class EmployeeInformationExport implements FromCollection, WithHeadings
 
     public function collection()
     {
-          return EmpDetail::with([
+          return empDetail::with([
                 'user',
                 'employeeInformation',
                 'company',
