@@ -7,7 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\classification;
 use App\Models\company;
 use App\Models\department;
-use App\Models\EmpDetail;
+use App\Models\empDetail;
 use App\Models\position;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -21,7 +21,7 @@ class EmployeeInformationReportController extends Controller
         $getDepartment= department::get();
         $getPosition= position::get();
 
-        $query = EmpDetail::query();
+        $query = empDetail::query();
 
         if ($request->date_from && $request->date_to) {
             $query = $query->whereBetween('empDateHired', [$request->date_from, $request->date_to]);
