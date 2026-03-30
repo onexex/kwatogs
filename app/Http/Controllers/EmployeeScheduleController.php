@@ -4,9 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\EmployeeSchedule;
 use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class EmployeeScheduleController extends Controller
 {
@@ -131,93 +132,119 @@ class EmployeeScheduleController extends Controller
     // }
 
     public function store(Request $request)
-{
-    $validator = Validator::make($request->all(), [
-        'employee_id' => 'required|exists:users,empID',
-        'sched_start_date' => 'required|date',
-        'sched_end_date' => 'required|date|after_or_equal:sched_start_date',
-        'sched_in' => 'required|date_format:H:i',
-        'sched_out' => 'required|date_format:H:i',
-        'days' => 'nullable|array',
-        'shift_type' => 'nullable|string|max:50',
-        'break_start' => 'required|date_format:H:i',
-        'break_end' => 'required|date_format:H:i',
-    ]);
-
-    if ($validator->fails()) {
-        return response()->json(['errors' => $validator->errors()], 422);
-    }
-
-    $employeeId = $request->employee_id;
-    $start = Carbon::parse($request->sched_start_date);
-    $end = Carbon::parse($request->sched_end_date);
-    $days = $request->days ?? [];
-    $created = 0;
-
-    for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
-
-        if (!empty($days) && !in_array($date->format('D'), $days)) {
-            continue;
-        }
-
-        $startDateTime = Carbon::parse($date->toDateString() . ' ' . $request->sched_in);
-        $endDateTime = Carbon::parse($date->toDateString() . ' ' . $request->sched_out);
-
-        if ($endDateTime->lessThanOrEqualTo($startDateTime)) {
-            $endDateTime->addDay();
-        }
-
-        // Calculate total and net hours
-        $totalHours = $endDateTime->diffInMinutes($startDateTime) / 60;
-        $breakStart = Carbon::parse($date->toDateString() . ' ' . $request->break_start);
-        $breakEnd = Carbon::parse($date->toDateString() . ' ' . $request->break_end);
-        if ($breakEnd->lessThanOrEqualTo($breakStart)) {
-            $breakEnd->addDay();
-        }
-        $breakHours = $breakEnd->diffInMinutes($breakStart) / 60;
-        $netHours = $totalHours - $breakHours;
-
-        // 🚨 Warn if exceeds 9 hours
-        if ($netHours > 9 && !$request->boolean('confirm_long_shift')) {
-            return response()->json([
-                'warning' => true,
-                'message' => "Schedule on {$date->format('Y-m-d')} exceeds 9 hours ({$netHours} hrs). Proceed?"
-            ]);
-        }
-
-        // 🔁 Check overlap
-        $overlap = EmployeeSchedule::where('employee_id', $employeeId)
-            ->where(function($q) use ($startDateTime, $endDateTime) {
-                $q->whereRaw(
-                    "STR_TO_DATE(CONCAT(sched_start_date, ' ', sched_in), '%Y-%m-%d %H:%i') < ? 
-                     AND STR_TO_DATE(CONCAT(sched_end_date, ' ', sched_out), '%Y-%m-%d %H:%i') > ?",
-                    [$endDateTime, $startDateTime]
-                );
-            })
-            ->exists();
-
-        if ($overlap) {
-            return response()->json([
-                'error' => "Schedule on {$date->format('Y-m-d')} overlaps with an existing schedule."
-            ], 409);
-        }
-
-        EmployeeSchedule::create([
-            'employee_id' => $employeeId,
-            'sched_start_date' => $startDateTime->toDateString(),
-            'sched_end_date' => $endDateTime->toDateString(),
-            'sched_in' => $startDateTime->format('H:i'),
-            'sched_out' => $endDateTime->format('H:i'),
-            'shift_type' => $request->shift_type,
-            'break_start' => $request->break_start,
-            'break_end' => $request->break_end,
+    {
+        $validator = Validator::make($request->all(), [
+            'sched_start_date' => 'required|date',
+            'sched_end_date' => 'required|date|after_or_equal:sched_start_date',
+            'sched_in' => 'required|date_format:H:i',
+            'sched_out' => 'required|date_format:H:i',
+            'days' => 'nullable|array',
+            'shift_type' => 'nullable|string|max:50',
+            'break_start' => 'required|date_format:H:i',
+            'break_end' => 'required|date_format:H:i',
+            'employee_ids'     => 'required|array|min:1',
         ]);
 
-        $created++;
-    }
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
 
-    return response()->json(['message' => "$created schedule(s) added successfully!"]);
-}
+        DB::beginTransaction();
+
+        try {
+            foreach ($request->employee_ids as $empId) {
+                $employeeId = $empId;
+                $start = Carbon::parse($request->sched_start_date);
+                $end = Carbon::parse($request->sched_end_date);
+                $days = $request->days ?? [];
+                $created = 0;
+
+                for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
+
+                    if (!empty($days) && !in_array($date->format('D'), $days)) {
+                        continue;
+                    }
+
+                    $startDateTime = Carbon::parse($date->toDateString() . ' ' . $request->sched_in);
+                    $endDateTime   = Carbon::parse($date->toDateString() . ' ' . $request->sched_out);
+
+                    if ($endDateTime->lessThanOrEqualTo($startDateTime)) {
+                        $endDateTime->addDay();
+                    }
+
+                    // Calculate total and net hours
+                    $totalHours = $endDateTime->diffInMinutes($startDateTime) / 60;
+                    $breakStart = Carbon::parse($date->toDateString() . ' ' . $request->break_start);
+                    $breakEnd   = Carbon::parse($date->toDateString() . ' ' . $request->break_end);
+
+                    if ($breakEnd->lessThanOrEqualTo($breakStart)) {
+                        $breakEnd->addDay();
+                    }
+
+                    $breakHours = $breakEnd->diffInMinutes($breakStart) / 60;
+                    $netHours   = $totalHours - $breakHours;
+
+                    // 🚨 Warn if exceeds 9 hours
+                    if ($netHours > 9 && !$request->boolean('confirm_long_shift')) {
+                        DB::rollBack();
+                        return response()->json([
+                            'warning' => true,
+                            'message' => "Schedule on {$date->format('Y-m-d')} exceeds 9 hours ({$netHours} hrs). Proceed?"
+                        ]);
+                    }
+
+                    // 🔁 Check overlap
+                    $overlap = EmployeeSchedule::where('employee_id', $employeeId)
+                        ->where(function ($q) use ($startDateTime, $endDateTime) {
+                            $q->whereRaw(
+                                "STR_TO_DATE(CONCAT(sched_start_date, ' ', sched_in), '%Y-%m-%d %H:%i') < ? 
+                                AND STR_TO_DATE(CONCAT(sched_end_date, ' ', sched_out), '%Y-%m-%d %H:%i') > ?",
+                                [$endDateTime, $startDateTime]
+                            );
+                        })
+                        ->exists();
+
+                    if ($overlap) {
+                        DB::rollBack();
+                        return response()->json([
+                            'error' => "Schedule on {$date->format('Y-m-d')} overlaps with an existing schedule for employee ID {$employeeId}."
+                        ], 409);
+                    }
+
+                    EmployeeSchedule::create([
+                        'employee_id'      => $employeeId,
+                        'sched_start_date' => $startDateTime->toDateString(),
+                        'sched_end_date'   => $endDateTime->toDateString(),
+                        'sched_in'         => $startDateTime->format('H:i'),
+                        'sched_out'        => $endDateTime->format('H:i'),
+                        'shift_type'       => $request->shift_type,
+                        'break_start'      => $request->break_start,
+                        'break_end'        => $request->break_end,
+                    ]);
+
+                    $created++;
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Schedules created successfully.'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'error'   => 'An unexpected error occurred. All changes have been reverted.',
+                'details' => $e->getMessage()
+            ], 500);
+        }
+
+
+        return response()->json(['message' => "$created schedule(s) added successfully!"]);
+    }
 
 
 
