@@ -87,13 +87,22 @@
 
                     <div class="mb-4">
                         <label class="form-label small fw-semibold text-muted">Select Employee <span class="text-danger">*</span></label>
-                        <select class="form-select form-control-lg bg-light border-0 fs-6 text-uppercase" id="selEmployee" name="employee_id">
-                            <option selected disabled value="">Choose...</option>
-                            @foreach($employees as $emp)
-                                <option value="{{ $emp->empID }}">{{ $emp->lname }}, {{ $emp->fname }}</option>
-                            @endforeach
-                        </select>
-                        <span class="text-danger small error-text employee_id_error"></span>
+                        <div class="input-group">
+                            <select class="form-select form-control-lg bg-light border-0 fs-6 text-uppercase" id="selEmployee" name="employee_id">
+                                <option selected disabled value="">Choose...</option>
+                                @foreach($employees as $emp)
+                                    <option value="{{ $emp->empID }}">{{ $emp->lname }}, {{ $emp->fname }}</option>
+                                @endforeach
+                            </select>
+                            <button type="button" class="btn btn-primary rounded-0" id="btnAddEmployee">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        <span class="text-danger small error-text employee_ids_error"></span>
+
+                        {{-- Employee Tags Container --}}
+                        <div id="employeeTagsContainer" class="d-flex flex-wrap gap-2 mt-2"></div>
+                        <input type="hidden" id="employeeArrayInput">
                     </div>
 
                     <div class="row g-3 mb-4">
@@ -237,6 +246,7 @@ $(document).ready(function(){
         $('.day-label').removeClass('bg-primary text-white border-primary').addClass('bg-transparent text-muted');
         $('.error-text').text('');
         $('input, select').removeClass('border-danger');
+        resetEmployeeArray(); //
     });
 
     // 🔍 Search & Filters
@@ -266,6 +276,7 @@ $(document).ready(function(){
             break_start: $('#break_start').val(),
             break_end: $('#break_end').val(),
             days: selectedDays,
+            employee_ids: selectedEmployees.map(e => e.id),
         };
 
         function submitSchedule(data, isConfirmed = false) {
@@ -352,6 +363,58 @@ $(document).ready(function(){
             }
         });
     });
+
+    let selectedEmployees = []; // { id, name }
+
+    $('#btnAddEmployee').on('click', function () {
+        const sel = $('#selEmployee');
+        const empId = sel.val();
+        const empName = sel.find('option:selected').text().trim();
+
+        if (!empId) return;
+
+        // Prevent duplicates
+        if (selectedEmployees.find(e => e.id == empId)) {
+            Swal.fire({ icon: 'info', title: 'Already added', text: `${empName} is already in the list.`, timer: 1500, showConfirmButton: false });
+            return;
+        }
+
+        selectedEmployees.push({ id: empId, name: empName });
+        renderEmployeeTags();
+
+        // Reset select to default
+        sel.val('');
+    });
+
+    function renderEmployeeTags() {
+        const container = $('#employeeTagsContainer');
+        container.empty();
+
+        selectedEmployees.forEach((emp, index) => {
+            container.append(`
+                <span class="badge rounded-pill d-inline-flex align-items-center gap-2 px-3 py-2 fw-medium"
+                    style="background: var(--bs-primary-bg-subtle, #cfe2ff); color: var(--bs-primary-text-emphasis, #084298); font-size: 13px; border: 1px solid var(--bs-primary-border-subtle, #9ec5fe);">
+                    ${emp.name}
+                    <button type="button" class="btn-close btn-close-sm ms-1 btnRemoveEmployee"
+                            data-index="${index}"
+                            style="font-size: 10px; filter: none; opacity: 0.6;"
+                            aria-label="Remove"></button>
+                </span>
+            `);
+        });
+    }
+
+    $(document).on('click', '.btnRemoveEmployee', function () {
+        const index = $(this).data('index');
+        selectedEmployees.splice(index, 1);
+        renderEmployeeTags();
+    });
+
+    function resetEmployeeArray() {
+        selectedEmployees = [];
+        $('#employeeTagsContainer').empty();
+        $('#selEmployee').val('');
+    }
 });
 </script>
 @endsection
