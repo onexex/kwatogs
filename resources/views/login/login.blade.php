@@ -93,11 +93,26 @@
         }
 
         .img-logo {
-            background: #f8fafc url('../img/kwatogslogo.jpg') no-repeat center;
-            background-size: cover;
+        
+            background-color: #f8fafc;
+            
+            
+            background-image: url('../img/kwatogslogo.jpg');
+            background-repeat: no-repeat;
+            
+          
+            background-position: center center; 
+           
+            background-size: contain; 
+            
+            /* 5. Layout properties */
             height: 100%;
             min-height: 500px;
+            width: 100%; /* Siguraduhing sakop ang buong lapad ng column */
             position: relative;
+            
+            /* 6. Optional: Para hindi mag-pixelate sa malalaking screen */
+            image-rendering: -webkit-optimize-contrast;
         }
 
         .overlay-text {
@@ -160,15 +175,20 @@
             </div>
 
             <div class="col-lg-6 d-none d-lg-block">
-                <div class="img-logo">
+                <div class="img-logo ">
                     <div class="overlay-text">
                         <h3 class="fw-bold">KWATOGS. Portal</h3>
                         <p class="mb-0">Secure Management System v2.0</p>
                     </div>
                 </div>
             </div>
+           
+             
+            
         </div>
+        
     </div>
+    
 
     <script src="{{ asset('js/login.js') }}" defer></script>
 </body>

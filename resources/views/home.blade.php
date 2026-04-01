@@ -102,6 +102,120 @@
 <script>
 $(document).ready(function () {
 
+    // 412026 - Toggle Password Visibility
+    $('.toggle-password').on('click', function() {
+        const input = $(this).closest('.input-group').find('input');
+        const icon = $(this).find('i');
+        
+        if (input.attr('type') === 'password') {
+            input.attr('type', 'text');
+            icon.removeClass('fa-eye-slash').addClass('fa-eye text-primary');
+        } else {
+            input.attr('type', 'password');
+            icon.removeClass('fa-eye text-primary').addClass('fa-eye-slash');
+        }
+    });
+
+    $(document).on("click", "#btnUpdatePass", function () { 
+      
+        const btn = $(this);
+        const form = document.getElementById('changePasswordForm');
+        const formData = new FormData(form);
+
+        btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin me-2"></i>Updating...');
+        $('.error-text').text(''); 
+        $('.form-control').removeClass('is-invalid');
+
+        axios.post('/update-password', formData)
+            .then(response => {
+                if (response.data.status == 200) {
+                    Swal.fire('Success!', response.data.message, 'success');
+                    $('#changePassModal').modal('hide');
+                    form.reset();
+                }
+            })
+            .catch(error => {
+               
+                if (error.response && error.response.status === 422) {
+                    const errors = error.response.data.errors;
+                    Object.keys(errors).forEach(key => {
+                     
+                        $(`[name="${key}"]`).addClass('is-invalid');
+                        $(`.${key}_error`).text(errors[key][0]);
+                    });
+                } else {
+                    Swal.fire('Error', 'Something went wrong!', 'error');
+                    console.error(error);
+                }
+            })
+            .finally(() => {
+                
+                btn.prop('disabled', false).html('<i class="fa-solid fa-save me-2"></i>Change Password');
+            });
+    });
+
+  $('#new_password').on('keyup', function() {
+        let val = $(this).val();
+        let strength = 0;
+        if (val.length > 7) strength += 25;
+        if (val.match(/[a-z]/) && val.match(/[A-Z]/)) strength += 25;
+        if (val.match(/\d/)) strength += 25;
+        if (val.match(/[^a-zA-Z\d]/)) strength += 25;
+
+        let bar = $('#strengthBar');
+        let text = $('#strengthText');
+        bar.css('width', strength + '%');
+        
+        if (strength <= 25) {
+            bar.addClass('bg-danger').removeClass('bg-warning bg-success');
+            text.text('Weak password ⚠️').addClass('text-danger').removeClass('text-warning text-success');
+        } else if (strength <= 75) {
+            bar.addClass('bg-warning').removeClass('bg-danger bg-success');
+            text.text('Good password 👍').addClass('text-warning').removeClass('text-danger text-success');
+        } else {
+            bar.addClass('bg-success').removeClass('bg-danger bg-warning');
+            text.text('Strong password 💪').addClass('text-success').removeClass('text-danger text-warning');
+        }
+        
+        checkMatch(); // Check matching on every keyup of new password
+    });
+
+    // 2. Real-time Password Matching Logic
+    function checkMatch() {
+        let original = $('#new_password').val();
+        let confirmation = $('input[name="new_password_confirmation"]').val();
+        let btn = $('#btnUpdatePass');
+        
+        if (confirmation === '') {
+            $('.conf_msg').text('');
+            btn.prop('disabled', true);
+            return;
+        }
+
+        if (original === confirmation) {
+            $('input[name="new_password_confirmation"]').addClass('is-valid').removeClass('is-invalid');
+            $('.conf_msg').text('Passwords match!').addClass('text-success').removeClass('text-danger');
+            btn.prop('disabled', false); // I-enable ang button kung match
+        } else {
+            $('input[name="new_password_confirmation"]').addClass('is-invalid').removeClass('is-valid');
+            $('.conf_msg').text('Passwords do not match.').addClass('text-danger').removeClass('text-success');
+            btn.prop('disabled', true); // I-disable kung hindi match
+        }
+    }
+
+    $('input[name="new_password_confirmation"]').on('keyup', function() {
+        checkMatch();
+    });
+
+    // 3. Modal Cleanup (Mahalaga para hindi naiiwan ang kulay pag-close)
+    $('#changePassModal').on('hidden.bs.modal', function () {
+        $('#changePasswordForm')[0].reset();
+        $('.form-control').removeClass('is-invalid is-valid');
+        $('.error-text, .conf_msg, #strengthText').text('');
+        $('#strengthBar').css('width', '0%').removeClass('bg-danger bg-warning bg-success');
+        $('#btnUpdatePass').prop('disabled', true);
+    });
+
     const swalLoader = (title, text) => {
         Swal.fire({
             title: title,

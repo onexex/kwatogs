@@ -36,6 +36,7 @@ use App\Http\Controllers\parentalSettingsCtrl;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\philhealthCtrl;
 use App\Http\Controllers\positionCtrl;
+use App\Http\Controllers\Profile\ProfileController;
 use App\Http\Controllers\registerCtrl;
 use App\Http\Controllers\relationshipCtrl;
 use App\Http\Controllers\reportAttendanceCtrl;
@@ -409,6 +410,7 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     // validate email availability Feb 18 2026
     Route::post('/registerCtrl/checkEmailAvailability', [registerCtrl::class, 'checkEmailAvailability']);
     Route::get('/check-fullname', [registerCtrl::class, 'checkFullName']);
+    Route::post('/update-password', [ProfileController::class, 'updatePassword'])->name('password.update');
 
 });
 

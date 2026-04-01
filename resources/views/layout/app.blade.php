@@ -103,6 +103,8 @@
     
     <script>
         window.userPermissions = {!! json_encode(auth()->user()?->getAllPermissions()->pluck('name')) !!};
+
+        
     </script>
 </head>
 
@@ -302,8 +304,16 @@
                                 </div>
                                 <img class="img-profile rounded-circle border shadow-sm" src="{{ URL::asset('/img/undraw_profile.svg') }}" width="35">
                             </a>
+                            
                             <div class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3">
                                 <div class="dropdown-header">Account Settings</div>
+                                
+                                <a class="dropdown-item py-2" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#changePassModal">
+                                    <i class="fas fa-user-cog fa-sm fa-fw me-2 text-primary"></i> Password Settings
+                                </a>
+                                
+                                <div class="dropdown-divider"></div> {{-- Divider line para malinis tignan --}}
+                                
                                 <a class="dropdown-item py-2" href="#" data-bs-toggle="modal" data-bs-target="#logoutModal">
                                     <i class="fas fa-sign-out-alt fa-sm fa-fw me-2 text-danger"></i> Logout
                                 </a>
@@ -344,9 +354,72 @@
             </div>
         </div>
     </div>
+    // Change Password Modal 412026
+    <div class="modal fade" id="changePassModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
+                <div class="modal-header bg-light border-0 py-3" style="border-radius: 15px 15px 0 0;">
+                    <h5 class="modal-title fw-bold text-dark">
+                        <i class="fa-solid fa-lock me-2 text-teal"></i>Update Password
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="changePasswordForm">
+                    @csrf
+                    <div class="modal-body p-4">
+                        <p class="text-muted small mb-4">Siguraduhing ang iyong bagong password ay mahirap hulaan para sa seguridad ng iyong account.</p>
+                        
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted text-uppercase">Current Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-0"><i class="fa-solid fa-key text-muted"></i></span>
+                                <input type="password" name="current_password" class="form-control bg-light border-0" placeholder="••••••••" required>
+                                <button class="btn btn-light border-0 toggle-password" type="button"><i class="fa-solid fa-eye-slash"></i></button>
+                            </div>
+                            <span class="text-danger error-text current_password_error small"></span>
+                        </div>
+
+                        <hr class="my-4 opacity-50">
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted text-uppercase">New Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-0"><i class="fa-solid fa-shield-halved text-muted"></i></span>
+                                <input type="password" name="new_password" id="new_password" class="form-control bg-light border-0" placeholder="••••••••" required>
+                                <button class="btn btn-light border-0 toggle-password" type="button"><i class="fa-solid fa-eye-slash"></i></button>
+                            </div>
+                            <div class="progress mt-2" style="height: 5px;">
+                                <div id="strengthBar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <small id="strengthText" class="text-muted extra-small"></small>
+                            <span class="text-danger error-text new_password_error small"></span>
+                        </div>
+
+                        <div class="mb-0">
+                            <label class="form-label small fw-bold text-muted text-uppercase">Confirm New Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-0"><i class="fa-solid fa-check-double text-muted"></i></span>
+                                <input type="password" name="new_password_confirmation" class="form-control bg-light border-0" placeholder="••••••••" required>
+                            </div>
+                              <small class="conf_msg extra-small mt-1 d-block"></small> 
+                        </div>
+
+                        
+                    </div>
+                    <div class="modal-footer border-0 p-4 pt-0">
+                        <button type="button" class="btn btn-light rounded-pill px-4 fw-bold text-muted" data-bs-dismiss="modal">Cancel</button>
+                       <button type="button" id="btnUpdatePass" class="btn btn-primary">
+                        <i class="fa-solid fa-save me-2"></i>Change Password
+                    </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <script src="{{ asset('js/jquery.easing.min.js') }}"></script>
     <script src="{{ asset('js/system.js') }}" defer></script>
+    
 </body>
 
 </html>
