@@ -148,7 +148,6 @@ class EmployeeScheduleController extends Controller
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
-
         DB::beginTransaction();
 
         try {
@@ -195,20 +194,24 @@ class EmployeeScheduleController extends Controller
 
                     // 🔁 Check overlap
                     $overlap = EmployeeSchedule::where('employee_id', $employeeId)
-                        ->where(function ($q) use ($startDateTime, $endDateTime) {
-                            $q->whereRaw(
-                                "STR_TO_DATE(CONCAT(sched_start_date, ' ', sched_in), '%Y-%m-%d %H:%i') < ? 
-                                AND STR_TO_DATE(CONCAT(sched_end_date, ' ', sched_out), '%Y-%m-%d %H:%i') > ?",
-                                [$endDateTime, $startDateTime]
-                            );
-                        })
+                        ->whereDate('sched_start_date', '<=', $date)
+                        ->whereDate('sched_end_date', '>=', $date)
+                        ->whereRaw("
+                            TIME(sched_in) < ?
+                            AND TIME(sched_out) > ?
+                        ", [$endDateTime->format('H:i:s'), $startDateTime->format('H:i:s')])
                         ->exists();
 
                     if ($overlap) {
+               
                         DB::rollBack();
                         return response()->json([
-                            'error' => "Schedule on {$date->format('Y-m-d')} overlaps with an existing schedule for employee ID {$employeeId}."
-                        ], 409);
+                            'errors' => [
+                                'sched_end_date' => [
+                                    "Schedule on {$date->format('Y-m-d')} overlaps with an existing schedule for employee ID {$employeeId}."
+                                ]
+                            ]
+                        ], 422);
                     }
 
                     EmployeeSchedule::create([
