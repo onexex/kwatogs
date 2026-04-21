@@ -88,13 +88,13 @@ function renderTable(data) {
     data.forEach((item, i) => {
         const empName = item.employee ? `${item.employee.lname}, ${item.employee.fname}` : "N/A";
 
-        // 1. Calculate Manual Deductions
+        //  Calculate Manual Deductions
         let totalDeductedMins = 0;
         if (item.manual_deductions && item.manual_deductions.length > 0) {
             totalDeductedMins = item.manual_deductions.reduce((sum, d) => sum + parseInt(d.deduction_minutes || 0), 0);
         }
 
-        // 2. Calculate Net Hours (Gross - [Mins/60])
+        //  Calculate Net Hours (Gross - [Mins/60])
         let grossHours = parseFloat(item.total_hours ?? 0);
         let netHours = (grossHours - (totalDeductedMins / 60)).toFixed(2);
 
@@ -107,10 +107,18 @@ function renderTable(data) {
             logRows = logArray.join("<br>");
         }
 
+        function capitalizeName(name) {
+            return name.toLowerCase().replace(/\b\w/g, s => s.toUpperCase());
+        }
+
+        // Gamitin ito sa pag-render ng table row:
+        let formattedName = capitalizeName(empName);
+        
+
         rows += `
             <tr>
                 <td>${i + 1}</td>
-                <td class="text-start">${empName}</td>
+                <td class="text-start text-capitalize">${formattedName}</td>
                 <td>${item.formatted_date ?? '-'}</td>
                 <td colspan="2">${logRows}</td>
                 <td class="fw-bold">${grossHours.toFixed(2)}</td>

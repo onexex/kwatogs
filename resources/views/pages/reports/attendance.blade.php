@@ -59,7 +59,10 @@
                             <option value="All">All Personnel</option>
                             @if(count($resultEmp) > 0)
                                 @foreach($resultEmp as $emp)
-                                    <option value='{{ $emp->empID }}'>{{ $emp->lname . ", " . $emp->fname }}</option>
+                                @php 
+                                    $fullName = ucwords(strtolower($emp->lname . ", " . $emp->fname));
+                                @endphp
+                                    <option value="{{ $emp->empID }}">{{ $fullName }}</option>
                                 @endforeach
                             @endif
                         </select>
