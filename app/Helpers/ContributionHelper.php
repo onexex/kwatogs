@@ -2,7 +2,7 @@
 
 namespace App\Helpers;
 
-use App\Models\SSSContribution;
+use App\Models\SssContribution;
 use App\Models\PhilhealthContribution;
 use App\Models\PagibigContribution;
 use App\Models\BirWithholdingTax;
@@ -35,7 +35,7 @@ class ContributionHelper
         }
 
         // Compute contributions
-        $sss = SSSContribution::compute($monthlyGross, $employeeClass);
+        $sss = SssContribution::compute($monthlyGross, $employeeClass);
         $philhealth = PhilhealthContribution::compute($monthlyGross, $employeeClass);
         $pagibig = PagibigContribution::compute($monthlyGross, $employeeClass);
 

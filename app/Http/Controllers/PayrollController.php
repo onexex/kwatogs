@@ -50,32 +50,32 @@ class PayrollController extends Controller
     // }
 
     public function fetchPayroll(Request $request)
-{
-    $dateFrom = $request->query('date_from');
-    $dateTo = $request->query('date_to');
-    $pay_date = $request->query('payDate');
-    $filter = $request->query('filter', 'all');
+    {
+        $dateFrom = $request->query('date_from');
+        $dateTo = $request->query('date_to');
+        $pay_date = $request->query('payDate');
+        $filter = $request->query('filter', 'all');
 
-    // Ginagamit ang 'users' table base sa iyong User::class relation
-    $query = Payroll::with('employee')
-        ->join('users', 'payrolls.employee_id', '=', 'users.empID')
-        ->select('payrolls.*');
+        // Ginagamit ang 'users' table base sa iyong User::class relation
+        $query = Payroll::with('employee')
+            ->join('users', 'payrolls.employee_id', '=', 'users.empID')
+            ->select('payrolls.*');
 
-    if ($dateFrom && $dateTo) {
-        $query->where('payrolls.pay_date', $pay_date);
+        if ($dateFrom && $dateTo) {
+            $query->where('payrolls.pay_date', $pay_date);
+        }
+
+        if ($filter !== 'all') {
+            $query->where('payrolls.status', $filter);
+        }
+
+        // Pwede mo na i-order gamit ang columns mula sa users table
+        $payrolls = $query->orderBy('users.fname', 'asc')
+                        ->orderBy('users.lname', 'asc')
+                        ->get();
+
+        return response()->json($payrolls);
     }
-
-    if ($filter !== 'all') {
-        $query->where('payrolls.status', $filter);
-    }
-
-    // Pwede mo na i-order gamit ang columns mula sa users table
-    $payrolls = $query->orderBy('users.fname', 'asc')
-                      ->orderBy('users.lname', 'asc')
-                      ->get();
-
-    return response()->json($payrolls);
-}
     public function computePayroll(Request $request)
     {
         DB::beginTransaction();
