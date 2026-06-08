@@ -42,7 +42,7 @@ jobs:
         password: ${{ secrets.FTP_PASSWORD }}
         port: 22
         script: |
-          mkdir -p /home/u8wg9m5p5d1l/public_html/kwatogspayroll.kmds-ph.com/
+          mkdir -p /home/yq64p1id89x6/public_html/kwatogspayroll.kmds-ph.com/
 
     # 🚀 UPLOAD STEP: I-upload ang nag-iisang ZIP file sa iyong sub-domain folder
     - name: 🚀 Upload Full ZIP via SFTP
@@ -53,7 +53,7 @@ jobs:
         server: ${{ secrets.FTP_SERVER }}
         port: 22
         local_path: './full_deploy.zip'
-        remote_path: '/home/u8wg9m5p5d1l/public_html/kwatogspayroll.kmds-ph.com/'
+        remote_path: '/home/yq64p1id89x6/public_html/kwatogspayroll.kmds-ph.com/'
 
     # 🔓 UNZIP, PERMISSIONS, & CLEANUP VIA SSH
     - name: 🔓 Execute SSH Unzip and Fix Permissions
@@ -64,7 +64,7 @@ jobs:
         password: ${{ secrets.FTP_PASSWORD }}
         port: 22
         script: |
-          cd /home/u8wg9m5p5d1l/public_html/kwatogspayroll.kmds-ph.com/ || exit 1
+          cd /home/yq64p1id89x6/public_html/kwatogspayroll.kmds-ph.com/ || exit 1
           
           # I-extract ang zip kung umiiral ito
           if [ -f full_deploy.zip ]; then
