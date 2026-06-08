@@ -1,0 +1,84 @@
+name: Deploy Laravel jQuery All-in-One via SFTP & SSH
+
+on:
+  push:
+    branches:
+      - master  # Palitan mo ng master kung "master" ang branch mo sa GitHub
+
+jobs:
+  production-deploy:
+    name: 🚀 Package and Deploy to Subdomain via SFTP & SSH
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 🚚 Checkout Codebase
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: ⚙️ Setup PHP Environment
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3' # Siguraduhing tugma sa GoDaddy niyo
+        extensions: mbstring, xml, ctype, iconv, mysql, zip
+
+    - name: 📦 Install Composer Dependencies
+      run: |
+        composer install --no-dev --optimize-autoloader --no-ansi --no-interaction --no-scripts --prefer-dist
+
+    # 🤐 ZIP PREPARATION: Isang zip file lang para sa buong project
+    - name: 🤐 Package Everything into One ZIP
+      run: |
+        sudo apt-get install zip -y
+        # I-zi-zip ang buong project MALIBAN sa .git, tests, at .env files
+        zip -r full_deploy.zip . -x "*.git*" "tests/*" "*.env*"
+
+    # 🛠️ PRE-DEPLOY: Siguraduhing gawa na ang sub-domain folder sa server
+    - name: 🛠️ Ensure Remote Directory Exists
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        port: 22
+        script: |
+          mkdir -p /home/u8wg9m5p5d1l/public_html/kwatogspayroll.kmds-ph.com/
+
+    # 🚀 UPLOAD STEP: I-upload ang nag-iisang ZIP file sa iyong sub-domain folder
+    - name: 🚀 Upload Full ZIP via SFTP
+      uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+      with:
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        server: ${{ secrets.FTP_SERVER }}
+        port: 22
+        local_path: './full_deploy.zip'
+        remote_path: '/home/u8wg9m5p5d1l/public_html/kwatogspayroll.kmds-ph.com/'
+
+    # 🔓 UNZIP, PERMISSIONS, & CLEANUP VIA SSH
+    - name: 🔓 Execute SSH Unzip and Fix Permissions
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        port: 22
+        script: |
+          cd /home/u8wg9m5p5d1l/public_html/kwatogspayroll.kmds-ph.com/ || exit 1
+          
+          # I-extract ang zip kung umiiral ito
+          if [ -f full_deploy.zip ]; then
+            unzip -o full_deploy.zip
+            rm full_deploy.zip
+          else
+            echo "Error: full_deploy.zip not found!" && exit 1
+          fi
+          
+          # 🔥 AUTOMATED PERMISSION FIX: Para maiwasan ang 500 error at vendor issues
+          find . -type d -exec chmod 755 {} \;
+          find . -type f -exec chmod 644 {} \;
+          
+          # 3. Cache clearing para sa Laravel
+          php artisan cache:clear
+          php artisan view:clear
+          php artisan config:clear
