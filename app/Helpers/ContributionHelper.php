@@ -25,8 +25,12 @@ class ContributionHelper
                     'sss' => 0,
                     'philhealth' => 0,
                     'salary' => 0,
+                     'other' => 0,
+                    'charges/penalty' => 0,
+                    'cash_adv' => 0,
                 ],
                 'loan_details' => [],
+                'taxable_income' => 0,
             ];
         }
 
@@ -95,7 +99,6 @@ class ContributionHelper
             }
         }
 
-
         $taxableIncome = $monthlyGross
             - ($sss['employee_share'] ?? 0)
             - ($philhealth['employee_share'] ?? 0)
@@ -106,11 +109,11 @@ class ContributionHelper
         $withholdingTax = BirWithholdingTax::compute($taxableIncome, $employeeClass);
 
         return [
-            'sss' => $sss,
-            'philhealth' => $philhealth,
-            'pagibig' => $pagibig,
-            'withholding_tax' => $withholdingTax,
-            'loan_deduction' => $loanDeduction,      // SSS/PhilHealth/Pag-IBIG loans
+            'sss' => $sss ,
+            'philhealth' => $philhealth ,
+            'pagibig' => $pagibig ,
+            'withholding_tax' => $withholdingTax ,
+            'loan_deduction' => $loanDeduction ,      // SSS/PhilHealth/Pag-IBIG loans
             'loan_breakdown' => $loanBreakdown,      // categorized
             'loan_details' => $loanDetails,          // for updating balances
             'taxable_income'=>  $taxableIncome,

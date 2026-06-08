@@ -158,42 +158,41 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 $.each(data, function (index, payroll) {
                     const row = `
-                        <tr>
-                            <td>${index + 1}</td>
-                            <td>${(payroll.employee?.fname || '') + ' ' + (payroll.employee?.lname || '')}</td>
-                            <td>${formatNumber(payroll.basic_salary)}</td>
-                            <td>${formatNumber(payroll.basicPay)}</td>
-                            <td>${formatNumber(payroll.abs_ut_deduction || 0)}</td>
+                <tr>
+    <td class="ps-4">${index + 1}</td>
+   <td>
+    ${
+        ((payroll.employee?.fname || '') + ' ' + (payroll.employee?.lname || ''))
+        .toLowerCase()
+        .replace(/\b\w/g, char => char.toUpperCase())
+    }
+</td>
+    <td>${formatNumber(payroll.basic_salary)}</td>
+    <td>${formatNumber(payroll.basicPay)}</td>
+    <td>${formatNumber(payroll.abs_ut_deduction || 0)}</td>
 
-                            <!-- Earnings -->
-                            <td>${formatNumber(payroll.holiday_pay || 0)}</td>
-                            <td>${formatNumber(payroll.overtime_pay || 0)}</td>
-                            <td>${formatNumber(payroll.night_diff_pay || 0)}</td>
+    <td>${formatNumber(payroll.holiday_pay || 0)}</td>
+    <td>${formatNumber(payroll.overtime_pay || 0)}</td>
+    <td>${formatNumber(payroll.night_diff_pay || 0)}</td>
 
-                            <!-- Gross -->
-                            <td>${formatNumber(payroll.gross_pay || 0)}</td>
+    <td class="bg-light fw-bold">${formatNumber(payroll.gross_pay || 0)}</td>
 
-                            <!-- Gov contributions/loans -->
-                            <td>${formatNumber(payroll.sss_contribution || 0)}</td>
-                            <td>${formatNumber(payroll.sss_loan || 0)}</td>
-                            <td>${formatNumber(payroll.pagibig_contribution || 0)}</td>
-                            <td>${formatNumber(payroll.pagibig_loan || 0)}</td>
-                            <td>${formatNumber(payroll.philhealth_contribution || 0)}</td>
+    <td>${formatNumber(payroll.sss_contribution || 0)}</td>
+    <td>${formatNumber(payroll.sss_loan || 0)}</td>
+    <td>${formatNumber(payroll.pagibig_contribution || 0)}</td>
+    <td>${formatNumber(payroll.pagibig_loan || 0)}</td>
+    <td>${formatNumber(payroll.philhealth_contribution || 0)}</td>
 
-                            <!-- Taxable income, tax, net pay -->
-                            <td>${formatNumber(payroll.taxable_income || 0)}</td>
-                            <td>${formatNumber(payroll.withholding_tax || 0)}</td>
-                            <td>${formatNumber(payroll.net_pay || 0)}</td>
+    <td>${formatNumber(payroll.taxable_income || 0)}</td>
+    <td>${formatNumber(payroll.withholding_tax || 0)}</td>
 
-                            <!-- Allowance + Adjustment -->
-                            <td>${formatNumber(payroll.allowances || 0)}</td>
-                            <td>${formatNumber(payroll.adjustment || 0)}</td>
+    <td>${formatNumber(payroll.allowances || 0)}</td>
+    <td>${formatNumber(payroll.adjustment || 0)}</td>
 
-                            <!-- Charges, Cash Advance, Pay Receivable -->
-                            <td>${formatNumber(payroll.penalty_amount || 0)}</td>
-                            <td>${formatNumber(payroll.company_loan || 0)}</td>
-                            <td>${formatNumber(payroll.net_pay || 0)}</td>
-                        </tr>
+    <td>${formatNumber(payroll.penalty_amount || 0)}</td>
+    <td>${formatNumber(payroll.company_loan || 0)}</td>
+    <td class="pe-4 fw-bold">${formatNumber(payroll.net_pay || 0)}</td>
+</tr>
                     `;
                     $payrollTableBody.append(row);
                 });

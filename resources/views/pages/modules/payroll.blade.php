@@ -254,30 +254,38 @@
                 <div class="table-responsive">
                     <table class="table table-hover align-middle text-center payroll-table mb-0">
                         <thead>
-                            <tr>
-                                <th rowspan="2" class="ps-4">#</th>
-                                <th rowspan="2">Employee</th>
-                                <th rowspan="2">Basic Salary</th>
-                                <th rowspan="2">Bi-Monthly</th>
-                                <th rowspan="2">Abs/Trd/Ut</th>
-                                <th colspan="3" class="bg-earnings text-primary">Earnings</th>
-                                <th rowspan="2" class="bg-light fw-bold">Gross Pay</th>
-                                <th colspan="5" class="bg-deductions text-danger">Govt Premiums & Loans</th>
-                                <th rowspan="2">Tax</th>
-                                <th rowspan="2">Charges</th>
-                                <th rowspan="2">Cash Adv</th>
-                                <th rowspan="2" class="pe-4 fw-bold-total">Pay Receivable</th>
-                            </tr>
-                            <tr>
-                                <th class="bg-earnings">HD Pay</th>
-                                <th class="bg-earnings">OT Pay</th>
-                                <th class="bg-earnings">ND Pay</th>
-                                <th class="bg-deductions small">SSS</th>
-                                <th class="bg-deductions small">SSS Loan</th>
-                                <th class="bg-deductions small">Pag-ibig</th>
-                                <th class="bg-deductions small">PIB Loan</th>
-                                <th class="bg-deductions small">PhilHealth</th>
-                            </tr>
+ <tr>
+    <th rowspan="2" class="ps-4">#</th>
+    <th rowspan="2">Employee</th>
+    <th rowspan="2">Basic Salary</th>
+    <th rowspan="2">Bi-Monthly</th>
+    <th rowspan="2">Abs/Trd/Ut</th>
+
+    <th colspan="3" class="bg-earnings text-primary text-center">Earnings</th>
+
+    <th rowspan="2" class="bg-light fw-bold">Gross Pay</th>
+
+    <th colspan="5" class="bg-deductions text-danger text-center">Govt Premiums & Loans</th>
+    
+    <th rowspan="2">Taxable Inc.</th>
+    <th rowspan="2">Tax</th>
+    <th rowspan="2">Allowances</th>
+    <th rowspan="2">Adjustments</th>
+    <th rowspan="2">Charges</th>
+    <th rowspan="2">Cash Adv</th>
+    <th rowspan="2" class="pe-4 fw-bold-total">Pay Receivable</th>
+</tr>
+<tr>
+    <th class="bg-earnings">HD Pay</th>
+    <th class="bg-earnings">OT Pay</th>
+    <th class="bg-earnings">ND Pay</th>
+
+    <th class="bg-deductions small">SSS</th>
+    <th class="bg-deductions small">SSS Loan</th>
+    <th class="bg-deductions small">Pag-ibig</th>
+    <th class="bg-deductions small">PIB Loan</th>
+    <th class="bg-deductions small">PhilHealth</th>
+</tr>
                         </thead>
                         <tbody id="payrollTableBody">
                         </tbody>

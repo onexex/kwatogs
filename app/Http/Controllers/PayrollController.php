@@ -22,39 +22,60 @@ use Illuminate\Support\Facades\Log;
 class PayrollController extends Controller
 {
 
-    // ==============================
-    // FETCH PAYROLL
-    // ==============================
+    // public function fetchPayroll(Request $request)
+    // {
+    //     //  Extract query parameters
+    //     $dateFrom = $request->query('date_from');
+    //     $dateTo = $request->query('date_to');
+    //     $pay_date = $request->query('payDate');
+    //     $filter = $request->query('filter', 'all'); // optional filter: all, released, pending
+
+    //     //  Prepare base query with employee relation
+    //     $query = Payroll::with('employee');
+
+    //     //  Filter by date range (if provided)
+    //     if ($dateFrom && $dateTo) {
+    //         $query->where('pay_date', $pay_date);
+    //     }
+
+    //     //  Filter by status (if not "all")
+    //     if ($filter !== 'all') {
+    //         $query->where('status', $filter);
+    //     }
+
+    //     //  Get final list
+    //     $payrolls = $query->orderBy('pay_date', 'desc')->get();
+
+    //     return response()->json($payrolls);
+    // }
+
     public function fetchPayroll(Request $request)
-    {
-        // 🧩 Extract query parameters
-        $dateFrom = $request->query('date_from');
-        $dateTo = $request->query('date_to');
-        $pay_date = $request->query('payDate');
-        $filter = $request->query('filter', 'all'); // optional filter: all, released, pending
+{
+    $dateFrom = $request->query('date_from');
+    $dateTo = $request->query('date_to');
+    $pay_date = $request->query('payDate');
+    $filter = $request->query('filter', 'all');
 
-        // 🧭 Prepare base query with employee relation
-        $query = Payroll::with('employee');
+    // Ginagamit ang 'users' table base sa iyong User::class relation
+    $query = Payroll::with('employee')
+        ->join('users', 'payrolls.employee_id', '=', 'users.empID')
+        ->select('payrolls.*');
 
-        // 📅 Filter by date range (if provided)
-        if ($dateFrom && $dateTo) {
-            $query->where('pay_date', $pay_date);
-        }
-
-        // ⚙️ Filter by status (if not "all")
-        if ($filter !== 'all') {
-            $query->where('status', $filter);
-        }
-
-        // 📋 Get final list
-        $payrolls = $query->orderBy('pay_date', 'desc')->get();
-
-        return response()->json($payrolls);
+    if ($dateFrom && $dateTo) {
+        $query->where('payrolls.pay_date', $pay_date);
     }
 
-    // ==============================
-    // COMPUTE PAYROLL
-    // ==============================
+    if ($filter !== 'all') {
+        $query->where('payrolls.status', $filter);
+    }
+
+    // Pwede mo na i-order gamit ang columns mula sa users table
+    $payrolls = $query->orderBy('users.fname', 'asc')
+                      ->orderBy('users.lname', 'asc')
+                      ->get();
+
+    return response()->json($payrolls);
+}
     public function computePayroll(Request $request)
     {
         DB::beginTransaction();
@@ -62,7 +83,7 @@ class PayrollController extends Controller
         try {
             //  Fetch Active Employees (Test: single employee)
             $employees = User::with('empDetail')
-                ->where('empID', 'KWTGS-0021')
+                // ->where('empID', 'KWTGS-2026-0063')
                 ->whereHas('empDetail', function ($q) {
                     $q->where('empStatus', '1');
                 })
@@ -328,7 +349,7 @@ class PayrollController extends Controller
                 $charges = $contributions['loan_breakdown']['charges/penalty'] ?? 0;
                 $cash_adv = $contributions['loan_breakdown']['cash_adv'] ?? 0;
                 $other = $contributions['loan_breakdown']['other'] ?? 0;
-                $taxable_income = $contributions['taxable_income'];
+                $taxable_income = $contributions['taxable_income'] ?? 0;
 
                 //  Compute gov dues
                 $govDues = $contributions['sss']['employee_share']
@@ -422,7 +443,7 @@ class PayrollController extends Controller
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Payroll computation failed: '.$e->getMessage(),
+                'message' => 'Payroll computation failed: '.$e->getMessage() . $employees->pluck('empID')->join(', '),
             ], 500);
         }
     }
