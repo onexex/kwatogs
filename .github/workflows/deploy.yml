@@ -3,7 +3,7 @@ name: Deploy Laravel jQuery All-in-One via SFTP & SSH
 on:
   push:
     branches:
-      - master  # Palitan mo ng master kung "master" ang branch mo sa GitHub
+      - master  # Siguraduhing ito ang tamang pangalan ng branch mo sa GitHub
 
 jobs:
   production-deploy:
@@ -19,21 +19,21 @@ jobs:
     - name: ⚙️ Setup PHP Environment
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.3' # Siguraduhing tugma sa GoDaddy niyo
+        php-version: '8.3' # Bersyon ng PHP na gamit mo sa GoDaddy
         extensions: mbstring, xml, ctype, iconv, mysql, zip
 
     - name: 📦 Install Composer Dependencies
       run: |
         composer install --no-dev --optimize-autoloader --no-ansi --no-interaction --no-scripts --prefer-dist
 
-    # 🤐 ZIP PREPARATION: Isang zip file lang para sa buong project
+    # 🤐 ZIP PREPARATION: Isang zip file para sa buong project
     - name: 🤐 Package Everything into One ZIP
       run: |
-        sudo apt-get install zip -y
+        sudo apt-get update && sudo apt-get install zip -y
         # I-zi-zip ang buong project MALIBAN sa .git, tests, at .env files
         zip -r full_deploy.zip . -x "*.git*" "tests/*" "*.env*"
 
-    # 🛠️ PRE-DEPLOY: Siguraduhing gawa na ang sub-domain folder sa server
+    # 🛠️ PRE-DEPLOY: Siguraduhing gawa na ang sub-domain folder sa server bago mag-upload
     - name: 🛠️ Ensure Remote Directory Exists
       uses: appleboy/ssh-action@v1.0.3
       with:
@@ -42,7 +42,7 @@ jobs:
         password: ${{ secrets.FTP_PASSWORD }}
         port: 22
         script: |
-          mkdir -p /home/yq64p1id89x6/public_html/kwatogspayroll.kmds-ph.com/
+          mkdir -p /home/u8wg9m5p5d1l/public_html/kwatogspayroll.kmds-ph.com/
 
     # 🚀 UPLOAD STEP: I-upload ang nag-iisang ZIP file sa iyong sub-domain folder
     - name: 🚀 Upload Full ZIP via SFTP
@@ -53,7 +53,7 @@ jobs:
         server: ${{ secrets.FTP_SERVER }}
         port: 22
         local_path: './full_deploy.zip'
-        remote_path: '/home/yq64p1id89x6/public_html/kwatogspayroll.kmds-ph.com/'
+        remote_path: '/home/u8wg9m5p5d1l/public_html/kwatogspayroll.kmds-ph.com/'
 
     # 🔓 UNZIP, PERMISSIONS, & CLEANUP VIA SSH
     - name: 🔓 Execute SSH Unzip and Fix Permissions
@@ -64,21 +64,29 @@ jobs:
         password: ${{ secrets.FTP_PASSWORD }}
         port: 22
         script: |
-          cd /home/yq64p1id89x6/public_html/kwatogspayroll.kmds-ph.com/ || exit 1
+          cd /home/u8wg9m5p5d1l/public_html/kwatogspayroll.kmds-ph.com/ || exit 1
           
-          # I-extract ang zip kung umiiral ito
+          # 1. I-extract ang zip kung umiiral ito
           if [ -f full_deploy.zip ]; then
             unzip -o full_deploy.zip
             rm full_deploy.zip
           else
-            echo "Error: full_deploy.zip not found!" && exit 1
+            echo "Error: full_deploy.zip not found sa server!" && exit 1
           fi
           
-          # 🔥 AUTOMATED PERMISSION FIX: Para maiwasan ang 500 error at vendor issues
+          # 2. 🔥 AUTOMATED PERMISSION FIX: Para maiwasan ang 500 error at vendor issues
           find . -type d -exec chmod 755 {} \;
           find . -type f -exec chmod 644 {} \;
           
-          # 3. Cache clearing para sa Laravel
-          php artisan cache:clear
-          php artisan view:clear
-          php artisan config:clear
+          # 3. 🧼 MATATAG NA CACHE CLEARING (Iwas crash sa Collision at dev packages)
+          if [ -f artisan ]; then
+            # Sapilitang burahin ang mga lumang lokal na cache files ng bootstrap
+            rm -f bootstrap/cache/config.php
+            rm -f bootstrap/cache/services.php
+            rm -f bootstrap/cache/packages.php
+            
+            # Ligtas nang patakbuhin ang mga commands dahil malinis na ang listahan ng packages
+            php artisan config:clear
+            php artisan cache:clear
+            php artisan view:clear
+          fi
