@@ -120,11 +120,12 @@
                                 <div class="filter-icon"><i class="fa fa-building"></i></div> Company
                             </label>
                             <select id="selCompany" class="form-select bg-light border-0">
-                                <option value="all">All Organizations</option>
-                                {{-- @foreach ($companies as $company)
-                                <option value="{{ $company->id }}">{{ $company->company_name }}</option>
-                            @endforeach --}}
-                            </select>
+    <option value="all">All Organizations</option>
+    @foreach ($companies as $company)
+        {{-- Using $company->id and $company->comp_name based on your model's fillable fields --}}
+        <option value="{{ $company->id }}">{{ $company->comp_name }}</option>
+    @endforeach
+</select>
                         </div>
                     </div>
                 </div>
@@ -154,11 +155,14 @@
                             <label class="filter-label">
                                 <div class="filter-icon"><i class="fa fa-filter"></i></div> Status Filter
                             </label>
-                            <select id="selFilter" class="form-select bg-light border-0">
-                                <option value="all">View All Employees</option>
-                                <option value="released">Released Only</option>
-                                <option value="pending">Pending Only</option>
-                            </select>
+                           <select id="selFilter" class="form-select bg-light border-0" onchange="filterByClassification(this.value)">
+    <option value="all" @selected($selectedClassification === 'all')>View All Employees</option>
+    @foreach ($classifications as $classification)
+        <option value="{{ $classification->id }}" @selected($selectedClassification == $classification->id)>
+            {{ $classification->class_desc }}
+        </option>
+    @endforeach
+</select>
                         </div>
                     </div>
                 </div>
@@ -186,7 +190,7 @@
                                 <button class="btn btn-glass-light flex-fill" id="btnSummary">
                                     <i class="fa fa-chart-pie me-1 small"></i> Summary
                                 </button>
-                                 <button class="btn btn-glass-light flex-fill" id="btnSummary">
+                                <button class="btn btn-glass-light flex-fill" id="btnSummary">
                                     <i class="fa fa-file-export"></i> Export
                                 </button>
                             </div>
@@ -254,38 +258,39 @@
                 <div class="table-responsive">
                     <table class="table table-hover align-middle text-center payroll-table mb-0">
                         <thead>
- <tr>
-    <th rowspan="2" class="ps-4">#</th>
-    <th rowspan="2">Employee</th>
-    <th rowspan="2">Basic Salary</th>
-    <th rowspan="2">Bi-Monthly</th>
-    <th rowspan="2">Abs/Trd/Ut</th>
+                            <tr>
+                                <th rowspan="2" class="ps-4">#</th>
+                                <th rowspan="2">Employee</th>
+                                <th rowspan="2">Basic Salary</th>
+                                <th rowspan="2">Bi-Monthly</th>
+                                <th rowspan="2">Abs/Trd/Ut</th>
 
-    <th colspan="3" class="bg-earnings text-primary text-center">Earnings</th>
+                                <th colspan="3" class="bg-earnings text-primary text-center">Earnings</th>
 
-    <th rowspan="2" class="bg-light fw-bold">Gross Pay</th>
+                                <th rowspan="2" class="bg-light fw-bold">Gross Pay</th>
 
-    <th colspan="5" class="bg-deductions text-danger text-center">Govt Premiums & Loans</th>
-    
-    <th rowspan="2">Taxable Inc.</th>
-    <th rowspan="2">Tax</th>
-    <th rowspan="2">Allowances</th>
-    <th rowspan="2">Adjustments</th>
-    <th rowspan="2">Charges</th>
-    <th rowspan="2">Cash Adv</th>
-    <th rowspan="2" class="pe-4 fw-bold-total">Pay Receivable</th>
-</tr>
-<tr>
-    <th class="bg-earnings">HD Pay</th>
-    <th class="bg-earnings">OT Pay</th>
-    <th class="bg-earnings">ND Pay</th>
+                                <th colspan="5" class="bg-deductions text-danger text-center">Govt Premiums & Loans
+                                </th>
 
-    <th class="bg-deductions small">SSS</th>
-    <th class="bg-deductions small">SSS Loan</th>
-    <th class="bg-deductions small">Pag-ibig</th>
-    <th class="bg-deductions small">PIB Loan</th>
-    <th class="bg-deductions small">PhilHealth</th>
-</tr>
+                                <th rowspan="2">Taxable Inc.</th>
+                                <th rowspan="2">Tax</th>
+                                <th rowspan="2">Allowances</th>
+                                <th rowspan="2">Adjustments</th>
+                                <th rowspan="2">Charges</th>
+                                <th rowspan="2">Cash Adv</th>
+                                <th rowspan="2" class="pe-4 fw-bold-total">Pay Receivable</th>
+                            </tr>
+                            <tr>
+                                <th class="bg-earnings">HD Pay</th>
+                                <th class="bg-earnings">OT Pay</th>
+                                <th class="bg-earnings">ND Pay</th>
+
+                                <th class="bg-deductions small">SSS</th>
+                                <th class="bg-deductions small">SSS Loan</th>
+                                <th class="bg-deductions small">Pag-ibig</th>
+                                <th class="bg-deductions small">PIB Loan</th>
+                                <th class="bg-deductions small">PhilHealth</th>
+                            </tr>
                         </thead>
                         <tbody id="payrollTableBody">
                         </tbody>

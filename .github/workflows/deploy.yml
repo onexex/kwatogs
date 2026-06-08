@@ -3,7 +3,7 @@ name: Deploy Laravel jQuery All-in-One via SFTP & SSH
 on:
   push:
     branches:
-      - master  # Siguraduhing ito ang tamang pangalan ng branch mo sa GitHub
+      - master-deploy  # Siguraduhing ito ang tamang pangalan ng branch mo sa GitHub
 
 jobs:
   production-deploy:

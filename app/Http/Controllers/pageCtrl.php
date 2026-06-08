@@ -76,9 +76,17 @@ class pageCtrl extends Controller
         ->with('departmentData',$getDepartment)
         ->with('employeeClassification',$getClassification);
     }
-    public function payroll()
+    public function payroll(Request $request)
     {
-        return view('pages.modules.payroll');
+        $companies = Company::get();
+
+        // Fetch all records from the classifications table
+        $classifications = DB::table('classifications')->get();
+
+        // Get the current classification filter from the URL parameter (defaults to 'all')
+        $selectedClassification = $request->query('classification', 'all');
+
+        return view('pages.modules.payroll', compact('companies', 'classifications', 'selectedClassification'));
     }
 
     // JMC

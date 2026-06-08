@@ -5,11 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class company extends Model
+class Company extends Model // Capitalized class name to match Laravel PSR standards
 {
     use HasFactory;
+    
     protected $table = 'companies';
-    protected $primaryKey = 'id ';
+    protected $primaryKey = 'id'; // Fixed the trailing space here
     public $timestamps = true;   
 
     protected $fillable = [
@@ -19,4 +20,12 @@ class company extends Model
         'comp_color',
         'comp_logo_path',
     ];
+
+    /**
+     * Get all payrolls associated with the company.
+     */
+    public function payrolls()
+    {
+        return $this->hasMany(Payroll::class, 'company_id', 'id');
+    }
 }

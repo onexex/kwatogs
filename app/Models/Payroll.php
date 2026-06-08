@@ -14,6 +14,7 @@ class Payroll extends Model
 
     protected $fillable = [
         'employee_id',
+        'company_id', // <-- Add this to allow saving the company ID
         'payroll_start_date',
         'payroll_end_date',
         'pay_date',
@@ -40,12 +41,11 @@ class Payroll extends Model
         'total_deductions',
         'net_pay',
         'status',
-         'sss_employer',
+        'sss_employer',
         'philhealth_employer',
         'pagibig_employer',
         'basicPay',
         'taxable_income'
-
     ];
 
     protected $casts = [
@@ -72,6 +72,18 @@ class Payroll extends Model
 
     public function employee()
     {
-        return $this->belongsTo(User::class, 'employee_id','empID');
+        return $this->belongsTo(User::class, 'employee_id', 'empID');
+    }
+
+    /**
+     * Get the company associated with the payroll.
+     */
+    public function company()
+    {
+        // If your payrolls table uses 'company_id' pointing to 'id' on companies:
+        return $this->belongsTo(Company::class, 'company_id', 'id');
+        
+        // NOTE: If your payroll table maps directly to 'comp_id' instead, use this:
+        // return $this->belongsTo(Company::class, 'company_id', 'comp_id');
     }
 }
