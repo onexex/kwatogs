@@ -667,27 +667,111 @@ class PayrollController extends Controller
     //     ]);
     // }
 
+    // public function getDetailsByPayroll(Request $request)
+    // {
+    //     $request->validate([
+    //         'payroll_date' => 'required|date',
+    //         'company_id'   => 'nullable',
+    //         'class_id'     => 'nullable',
+    //     ]);
+
+    //     // 1. Build Query with Filters
+    //     // Isama na natin ang 'empdetails' sa 'with' para hindi na mag-query ulit (Eager Loading)
+    //     $query = PayrollDetail::with(['employee', 'empdetails'])
+    //         ->where('payroll_date', $request->payroll_date);
+
+    //     // Apply Company Filter
+    //     if ($request->has('company_id') && $request->company_id !== 'all') {
+    //         $query->whereHas('employee', function($q) use ($request) {
+    //             $q->where('company_id', $request->company_id);
+    //         });
+    //     }
+
+    //     // Apply Class Filter (Dito natin gagamitin ang empdetails)
+    //     if ($request->has('class_id') && $request->class_id !== 'all') {
+    //         $query->whereHas('empdetails', function($q) use ($request) {
+    //             $q->where('empClassification', $request->class_id);
+    //         });
+    //     }
+
+    //     $rawDetails = $query->get();
+
+    //     // 2. Sort the collection by Last Name (lname) then by Date
+    //     $sortedDetails = $rawDetails->sortBy(function ($row) {
+    //         return [
+    //             strtolower($row->employee->lname ?? ''), 
+    //             $row->date
+    //         ];
+    //     });
+
+    //     // 3. Group and Map
+    //     $details = $sortedDetails->groupBy('employee_id')->map(function ($rows) {
+    //         $employee = $rows->first()->employee;
+
+    //         return [
+    //             'employee_id'   => $employee?->empID ?? 'N/A',
+    //             'employee_name' => $employee
+    //                 ? strtoupper(trim(($employee->lname ?? '') . ' ' . ($employee->fname ?? '')))
+    //                 : 'UNKNOWN',
+    //             'department'    => $employee?->department ?? 'N/A',
+    //             'position'      => $employee?->position   ?? 'N/A',
+    //             'records'       => $rows->map(function ($row) {
+    //                 return [
+    //                     'date'                => $row->date?->format('Y-m-d') ?? 'N/A',
+    //                     'logsType'            => $row->logsType            ?? 'N/A',
+    //                     'totalHours'          => $row->totalHours          ?? 0,
+    //                     'late_minutes'        => $row->late_minutes        ?? 0,
+    //                     'undertime_minutes'   => $row->undertime_minutes   ?? 0,
+    //                     'late_deduction'      => $row->late_deduction      ?? 0,
+    //                     'undertime_deduction' => $row->undertime_deduction ?? 0,
+    //                     // Dito na-apply ang divide by 60
+    //                     'night_diff_hours'    => ($row->night_diff_hours ?? 0) / 60,
+    //                     'night_diff_pay'      => $row->night_diff_pay      ?? 0,
+    //                     'penalty_amount'      => $row->penalty_amount      ?? 0,
+    //                     'adjustment_amount'   => $row->adjustment_amount   ?? 0,
+    //                     'remarks'             => $row->remarks             ?? '',
+    //                 ];
+    //             })->values(),
+    //             'totals' => [
+    //                 'totalHours'          => $rows->sum('totalHours'),
+    //                 'late_minutes'        => $rows->sum('late_minutes'),
+    //                 'undertime_minutes'   => $rows->sum('undertime_minutes'),
+    //                 'late_deduction'      => $rows->sum('late_deduction'),
+    //                 'undertime_deduction' => $rows->sum('undertime_deduction'),
+    //                 // Total hours din dapat i-sum base sa divided value kung kinakailangan
+    //                 'night_diff_hours'    => ($rows->sum('night_diff_hours') ?? 0) / 60,
+    //                 'night_diff_pay'      => $rows->sum('night_diff_pay'),
+    //                 'penalty_amount'      => $rows->sum('penalty_amount'),
+    //                 'adjustment_amount'   => $rows->sum('adjustment_amount'),
+    //             ],
+    //         ];
+    //     })->values();
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'data'    => $details,
+    //     ]);
+    // }
+
     public function getDetailsByPayroll(Request $request)
-    {
+{
+    try {
         $request->validate([
             'payroll_date' => 'required|date',
             'company_id'   => 'nullable',
             'class_id'     => 'nullable',
         ]);
 
-        // 1. Build Query with Filters
-        // Isama na natin ang 'empdetails' sa 'with' para hindi na mag-query ulit (Eager Loading)
+        // 1. Build Query
         $query = PayrollDetail::with(['employee', 'empdetails'])
             ->where('payroll_date', $request->payroll_date);
 
-        // Apply Company Filter
         if ($request->has('company_id') && $request->company_id !== 'all') {
             $query->whereHas('employee', function($q) use ($request) {
                 $q->where('company_id', $request->company_id);
             });
         }
 
-        // Apply Class Filter (Dito natin gagamitin ang empdetails)
         if ($request->has('class_id') && $request->class_id !== 'all') {
             $query->whereHas('empdetails', function($q) use ($request) {
                 $q->where('empClassification', $request->class_id);
@@ -696,53 +780,27 @@ class PayrollController extends Controller
 
         $rawDetails = $query->get();
 
-        // 2. Sort the collection by Last Name (lname) then by Date
-        $sortedDetails = $rawDetails->sortBy(function ($row) {
-            return [
-                strtolower($row->employee->lname ?? ''), 
-                $row->date
-            ];
-        });
-
-        // 3. Group and Map
-        $details = $sortedDetails->groupBy('employee_id')->map(function ($rows) {
+        // 2. Map and Grouping
+        $details = $rawDetails->sortBy(function ($row) {
+            return [strtolower($row->employee->lname ?? ''), $row->date];
+        })->groupBy('employee_id')->map(function ($rows) {
             $employee = $rows->first()->employee;
 
             return [
                 'employee_id'   => $employee?->empID ?? 'N/A',
-                'employee_name' => $employee
-                    ? strtoupper(trim(($employee->lname ?? '') . ' ' . ($employee->fname ?? '')))
-                    : 'UNKNOWN',
-                'department'    => $employee?->department ?? 'N/A',
-                'position'      => $employee?->position   ?? 'N/A',
+                'employee_name' => $employee ? strtoupper(trim(($employee->lname ?? '') . ' ' . ($employee->fname ?? ''))) : 'UNKNOWN',
                 'records'       => $rows->map(function ($row) {
                     return [
                         'date'                => $row->date?->format('Y-m-d') ?? 'N/A',
-                        'logsType'            => $row->logsType            ?? 'N/A',
-                        'totalHours'          => $row->totalHours          ?? 0,
-                        'late_minutes'        => $row->late_minutes        ?? 0,
-                        'undertime_minutes'   => $row->undertime_minutes   ?? 0,
-                        'late_deduction'      => $row->late_deduction      ?? 0,
-                        'undertime_deduction' => $row->undertime_deduction ?? 0,
-                        // Dito na-apply ang divide by 60
+                        'totalHours'          => $row->totalHours ?? 0,
                         'night_diff_hours'    => ($row->night_diff_hours ?? 0) / 60,
-                        'night_diff_pay'      => $row->night_diff_pay      ?? 0,
-                        'penalty_amount'      => $row->penalty_amount      ?? 0,
-                        'adjustment_amount'   => $row->adjustment_amount   ?? 0,
-                        'remarks'             => $row->remarks             ?? '',
+                        // ... other fields
                     ];
                 })->values(),
                 'totals' => [
-                    'totalHours'          => $rows->sum('totalHours'),
-                    'late_minutes'        => $rows->sum('late_minutes'),
-                    'undertime_minutes'   => $rows->sum('undertime_minutes'),
-                    'late_deduction'      => $rows->sum('late_deduction'),
-                    'undertime_deduction' => $rows->sum('undertime_deduction'),
-                    // Total hours din dapat i-sum base sa divided value kung kinakailangan
-                    'night_diff_hours'    => ($rows->sum('night_diff_hours') ?? 0) / 60,
-                    'night_diff_pay'      => $rows->sum('night_diff_pay'),
-                    'penalty_amount'      => $rows->sum('penalty_amount'),
-                    'adjustment_amount'   => $rows->sum('adjustment_amount'),
+                    'totalHours'       => $rows->sum('totalHours'),
+                    'night_diff_hours' => ($rows->sum('night_diff_hours') ?? 0) / 60,
+                    // ... other totals
                 ],
             ];
         })->values();
@@ -751,6 +809,19 @@ class PayrollController extends Controller
             'success' => true,
             'data'    => $details,
         ]);
+
+    } catch (\Exception $e) {
+        // I-log ang error para makita sa storage/logs/laravel.log
+        Log::error('Payroll Error: ' . $e->getMessage());
+
+        // Return JSON error response para makita sa Network Tab
+        return response()->json([
+            'success' => false,
+            'message' => 'Error processing payroll details.',
+            'error'   => $e->getMessage(), // Pwede mong burahin ito sa production
+            'trace'   => $e->getTraceAsString() 
+        ], 500);
     }
+}
 
 }

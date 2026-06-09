@@ -7,36 +7,130 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Print button
     document.getElementById('btn_rptprint').addEventListener('click', () => {
-        const printArea = document.getElementById('Report_thisPrint').innerHTML;
-        const printWindow = window.open('', '_blank', 'width=900,height=600');
-        printWindow.document.write(`
-            <html>
-                <head>
-                    <title>Attendance Report</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; margin: 20px; }
-                        table { width: 100%; border-collapse: collapse; }
-                        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-                        th { background-color: #f2f2f2; }
-                        .fw-bold { font-weight: bold; }
-                        .bg-secondary { background-color: #495057; color: #fff; }
-                        .bg-warning { background-color: #ffeeba; }
-                        .bg-light { background-color: #f8f9fa; }
-                        h2 { text-align: center; margin-bottom: 10px; }
-                    </style>
-                </head>
-                <body>
-                    <h2>Attendance Report</h2>
-                    <p><strong>Date Range:</strong> ${document.getElementById('txtDateFrom').value} - ${document.getElementById('txtDateTo').value}</p>
-                    ${printArea}
-                </body>
-            </html>
-        `);
-        printWindow.document.close();
-        printWindow.focus();
-        printWindow.print();
-        printWindow.close();
+    const printArea = document.getElementById('Report_thisPrint').innerHTML;
+    const printWindow = window.open('', '_blank', 'width=1000,height=800');
+
+    const fromDate = document.getElementById('txtDateFrom').value;
+    const toDate = document.getElementById('txtDateTo').value;
+    
+    const printTimestamp = new Date().toLocaleDateString('en-US', { 
+        month: 'short', day: '2-digit', year: 'numeric', 
+        hour: '2-digit', minute: '2-digit' 
     });
+
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <title>Attendance Viewer</title>
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                
+                <style>
+                    /* 📄 Page Configuration (Landscape & 0.5 Margin) */
+                    @page { 
+                        size: landscape; 
+                        margin: 0.5in; 
+                    }
+                    
+                    body { 
+                        font-family: 'Segoe UI', Roboto, Arial, sans-serif; 
+                        color: #000 !important; 
+                        background: white !important;
+                    }
+                    
+                    /* 🚀 Force remove ALL colors from Bootstrap classes */
+                    * {
+                        color: #000 !important;
+                        background-color: transparent !important;
+                    }
+                    
+                    /* 🏢 Header Styling */
+                    .print-header { 
+                 
+                        padding-bottom: 5px; /* Binawasan ko rin ang padding dito para mas masiksik sa taas */
+                        margin-bottom: 15px;
+                    }
+                    .report-title {
+                        font-size: 24px;
+                        font-weight: bold;
+                        text-transform: uppercase;
+                        margin: 0;
+                        letter-spacing: 1px;
+                    }
+                    
+                    /* 📅 Metadata Table */
+                    .meta-table { width: 100%; margin-bottom: 15px; font-size: 13px; }
+                    .meta-table td { padding: 4px 0; }
+                    
+                    /* 📊 Table Adjustments for Print Quality */
+                    #Report_thisPrint table, table { 
+                        width: 100% !important; 
+                        border-collapse: collapse !important; 
+                        font-size: 12px !important; 
+                    }
+                    th { 
+                        text-transform: uppercase; 
+                        font-size: 11px !important; 
+                        padding: 8px !important; /* Binawasan ng konti para mas kumasiya sa landscape */
+                        border-bottom: 1px solid #000 !important;
+                    }
+                    td { 
+                        padding: 6px 8px !important; /* Binawasan ng konti ang space para mas maraming rows ang magkasya */
+                        border-bottom: 1px solid #ccc !important; 
+                        vertical-align: middle;
+                    }
+                    
+                    /* Clean up badges */
+                    .badge { 
+                        border: 1px solid #666 !important; 
+                        font-weight: normal !important;
+                        padding: 4px 8px !important;
+                    }
+                    
+                    /* Hide unnecessary UI elements */
+                    .btn, .spinner-border, input, .toggle-password { display: none !important; }
+                </style>
+            </head>
+            <body>
+                <div class="print-header d-flex justify-content-between align-items-end">
+                    <div>
+                        <h1 class="report-title">Attendance Viewer</h1>
+                    </div>
+                    <div class="text-end" style="font-size: 11px;">
+                        <strong>GENERATED ON</strong><br>
+                        ${printTimestamp}
+                    </div>
+                </div>
+
+                <table class="meta-table">
+                    <tr>
+                        <td style="width: 100px;"><strong>Date Range:</strong></td>
+                        <td>${fromDate} &nbsp;to&nbsp; ${toDate}</td>
+                    </tr>
+                </table>
+
+                <div id="print-content">
+                    ${printArea}
+                </div>
+
+                <div style="margin-top: 30px; font-size: 11px; text-align: center; text-transform: uppercase;">
+                    <p>*** End of Report ***</p>
+                </div>
+
+                <script>
+                    window.onload = function() {
+                        setTimeout(() => {
+                            window.focus();
+                            window.print();
+                            window.close();
+                        }, 500);
+                    };
+                </script>
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+});
 
         const btnRefresh = $("#btn_rptrefresh");
     const empSelect = $("#txtLastname");
