@@ -190,7 +190,7 @@
                                 <button class="btn btn-glass-light flex-fill" id="btnSummary">
                                     <i class="fa fa-chart-pie me-1 small"></i> Summary
                                 </button>
-                                <button class="btn btn-glass-light flex-fill" id="btnSummary">
+                                <button class="btn btn-glass-light flex-fill" id="btnSummary1">
                                     <i class="fa fa-file-export"></i> Export
                                 </button>
                             </div>
@@ -251,7 +251,7 @@
             <div class="card-header bg-white py-3 px-4 border-bottom-0 d-flex justify-content-between align-items-center">
                 <h6 class="m-0 fw-bold text-secondary">PAYROLL REGISTER</h6>
                 <button class="btn btn-light btn-sm rounded-pill px-3 fw-bold shadow-sm" id="btnPrint">
-                    <i class="fa fa-print me-2 text-primary"></i> Print Register
+                    <i class="fa fa-print me-2 text-primary"></i> Print Report
                 </button>
             </div>
             <div class="card-body p-0">

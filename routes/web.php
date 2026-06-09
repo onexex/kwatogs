@@ -362,6 +362,9 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     Route::post('/attendance/fetch', [reportAttendanceCtrl::class, 'fetchAttendance'])->name('attendance.fetch');
     Route::get('/payroll/compute', [PayrollController::class, 'computePayroll']);
     Route::get('/payroll/fetch', [PayrollController::class, 'fetchPayroll']);
+    Route::get('/payroll/details/by-payroll', [PayrollController::class, 'getDetailsByPayroll'])
+    ->name('payroll.details.by-payroll');
+    
 
 
     Route::get('pages/modules/loanManagement', [LoanController::class, 'index'])->name('loans.index');

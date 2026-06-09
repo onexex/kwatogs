@@ -43,4 +43,11 @@ class PayrollDetail extends Model
     {
         return $this->belongsTo(User::class, 'employee_id','empID');
     }
+
+    public function empdetails()
+    {
+       return $this->belongsTo(EmpDetail::class, 'employee_id', 'empID');
+    }
+
+
 }

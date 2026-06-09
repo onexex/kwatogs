@@ -354,7 +354,8 @@
             </div>
         </div>
     </div>
-    // Change Password Modal 412026
+
+    {{-- // Change Password Modal 412026 --}}
     <div class="modal fade" id="changePassModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">

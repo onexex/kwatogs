@@ -123,6 +123,293 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 });
+
+document.addEventListener("DOMContentLoaded", function () {
+    const summaryBtn = document.getElementById("btnSummary");
+
+    if (summaryBtn) {
+        summaryBtn.addEventListener("click", async function () {
+
+            // ── 1. Grab filter values ────────────────────────────────────────
+            const payrollId = document.getElementById("payroll_id")?.value;
+            const payDate   = document.getElementById("pay_date")?.value   || "N/A";
+            const dateFrom  = document.getElementById("date_from")?.value  || "N/A";
+            const dateTo    = document.getElementById("date_to")?.value    || "N/A";
+            const companyId = document.getElementById("selCompany")?.value || "all";
+            const classId   = document.getElementById("selFilter")?.value  || "all";
+
+            if (!payDate) {
+                alert("No payroll selected.");
+                return;
+            }
+
+            const params = new URLSearchParams({
+                payroll_date: payDate,
+                company_id: companyId,
+                class_id: classId
+            });
+
+            // ── 2. Fetch grouped detail records ──────────────────────────────
+            let employees = [];
+            try {
+                const res = await fetch(
+                    `/payroll/details/by-payroll?${params.toString()}`,
+                    {
+                        headers: {
+                            "X-Requested-With": "XMLHttpRequest",
+                            "Accept": "application/json",
+                        },
+                    }
+                );
+
+                if (!res.ok) throw new Error(`Server error: ${res.status}`);
+                const json = await res.json();
+                employees = json.data ?? [];
+            } catch (err) {
+                alert("Failed to load payroll details: " + err.message);
+                return;
+            }
+
+            if (!employees.length) {
+                alert("No payroll detail records found for this payroll.");
+                return;
+            }
+
+            // ── 3. Build HTML for each employee block ────────────────────────
+            const fmt = (n) =>
+                Number(n).toLocaleString("en-PH", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                });
+
+            const employeeBlocks = employees
+                .map((emp) => {
+                    const rows = emp.records
+                        .map(
+                            (r) => `
+                        <tr>
+                            <td>${r.date}</td>
+                            <td>${r.logsType}</td>
+                            <td>${fmt(r.totalHours)}</td>
+                            <td>${r.late_minutes}</td>
+                            <td>${r.undertime_minutes}</td>
+                            <td>${fmt(r.late_deduction)}</td>
+                            <td>${fmt(r.undertime_deduction)}</td>
+                            <td>${fmt(r.night_diff_hours)}</td>
+                            <td>${fmt(r.night_diff_pay)}</td>
+                            <td>${fmt(r.penalty_amount)}</td>
+                            <td>${fmt(r.adjustment_amount)}</td>
+                            <td>${r.remarks}</td>
+                        </tr>`
+                        )
+                        .join("");
+
+                    const t = emp.totals;
+
+                    return `
+                    <div class="employee-block">
+                        <div class="emp-header">
+                            <div>
+                                <span class="emp-name">${emp.employee_name}</span>
+                                <span class="emp-meta">ID: ${emp.employee_id}</span>
+                            </div>
+                            <div>
+                                <span class="emp-meta">${emp.department}</span>
+                                &nbsp;|&nbsp;
+                                <span class="emp-meta">${emp.position}</span>
+                            </div>
+                        </div>
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Total Hrs</th>
+                                    <th>Late (min)</th>
+                                    <th>UT (min)</th>
+                                    <th>Late Ded.</th>
+                                    <th>UT Ded.</th>
+                                    <th>ND Hrs</th>
+                                    <th>ND Pay</th>
+                                    <th>Penalty</th>
+                                    <th>Adjustment</th>
+                                    <th>Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${rows}
+                            </tbody>
+                            <tfoot>
+                                <tr class="totals-row">
+                                    <td colspan="2"><strong>TOTALS</strong></td>
+                                    <td>${fmt(t.totalHours)}</td>
+                                    <td>${t.late_minutes}</td>
+                                    <td>${t.undertime_minutes}</td>
+                                    <td>${fmt(t.late_deduction)}</td>
+                                    <td>${fmt(t.undertime_deduction)}</td>
+                                    <td>${fmt(t.night_diff_hours)}</td>
+                                    <td>${fmt(t.night_diff_pay)}</td>
+                                    <td>${fmt(t.penalty_amount)}</td>
+                                    <td>${fmt(t.adjustment_amount)}</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>`;
+                })
+                .join("");
+
+            // ── 4. Meta info ─────────────────────────────────────────────────
+            const now = new Date();
+            const generatedAt = now.toLocaleString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+            });
+            const generatedBy = window.loggedEmployee || "Unknown User";
+
+            // ── 5. Open print window ─────────────────────────────────────────
+            const printWindow = window.open("", "", "width=1400,height=900");
+
+            printWindow.document.write(`
+                <html>
+                    <head>
+                        <title>Payroll Detail Report</title>
+                        <style>
+                            * { box-sizing: border-box; }
+
+                            body {
+                                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                                color: #333;
+                                padding: 20px;
+                                background: #fff;
+                                font-size: 0.78rem;
+                            }
+
+                            /* ── Report header ── */
+                            .report-header {
+                                text-align: center;
+                                margin-bottom: 20px;
+                                padding-bottom: 10px;
+                                border-bottom: 2px solid #008080;
+                            }
+                            .report-header h2 {
+                                margin: 0 0 4px;
+                                font-size: 18px;
+                                font-weight: 500;
+                                color: #008080;
+                            }
+                            .report-header h4 {
+                                margin: 0 0 8px;
+                                font-weight: 500;
+                                color: #555;
+                            }
+                            .report-meta {
+                                font-size: 0.82rem;
+                                line-height: 1.6;
+                                color: #444;
+                            }
+
+                            /* ── Employee block ── */
+                            .employee-block {
+                                margin-bottom: 30px;
+                                page-break-inside: avoid;
+                            }
+                            .emp-header {
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;
+                                background-color: #e0f2f1;
+                                border-left: 4px solid #008080;
+                                padding: 6px 10px;
+                                margin-bottom: 4px;
+                                border-radius: 2px;
+                            }
+                            .emp-name {
+                                font-weight: 600;
+                                font-size: 0.9rem;
+                                color: #006060;
+                                margin-right: 10px;
+                            }
+                            .emp-meta {
+                                font-size: 0.78rem;
+                                color: #555;
+                            }
+
+                            /* ── Table ── */
+                            table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                font-size: 0.72rem;
+                            }
+                            th {
+                                background-color: #008080;
+                                color: #fff;
+                                padding: 5px 7px;
+                                text-align: center;
+                                white-space: nowrap;
+                            }
+                            td {
+                                border: 0.5px solid #ccc;
+                                padding: 4px 7px;
+                                text-align: center;
+                            }
+                            tbody tr:nth-child(even) { background-color: #f9f9f9; }
+                            tbody tr:hover           { background-color: #e8f5e9; }
+
+                            /* ── Totals row ── */
+                            .totals-row {
+                                background-color: #fff8e1 !important;
+                                font-weight: 600;
+                                border-top: 2px solid #008080;
+                            }
+
+                            /* ── Footer ── */
+                            .footer {
+                                margin-top: 30px;
+                                font-size: 0.78rem;
+                                text-align: right;
+                                font-style: italic;
+                                color: #777;
+                            }
+
+                            @media print {
+                                body { padding: 0; }
+                                .employee-block { page-break-inside: avoid; }
+                                tr { page-break-inside: avoid; page-break-after: auto; }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="report-header">
+                            <h2>Payroll Detail Report</h2>
+                            <h4>Payroll Period: ${dateFrom} to ${dateTo}</h4>
+                            <div class="report-meta">
+                                <strong>Payroll Date:</strong> ${payDate} &nbsp;|&nbsp;
+                                <strong>Generated By:</strong> ${generatedBy} &nbsp;|&nbsp;
+                                <strong>Generated On:</strong> ${generatedAt}
+                            </div>
+                        </div>
+
+                        ${employeeBlocks}
+
+                        <div class="footer">
+                            <i>Generated from Payroll System</i>
+                        </div>
+                    </body>
+                </html>
+            `);
+
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+            printWindow.close();
+        });
+    }
+});
 // Initialize jQuery once DOM is ready
 $(document).ready(function () {
     const $payrollTableBody = $("#payrollTableBody");
@@ -342,4 +629,6 @@ $(document).ready(function () {
     if (payDateInput.val()) {
         payDateInput.trigger("change");
     }
+
+    
 });
