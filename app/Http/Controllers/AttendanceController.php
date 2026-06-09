@@ -134,43 +134,32 @@ class AttendanceController extends Controller
         }
     }
 
-    // public function index()
-    // {
-    //     // Fetch summaries with their related employee and deductions
-    //     $summaries = AttendanceSummary::with(['employee', 'manualDeductions'])
-    //         ->orderBy('attendance_date', 'desc')
-    //         ->get();
-
-    
-    // }
-    
-
     public function index(Request $request)
-{
-    $query = AttendanceSummary::with(['employee', 'manualDeductions'])
-        ->when($request->from_date, fn($q) => $q->whereDate('attendance_date', '>=', $request->from_date))
-        ->when($request->to_date, fn($q) => $q->whereDate('attendance_date', '<=', $request->to_date))
-        ->when($request->search, function ($q) use ($request) {
-            $q->whereHas('employee', function ($sub) use ($request) {
-                $sub->where('lname', 'like', '%' . $request->search . '%')
-                    ->orWhere('mname', 'like', '%' . $request->search . '%')
-                    ->orWhere('fname', 'like', '%' . $request->search . '%')
+    {
+        $query = AttendanceSummary::with(['employee', 'manualDeductions'])
+            ->when($request->from_date, fn($q) => $q->whereDate('attendance_date', '>=', $request->from_date))
+            ->when($request->to_date, fn($q) => $q->whereDate('attendance_date', '<=', $request->to_date))
+            ->when($request->search, function ($q) use ($request) {
+                $q->whereHas('employee', function ($sub) use ($request) {
+                    $sub->where('lname', 'like', '%' . $request->search . '%')
+                        ->orWhere('mname', 'like', '%' . $request->search . '%')
+                        ->orWhere('fname', 'like', '%' . $request->search . '%')
 
 
-                    ->orWhere('empID', 'like', '%' . $request->search . '%');
-            });
-        })
-        ->orderBy('attendance_date', 'desc');
+                        ->orWhere('empID', 'like', '%' . $request->search . '%');
+                });
+            })
+            ->orderBy('attendance_date', 'desc');
 
-    if ($request->ajax()) {
-        return response()->json($query->get());
+        if ($request->ajax()) {
+            return response()->json($query->get());
+        }
+
+        // Standard load (for first time visit)
+        $summaries = $query->paginate(50);
+                return view('pages.modules.hradjustment', compact('summaries'));
+
     }
-
-    // Standard load (for first time visit)
-    $summaries = $query->paginate(50);
-            return view('pages.modules.hradjustment', compact('summaries'));
-
-}
 
     public function storeDeduction(Request $request)
     {

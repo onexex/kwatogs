@@ -92,18 +92,18 @@ class ContributionHelper
         }
 
         // Compute taxable income (include contributions + gov loans only)
-        $loanDeductibleForTax = 0;
-        foreach ($loans as $loan) {
-            if (in_array($loan->loan_type, ['pagibig', 'sss', 'philhealth'])) {
-                $loanDeductibleForTax += min($loan->monthly_amortization, $loan->balance);
-            }
-        }
+        // $loanDeductibleForTax = 0;
+        // foreach ($loans as $loan) {
+        //     if (in_array($loan->loan_type, ['pagibig', 'sss', 'philhealth'])) {
+        //         $loanDeductibleForTax += min($loan->monthly_amortization, $loan->balance);
+        //     }
+        // }
 
         $taxableIncome = $monthlyGross
             - ($sss['employee_share'] ?? 0)
             - ($philhealth['employee_share'] ?? 0)
-            - ($pagibig['employee_share'] ?? 0)
-            - $loanDeductibleForTax;
+            - ($pagibig['employee_share'] ?? 0);
+            // - $loanDeductibleForTax;
 
         // Compute withholding tax
         $withholdingTax = BirWithholdingTax::compute($taxableIncome, $employeeClass);

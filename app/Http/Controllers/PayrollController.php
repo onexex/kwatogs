@@ -1,22 +1,23 @@
 <?php
 namespace App\Http\Controllers;
 
-use App\Models\OB;
-use Carbon\Carbon;
-use App\Models\Loan;
-use App\Models\User;
-use App\Models\Leave;
-use App\Models\Payroll;
-use App\Models\Overtime;
+use App\Helpers\ContributionHelper;
 use App\Models\empDetail;
-use App\Models\LoanPayment;
-use Illuminate\Http\Request;
-use App\Models\PayrollDetail;
-use App\Models\SssContribution;
 use App\Models\EmployeeSchedule;
 use App\Models\holidayLoggerModel;
+use App\Models\Leave;
+use App\Models\LeaveDetail;
+use App\Models\Loan;
+use App\Models\LoanPayment;
+use App\Models\OB;
+use App\Models\Overtime;
+use App\Models\Payroll;
+use App\Models\PayrollDetail;
+use App\Models\SssContribution;
+use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Helpers\ContributionHelper;
 use Illuminate\Support\Facades\Log;
  
 class PayrollController extends Controller
@@ -54,19 +55,40 @@ class PayrollController extends Controller
         $dateFrom = $request->query('date_from');
         $dateTo = $request->query('date_to');
         $pay_date = $request->query('payDate');
-        $filter = $request->query('filter', 'all');
+        
+        // ✨ Saluhin ang bagong parameters ✨
+        $companyId = $request->query('company_id', 'all');
+        $classificationId = $request->query('classification_id', 'all');
 
         // Ginagamit ang 'users' table base sa iyong User::class relation
-        $query = Payroll::with('employee')
+        // ✨ Isinama ang 'employee.empDetail' para maka-access tayo sa classification at company ✨
+        $query = Payroll::with(['employee.empDetail'])
             ->join('users', 'payrolls.employee_id', '=', 'users.empID')
             ->select('payrolls.*');
 
-        if ($dateFrom && $dateTo) {
+        // ✨ FIX: Ihiwalay ang Pay Date filter para laging mag-trigger ✨
+        if (!empty($pay_date)) {
             $query->where('payrolls.pay_date', $pay_date);
         }
 
-        if ($filter !== 'all') {
-            $query->where('payrolls.status', $filter);
+        // ✨ OPTIONAL: Kung gusto mo rin mag-filter gamit ang cut-off dates ✨
+        if (!empty($dateFrom) && !empty($dateTo)) {
+            $query->where('payrolls.payroll_start_date', '>=', $dateFrom)
+                  ->where('payrolls.payroll_end_date', '<=', $dateTo);
+        }
+
+        // ✨ I-FILTER BASE SA COMPANY AT CLASSIFICATION ✨
+        if ($companyId !== 'all' || $classificationId !== 'all') {
+            $query->whereHas('employee.empDetail', function ($q) use ($companyId, $classificationId) {
+                
+                if ($companyId !== 'all') {
+                    $q->where('empCompID', $companyId); 
+                }
+                
+                if ($classificationId !== 'all') {
+                    $q->where('empClassification', $classificationId);
+                }
+            });
         }
 
         // Pwede mo na i-order gamit ang columns mula sa users table
@@ -76,6 +98,7 @@ class PayrollController extends Controller
 
         return response()->json($payrolls);
     }
+
     public function computePayroll(Request $request)
     {
         DB::beginTransaction();
@@ -135,7 +158,20 @@ class PayrollController extends Controller
             // =======================================================
             //   Preload all relevant records once
             // =======================================================
-            $allLeaves = Leave::where('status', 'Approved')
+            // $allLeaves = LeaveDetail::where('status', 'APPROVEDBYCFO')
+            //     ->where(function ($q) use ($startDate, $endDate) {
+            //         $q->whereBetween('date', [$startDate, $endDate])
+            //         ->orWhereBetween('date', [$startDate, $endDate]);
+            //     })
+            //     ->get()
+            //     ->groupBy('employee_id');
+
+            $allLeaves = LeaveDetail::where('status', 'APPROVEDBYCFO')
+            ->whereBetween('date', [$startDate, $endDate])
+            ->get()
+            ->groupBy('employee_id');
+
+            $allObs = OB::where('status', 'APPROVEDBYCFO')
                 ->where(function ($q) use ($startDate, $endDate) {
                     $q->whereBetween('start_date', [$startDate, $endDate])
                     ->orWhereBetween('end_date', [$startDate, $endDate]);
@@ -143,15 +179,7 @@ class PayrollController extends Controller
                 ->get()
                 ->groupBy('employee_id');
 
-            $allObs = OB::where('status', 'Approved')
-                ->where(function ($q) use ($startDate, $endDate) {
-                    $q->whereBetween('start_date', [$startDate, $endDate])
-                    ->orWhereBetween('end_date', [$startDate, $endDate]);
-                })
-                ->get()
-                ->groupBy('employee_id');
-
-            $allOts = Overtime::where('status', 'Approved')
+            $allOts = Overtime::where('status', 'APPROVEDBYCFO')
                 ->where(function ($q) use ($startDate, $endDate) {
                     $q->whereBetween('date_from', [$startDate, $endDate])
                     ->orWhereBetween('date_to', [$startDate, $endDate]);
@@ -174,6 +202,7 @@ class PayrollController extends Controller
                 //  Initialize payroll counters
                 {
                     $absentDays = 0;
+                    $daysPresent = 0; 
                     $totalHoursWorked = 0;
                     $totalOT = 0;
                     $totalLate = 0;
@@ -186,6 +215,7 @@ class PayrollController extends Controller
                     $outpass_minutes = 0;
                     $night_diff_pay = 0;
                     $night_diff_mins = 0;
+                    $custom_deduction_mins = 0;
                 }
 
                 //  Get employee schedules + attendance summaries
@@ -197,10 +227,18 @@ class PayrollController extends Controller
                 if ($employeeSchedules->isEmpty()) continue;
 
                 //  Key attendance summaries by date
+                // $attendanceSummaries = $emp->attendanceSummaries()
+                //     ->whereBetween('attendance_date', [$startDate, $endDate])
+                //     ->get()
+                //     ->keyBy(fn($s) => date('Y-m-d', strtotime($s->attendance_date)));
+
+                // Hanapin at palitan itong part na ito:
                 $attendanceSummaries = $emp->attendanceSummaries()
+                    ->with('manualDeductions') // ✨ ADD THIS PARA IWAS N+1 LAG ✨
                     ->whereBetween('attendance_date', [$startDate, $endDate])
                     ->get()
                     ->keyBy(fn($s) => date('Y-m-d', strtotime($s->attendance_date)));
+                    
                 //key ob ot leave
                     $employeeLeaves = $allLeaves->get($emp->empID, collect());
                     $employeeObs    = $allObs->get($emp->empID, collect());
@@ -236,11 +274,24 @@ class PayrollController extends Controller
                         } 
 
                         //  Check absence
+                        // if ($onLeave || $onOB) {
+                        //     $isAbsent = false;
+                        // } else {
+                        //     $isAbsent = (!$summary || $summary->total_hours == 0);
+                        //     if ($isAbsent) $absentDays++;
+                        // }
+
                         if ($onLeave || $onOB) {
                             $isAbsent = false;
+                            // Pwede mo rin i-count as daysPresent kung bayad ang leave nila
+                            $daysPresent++; 
                         } else {
                             $isAbsent = (!$summary || $summary->total_hours == 0);
-                            if ($isAbsent) $absentDays++;
+                            if ($isAbsent) {
+                                $absentDays++;
+                            } else {
+                                $daysPresent++; // ✨ ADD THIS: Bilangin kapag pumasok ✨
+                            }
                         }
 
                         //  Accumulate worked hours + deductions
@@ -251,6 +302,10 @@ class PayrollController extends Controller
                             $over_break_minutes  += $summary->over_break_minutes;
                             $outpass_minutes   += $summary->outpass_minutes;
                             $night_diff_mins +=  $summary->mins_night_diff;
+
+                            if ($summary->deductions && $summary->deductions->isNotEmpty()) {
+                                $custom_deduction_mins += $summary->deductions->sum('deduction_minutes');
+                            }
                         }
 
                         // ==============================
@@ -295,6 +350,7 @@ class PayrollController extends Controller
                 //  CLASSIFICATION: REGULAR vs DAILY
                 // ==============================
                 $employeeClass = $emp->empDetail->empClassification;
+                $custom_deduction_pay = ($custom_deduction_mins / 60) * $hourlyRate;
 
                 if ($employeeClass === 'RGLR') {
                     //  MONTHLY-PAID EMPLOYEES
@@ -307,23 +363,67 @@ class PayrollController extends Controller
                     $night_diff_pay =   ($night_diff_mins / 60) * $hourlyRate;
                   
                     
-                    $deductions = $absentDeduction + $lateDeduction + $undertimeDeduction + $outPassDeduction + $overBreakDeduction; 
+                    // $deductions = $absentDeduction + $lateDeduction + $undertimeDeduction + $outPassDeduction + $overBreakDeduction; 
+                    $deductions = $absentDeduction + $lateDeduction + $undertimeDeduction + $outPassDeduction + $overBreakDeduction + $custom_deduction_pay;
                     $grossPay = $empBasic - $deductions + $holidayPay + $night_diff_pay;
 
                 } else {
                     //  DAILY / CONTRACTUAL EMPLOYEES
+                    // $basicPay = $dailyRate;
+                    // $regularPay = $totalHoursWorked * $hourlyRate;
+                    // $otPay = $totalOT;
+                    // $absentDeduction    = $absentDays * $dailyRate;
+                    // $lateDeduction      = ($totalLate / 60) * $hourlyRate;
+                    // $undertimeDeduction = ($totalUndertime / 60) * $hourlyRate;
+                    // $overBreakDeduction = ($over_break_minutes / 60) * $hourlyRate;
+                    // $outPassDeduction   = ($outpass_minutes / 60) * $hourlyRate;
+                    // $night_diff_pay =   ($night_diff_mins / 60) * $hourlyRate;
+
+                    // // $deductions = $absentDeduction + $lateDeduction + $undertimeDeduction + $outPassDeduction + $overBreakDeduction; 
+                    // $deductions = $absentDeduction + $lateDeduction + $undertimeDeduction + $outPassDeduction + $overBreakDeduction + $custom_deduction_pay;
+                    // $grossPay = max(($regularPay + $otPay + $holidayPay + $night_diff_pay ), 0);
+
+                    //  DAILY / CONTRACTUAL EMPLOYEES
+                    // $basicPay = $dailyRate;
+                    // $regularPay = $totalHoursWorked * $hourlyRate;
+                    // $otPay = $totalOT;
+
+                    // // ✨ TINANGGAL ANG ABSENT DEDUCTION DITO ✨
+                    // $lateDeduction      = ($totalLate / 60) * $hourlyRate;
+                    // $undertimeDeduction = ($totalUndertime / 60) * $hourlyRate;
+                    // $overBreakDeduction = ($over_break_minutes / 60) * $hourlyRate;
+                    // $outPassDeduction   = ($outpass_minutes / 60) * $hourlyRate;
+
+                    // // ✨ FIX 3: NIGHT DIFF PREMIUM (10% na lang, hindi 100%) ✨
+                    // $night_diff_pay =   ($night_diff_mins / 60) * ($hourlyRate * 0.10);
+
+                    // // KINOMPUTE ANG DEDUCTIONS WALANG ABSENCES
+                    // // $deductions = $lateDeduction + $undertimeDeduction + $outPassDeduction + $overBreakDeduction + $custom_deduction_pay;
+                    // $deductions = $custom_deduction_pay;
+                    
+                    // // ✨ IBINAWAS NA ANG $deductions SA GROSS PAY ✨
+                    // $grossPay = max(($regularPay - $deductions + $otPay + $holidayPay + $night_diff_pay ), 0);
                     $basicPay = $dailyRate;
-                    $regularPay = $totalHoursWorked * $hourlyRate;
+    
+                    // ✨ FIX: Gamitin ang Days Present imbes na Total Hours ✨
+                    $regularPay = $daysPresent * $dailyRate; 
+                    
                     $otPay = $totalOT;
-                    $absentDeduction    = $absentDays * $dailyRate;
+                    
+                    // HINDI na natin kailangan ang absentDeduction dito dahil 
+                    // kung absent siya, hindi siya kasama sa $daysPresent (No Work, No Pay)
+                    
                     $lateDeduction      = ($totalLate / 60) * $hourlyRate;
                     $undertimeDeduction = ($totalUndertime / 60) * $hourlyRate;
                     $overBreakDeduction = ($over_break_minutes / 60) * $hourlyRate;
                     $outPassDeduction   = ($outpass_minutes / 60) * $hourlyRate;
-                    $night_diff_pay =   ($night_diff_mins / 60) * $hourlyRate;
+                    $night_diff_pay     = ($night_diff_mins / 60) * ($hourlyRate * 0.10);
 
-                    $deductions = $absentDeduction + $lateDeduction + $undertimeDeduction + $outPassDeduction + $overBreakDeduction; 
-                    $grossPay = max(($regularPay + $otPay + $holidayPay + $night_diff_pay ), 0);
+                    // Kukunin ang deductions (katulad din sa Regular)
+                    $deductions = $lateDeduction + $undertimeDeduction + $outPassDeduction + $overBreakDeduction + $custom_deduction_pay; 
+                    
+                    // Ibabawas ang deductions sa regular pay
+                    $grossPay = max(($regularPay - $deductions + $otPay + $holidayPay + $night_diff_pay), 0);
                 }
 
                 // ==============================
@@ -358,8 +458,27 @@ class PayrollController extends Controller
                     + $contributions['withholding_tax'];
 
                 //  Compute net & receivable
+                // $netPay = max(0, ($grossPay - $govDues));
+                // $payRec = $netPay - $salaryLoan - $charges - $cash_adv - $other + $allowance;
+                //  Compute net & receivable
                 $netPay = max(0, ($grossPay - $govDues));
                 $payRec = $netPay - $salaryLoan - $charges - $cash_adv - $other + $allowance;
+
+                // ✨ ADD THIS SAFEGUARD ✨
+                $canAffordLoans = true;
+                if ($payRec < 0) {
+                    // I-set sa 0 ang receivable para hindi negative ang ilalabas sa payslip
+                    $payRec = max(0, $netPay + $allowance); 
+                    
+                    // I-flag na hindi natuloy ang kaltas ng loans
+                    $canAffordLoans = false; 
+                    
+                    // Optional: I-zero out ang loan record sa payroll details para hindi lumabas sa payslip
+                    $salaryLoan = 0;
+                    $charges = 0;
+                    $cash_adv = 0;
+                    $other = 0;
+                }
 
                 // ==============================
                 //  SAVE PAYROLL RECORD
@@ -400,7 +519,24 @@ class PayrollController extends Controller
                 // ==============================
                 //  AUTO LOAN DEDUCTION (End of Month)
                 // ==============================
-                if ($isEndOfMonth && $employeeClass !== 'TRN') {
+                // if ($isEndOfMonth && $employeeClass !== 'TRN') {
+                //     foreach ($contributions['loan_details'] as $loan) {
+                //         LoanPayment::create([
+                //             'loan_id' => $loan['loan_id'],
+                //             'payroll_id' => $payroll->id,
+                //             'amount_paid' => $loan['deducted_amount'],
+                //             'payment_date' => now(),
+                //             'remarks' => 'Auto payroll deduction',
+                //         ]);
+
+                //         Loan::where('id', $loan['loan_id'])->update([
+                //             'balance' => $loan['new_balance'],
+                //             'status'  => $loan['new_balance'] <= 0 ? 'paid' : 'active'
+                //         ]);
+                //     }
+                // }
+
+                if ($isEndOfMonth && $employeeClass !== 'TRN' && $canAffordLoans) { 
                     foreach ($contributions['loan_details'] as $loan) {
                         LoanPayment::create([
                             'loan_id' => $loan['loan_id'],

@@ -120,12 +120,12 @@
                                 <div class="filter-icon"><i class="fa fa-building"></i></div> Company
                             </label>
                             <select id="selCompany" class="form-select bg-light border-0">
-    <option value="all">All Organizations</option>
-    @foreach ($companies as $company)
-        {{-- Using $company->id and $company->comp_name based on your model's fillable fields --}}
-        <option value="{{ $company->id }}">{{ $company->comp_name }}</option>
-    @endforeach
-</select>
+                                <option value="all">All Organizations</option>
+                                @foreach ($companies as $company)
+                                    {{-- Using $company->comp_id and $company->comp_name based on your model's fillable fields --}}
+                                    <option value="{{ $company->comp_id }}">{{ $company->comp_name }}</option>
+                                @endforeach
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -155,14 +155,14 @@
                             <label class="filter-label">
                                 <div class="filter-icon"><i class="fa fa-filter"></i></div> Status Filter
                             </label>
-                           <select id="selFilter" class="form-select bg-light border-0" onchange="filterByClassification(this.value)">
-    <option value="all" @selected($selectedClassification === 'all')>View All Employees</option>
-    @foreach ($classifications as $classification)
-        <option value="{{ $classification->id }}" @selected($selectedClassification == $classification->id)>
-            {{ $classification->class_desc }}
-        </option>
-    @endforeach
-</select>
+                            <select id="selFilter" class="form-select bg-light border-0">
+                                <option value="all" @selected($selectedClassification === 'all')>View All </option>
+                                @foreach ($classifications as $classification)
+                                    <option value="{{ $classification->class_code }}" @selected($selectedClassification == $classification->class_code)>
+                                        {{ $classification->class_desc }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -185,7 +185,7 @@
 
                             <div class="d-flex gap-2 mb-4">
                                 <button class="btn btn-glass-light flex-fill" id="btnPayroll">
-                                    <i class="fa-solid fa-list-ol me-1 small"></i> Register
+                                    <i class="fa-solid fa-list-ol me-1 small"></i> View Payroll
                                 </button>
                                 <button class="btn btn-glass-light flex-fill" id="btnSummary">
                                     <i class="fa fa-chart-pie me-1 small"></i> Summary

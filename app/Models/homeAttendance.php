@@ -61,28 +61,6 @@ class homeAttendance extends Model
         return Carbon::parse($this->time_out)->isAfter(Carbon::parse($this->time_in)->endOfDay());
     }
 
-    // public function calculateNightDiff(Carbon $actualIn, Carbon $actualOut)
-    // {
-    //     $nightDiffMinutes = 0;
-    //     $current = $actualIn->copy()->startOfDay();
-
-    //     while ($current->lt($actualOut)) {
-    //         $nightStart = $current->copy()->setTime(22, 0); // 10 PM
-    //         $nightEnd   = $current->copy()->addDay()->setTime(6, 0); // 6 AM next day
-
-    //         $start = $actualIn->greaterThan($nightStart) ? $actualIn : $nightStart;
-    //         $end   = $actualOut->lessThan($nightEnd) ? $actualOut : $nightEnd;
-
-    //         if ($end->gt($start)) {
-    //             $nightDiffMinutes += $end->diffInMinutes($start);
-    //         }
-
-    //         $current->addDay();
-    //     }
-
-    //     return round($nightDiffMinutes / 60, 2);
-    // }
-
     public function calculateNightDiff(Carbon $actualIn, Carbon $actualOut)
     {
         $nightDiffMinutes = 0;
@@ -206,66 +184,6 @@ class homeAttendance extends Model
         $summary->save();
     }
 
-    // protected function evaluatePunch($actualIn, $actualOut)
-    // {
-    //     $result = [
-    //         'time_out' => $actualOut,
-    //         'duration_hours' => 0,
-    //         'night_diff_hours' => 0,
-    //         'remarks' => null,
-    //     ];
-
-    //     $isInvalid = false;
-
-    //     if ($this->schedule) {
-    //         $schedIn = Carbon::parse($this->schedule->sched_start_date . ' ' . $this->schedule->sched_in);
-    //         $schedOut = Carbon::parse($this->schedule->sched_end_date . ' ' . $this->schedule->sched_out);
-
-    //         // Overnight adjust
-    //         if ($schedOut->lessThanOrEqualTo($schedIn)) {
-    //             $schedOut->addDay();
-    //         }
-
-    //         // Validation
-    //         if ($actualIn->lt($schedIn->copy()->subDay())) {
-    //             $isInvalid = true;
-    //             $result['remarks'] = 'Auto-closed (Missed logout)';
-    //         } elseif ($actualOut->gt($actualIn->copy()->addHours(16))) {
-    //             $isInvalid = true;
-    //             $result['remarks'] = 'Invalid (Over 16 hours)';
-    //         }
-
-    //         // Limit duration calc to schedule end
-    //         $calcOut = $actualOut->gt($schedOut) ? $schedOut->copy() : $actualOut->copy();
-    //     } else {
-    //         $calcOut = $actualOut->copy();
-    //         if ($calcOut->diffInHours($actualIn) > 16) {
-    //             $isInvalid = true;
-    //             $result['remarks'] = 'Invalid (Over 16 hours)';
-    //         }
-    //     }
-
-    //     // Compute duration
-    //     if (!$isInvalid) {
-    //         $result['duration_hours'] = round($calcOut->diffInMinutes($actualIn) / 60, 2);
-    //         $result['night_diff_hours'] = $this->calculateNightDiff($actualIn, $calcOut);
-
-    //         // Mark overnight
-    //         if ($calcOut->isNextDay($actualIn) || $calcOut->lt($actualIn)) {
-    //             $result['remarks'] = 'Overnight shift';
-    //         }
-    //     }
-
-    //     $result['time_out'] = $actualOut;
-
-    //     // Always tie attendance date to schedule start
-    //     if ($this->schedule) {
-    //         $result['attendance_date'] = Carbon::parse($this->schedule->sched_start_date)->toDateString();
-    //     }
-
-    //     return $result;
-    // }
-
     public function logTimeOut($timeOut = null)
     {
         $timeOut = Carbon::parse($timeOut ?: now());
@@ -382,12 +300,32 @@ class homeAttendance extends Model
             ->whereDate('attendance_date', '<', $today)
             ->get();
 
+        // foreach ($previousOpenLogs as $log) {
+        //     $evaluated = $log->evaluatePunch(Carbon::parse($log->time_in), $now);
+        //     $log->time_out = $evaluated['time_out'] ?? $now;
+        //     $log->duration_hours = $evaluated['duration_hours'] ?? 0;
+        //     $log->night_diff_hours = $evaluated['night_diff_hours'] ?? 0;
+        //     $log->remarks = $evaluated['remarks'] ?? 'Auto-closed (Missed logout)';
+        //     $log->save();
+        // }
+
         foreach ($previousOpenLogs as $log) {
-            $evaluated = $log->evaluatePunch(Carbon::parse($log->time_in), $now);
-            $log->time_out = $evaluated['time_out'] ?? $now;
-            $log->duration_hours = $evaluated['duration_hours'] ?? 0;
-            $log->night_diff_hours = $evaluated['night_diff_hours'] ?? 0;
-            $log->remarks = $evaluated['remarks'] ?? 'Auto-closed (Missed logout)';
+            // Kunin ang scheduled out time nila para sa shift na naiwan
+            $schedOut = $now; // fallback
+            if ($log->schedule) {
+                $schedOut = Carbon::parse($log->attendance_date . ' ' . $log->schedule->sched_out);
+                if ($schedOut->lt(Carbon::parse($log->time_in))) {
+                    $schedOut->addDay(); // Handle overnight
+                }
+            }
+
+            $evaluated = $log->evaluatePunch(Carbon::parse($log->time_in), $schedOut);
+            
+            // ✨ I-set ang time_out sa kung kailan sana sila dapat nag-out ✨
+            $log->time_out = $schedOut; 
+            $log->duration_hours = 0; // 0 hours paid penalty dahil nakalimutan mag-out (o palitan base sa policy niyo)
+            $log->night_diff_hours = 0;
+            $log->remarks = 'Auto-closed (Missed logout)';
             $log->save();
         }
 
@@ -468,299 +406,124 @@ class homeAttendance extends Model
         ]);
     }
 
+    // protected function evaluatePunch($actualIn, $actualOut)
+    // {
+    //     $result = [
+    //         'time_out' => $actualOut,
+    //         'duration_hours' => 0,
+    //         'night_diff_hours' => 0,
+    //         'remarks' => null,
+    //     ];
+
+    //     $isInvalid = false;
+
+    //     if ($this->schedule) {
+    //         $schedIn = Carbon::parse($this->schedule->sched_start_date . ' ' . $this->schedule->sched_in);
+    //         $schedOut = Carbon::parse($this->schedule->sched_end_date . ' ' . $this->schedule->sched_out);
+
+    //         // Overnight adjust
+    //         if ($schedOut->lessThanOrEqualTo($schedIn)) {
+    //             $schedOut->addDay();
+    //         }
+
+    //         // 🛡️ CLAMPING: Only calculate for time WITHIN schedule
+    //         // If in at 9PM for 10PM shift, start calc at 10PM.
+    //         // If out at 7AM for 6AM shift, end calc at 6AM.
+    //         $calcIn = $actualIn->gt($schedIn) ? $actualIn->copy() : $schedIn->copy();
+    //         $calcOut = $actualOut->lt($schedOut) ? $actualOut->copy() : $schedOut->copy();
+
+    //         // Safety: If for some reason calcIn is after calcOut (invalid punch)
+    //         if ($calcIn->gt($calcOut)) {
+    //             $calcIn = $calcOut->copy();
+    //         }
+
+    //         // Validation for missing logouts
+    //         if ($actualIn->lt($schedIn->copy()->subDay())) {
+    //             $isInvalid = true;
+    //             $result['remarks'] = 'Auto-closed (Missed logout)';
+    //         } elseif ($actualOut->gt($actualIn->copy()->addHours(16))) {
+    //             $isInvalid = true;
+    //             $result['remarks'] = 'Invalid (Over 16 hours)';
+    //         }
+    //     } else {
+    //         // No schedule fallback
+    //         $calcIn = $actualIn->copy();
+    //         $calcOut = $actualOut->copy();
+            
+    //         if ($calcOut->diffInHours($actualIn) > 16) {
+    //             $isInvalid = true;
+    //             $result['remarks'] = 'Invalid (Over 16 hours)';
+    //         }
+    //     }
+
+    //     // Compute duration and Night Diff using Clamped Times (calcIn to calcOut)
+    //     if (!$isInvalid) {
+    //         $result['duration_hours'] = round($calcOut->diffInMinutes($calcIn) / 60, 2);
+            
+    //         // 🌙 IMPORTANT: We now pass $calcIn and $calcOut to Night Diff calculation
+    //         $result['night_diff_hours'] = $this->calculateNightDiff($calcIn, $calcOut);
+
+    //         // Mark remarks if it crossed midnight
+    //         if ($calcOut->format('Y-m-d') !== $calcIn->format('Y-m-d')) {
+    //             $result['remarks'] = 'Overnight shift';
+    //         }
+    //     }
+
+    //     $result['time_out'] = $actualOut;
+
+    //     if ($this->schedule) {
+    //         $result['attendance_date'] = Carbon::parse($this->schedule->sched_start_date)->toDateString();
+    //     }
+
+    //     return $result;
+    // }
+
     protected function evaluatePunch($actualIn, $actualOut)
     {
         $result = [
             'time_out' => $actualOut,
             'duration_hours' => 0,
             'night_diff_hours' => 0,
-            'remarks' => null,
+            'remarks' => 'Regular Shift',
         ];
-
-        $isInvalid = false;
 
         if ($this->schedule) {
             $schedIn = Carbon::parse($this->schedule->sched_start_date . ' ' . $this->schedule->sched_in);
             $schedOut = Carbon::parse($this->schedule->sched_end_date . ' ' . $this->schedule->sched_out);
+            if ($schedOut->lt($schedIn)) { $schedOut->addDay(); }
 
-            // Overnight adjust
-            if ($schedOut->lessThanOrEqualTo($schedIn)) {
-                $schedOut->addDay();
-            }
+            // ✨ HARD CLAMPING (ANTI-ABUSE) ✨
+            // Kung pumasok nang maaga (actualIn < schedIn), gamitin pa rin ang schedIn.
+            // Kung lumabas nang maaga (actualOut < schedOut), gamitin ang actualOut.
+            // Kung lumabas nang late (actualOut > schedOut), gamitin ang schedOut.
+            
+            $calcIn = ($actualIn->lt($schedIn)) ? $schedIn->copy() : $actualIn->copy();
+            $calcOut = ($actualOut->gt($schedOut)) ? $schedOut->copy() : $actualOut->copy();
 
-            // 🛡️ CLAMPING: Only calculate for time WITHIN schedule
-            // If in at 9PM for 10PM shift, start calc at 10PM.
-            // If out at 7AM for 6AM shift, end calc at 6AM.
-            $calcIn = $actualIn->gt($schedIn) ? $actualIn->copy() : $schedIn->copy();
-            $calcOut = $actualOut->lt($schedOut) ? $actualOut->copy() : $schedOut->copy();
-
-            // Safety: If for some reason calcIn is after calcOut (invalid punch)
+            // 🛡️ Safety: Invalid punch detection
             if ($calcIn->gt($calcOut)) {
                 $calcIn = $calcOut->copy();
+                $result['remarks'] = 'Invalid (Time-in after Time-out)';
             }
 
-            // Validation for missing logouts
-            if ($actualIn->lt($schedIn->copy()->subDay())) {
-                $isInvalid = true;
-                $result['remarks'] = 'Auto-closed (Missed logout)';
-            } elseif ($actualOut->gt($actualIn->copy()->addHours(16))) {
-                $isInvalid = true;
-                $result['remarks'] = 'Invalid (Over 16 hours)';
-            }
+            // Add remarks for transparency
+            if ($actualIn->lt($schedIn)) $result['remarks'] = 'Early In (Capped at Sched)';
+            if ($actualOut->gt($schedOut)) $result['remarks'] = 'Late Out (Capped at Sched)';
+            
         } else {
-            // No schedule fallback
-            $calcIn = $actualIn->copy();
-            $calcOut = $actualOut->copy();
-            
-            if ($calcOut->diffInHours($actualIn) > 16) {
-                $isInvalid = true;
-                $result['remarks'] = 'Invalid (Over 16 hours)';
-            }
+            // Fallback kung walang schedule
+            $calcIn = $actualIn;
+            $calcOut = $actualOut;
+            $result['remarks'] = 'No Schedule (Actual Time)';
         }
 
-        // Compute duration and Night Diff using Clamped Times (calcIn to calcOut)
-        if (!$isInvalid) {
-            $result['duration_hours'] = round($calcOut->diffInMinutes($calcIn) / 60, 2);
-            
-            // 🌙 IMPORTANT: We now pass $calcIn and $calcOut to Night Diff calculation
-            $result['night_diff_hours'] = $this->calculateNightDiff($calcIn, $calcOut);
-
-            // Mark remarks if it crossed midnight
-            if ($calcOut->format('Y-m-d') !== $calcIn->format('Y-m-d')) {
-                $result['remarks'] = 'Overnight shift';
-            }
-        }
-
-        $result['time_out'] = $actualOut;
-
-        if ($this->schedule) {
-            $result['attendance_date'] = Carbon::parse($this->schedule->sched_start_date)->toDateString();
-        }
+        $result['duration_hours'] = round($calcOut->diffInMinutes($calcIn) / 60, 2);
+        $result['night_diff_hours'] = $this->calculateNightDiff($calcIn, $calcOut);
 
         return $result;
     }
 
-    // public function logTimeOut($timeOut = null)
-    // {
-    //     $timeOut = Carbon::parse($timeOut ?: now());
-    //     $this->time_out = $timeOut;
-
-    //     if (!$this->time_in) {
-    //         $this->duration_hours = 0;
-    //         $this->night_diff_hours = 0;
-    //         $this->remarks = 'Invalid (No time-in found)';
-    //         $this->save();
-    //         $this->updateDailySummary();
-    //         return $this;
-    //     }
-
-    //     $actualIn = Carbon::parse($this->time_in);
-    //     $actualOut = $timeOut->copy();
-
-    //     // Prevent reversed times
-    //     if ($actualOut->lt($actualIn)) {
-    //         $actualOut = $actualIn->copy();
-    //         $this->time_out = $actualOut;
-    //     }
-
-    //     // 🔍 Retrieve correct schedule for this punch
-    //     $schedule = $this->schedule;
-    //         $breakDuration = 0;
-    //     //  LUNCH BREAK HANDLING
-    //     if ($schedule && $schedule->break_start && $schedule->break_end) {
-        
-    //         // Build Carbon timestamps for the break period
-    //         $breakStart = Carbon::parse($actualIn->toDateString() . ' ' . $schedule->break_start);
-    //         $breakEnd = Carbon::parse($actualIn->toDateString() . ' ' . $schedule->break_end);
-       
-    //         // If employee TIME-OUT happens during break → mark as lunch break
-    //         if ($timeOut->between($breakStart, $breakEnd)) {
-    //             // $this->time_out = $timeOut;
-    //             $this->remarks = 'Lunch Break';    
-    //             $this->save();
-    //             // return $this;
-    //         }
-    //         $breakDuration = 0;
-
-    //         if ($actualIn->lte($breakStart) && $timeOut->gte($breakEnd)) {
-    //             $breakDuration = $breakEnd->diffInMinutes($breakStart);
-    //         } 
-    //         // elseif ($actualIn->lte($breakStart) && $timeOut->between($breakStart, $breakEnd)) {
-    //         //     $breakDuration = $timeOut->diffInMinutes($breakStart);
-    //         // }
-    //          elseif ($actualIn->between($breakStart, $breakEnd) && $timeOut->gte($breakEnd)) {
-    //             $breakDuration = $breakEnd->diffInMinutes($actualIn);
-    //         } elseif ($actualIn->between($breakStart, $breakEnd) && $timeOut->between($breakStart, $breakEnd)) {
-    //             $breakDuration = $timeOut->diffInMinutes($actualIn);
-    //         } else {
-    //             $breakDuration = 0;
-    //         }
-    //     }
-
-    //     if (!$schedule) {
-    //         // Fallback: find schedule based on the IN date or OUT date
-    //         $schedule = EmployeeSchedule::where('employee_id', $this->employee_id)
-    //             ->where(function ($q) use ($actualIn, $actualOut) {
-    //                 $q->whereBetween('sched_start_date', [$actualIn->toDateString(), $actualOut->toDateString()])
-    //                 ->orWhereBetween('sched_end_date', [$actualIn->toDateString(), $actualOut->toDateString()]);
-    //             })
-    //             ->first();
-    //     }
-
-    //     // If still no schedule, last resort is today's
-    //     if (!$schedule) {
-    //         $schedule = EmployeeSchedule::where('employee_id', $this->employee_id)
-    //             ->whereDate('sched_start_date', '<=', $actualOut->toDateString())
-    //             ->whereDate('sched_end_date', '>=', $actualOut->toDateString())
-    //             ->first();
-    //     }
-
-    //     $this->schedule_id = $schedule?->id ?? $this->schedule_id;
-
-    //     // 🧮 Evaluate punch (handles overnight or normal)
-    //     $evaluated = $this->evaluatePunch($actualIn, $actualOut);
-
-    //     // Convert punch duration to minutes
-    //     $totalMinutes = $evaluated['duration_hours'] * 60;
-
-    //     // Deduct lunch break minutes if applicable
-    //     if (isset($this->break_minutes) && $this->break_minutes > 0) {
-    //         $totalMinutes -= $this->break_minutes;
-    //     }
-    //     // Deduct break
-    //     $totalMinutes -= $breakDuration;
-
-    //     // Prevent negative result
-    //     $totalMinutes = max($totalMinutes, 0);
-
-    //     // Recompute into hours
-    //     $this->duration_hours = $totalMinutes / 60;
-    //     //   $evaluated = $this->evaluatePunch($actualIn, $actualOut);
-
-    //     // $this->duration_hours = $evaluated['duration_hours'];
-  
-    //     $this->night_diff_hours = $evaluated['night_diff_hours'];
-    //     $this->remarks = $evaluated['remarks'];
-    //     $this->save();
-
-    //     // ✅ Update summary only if valid or overnight
-    //     if (empty($evaluated['remarks']) || str_contains($evaluated['remarks'], 'Overnight')) {
-    //         $this->updateDailySummary();
-    //     }
-
-    //     return $this;
-    // }
-
-    // public function logTimeOut($timeOut = null)
-    // {
-    //     $timeOut = Carbon::parse($timeOut ?: now());
-    //     $this->time_out = $timeOut;
-
-    //     if (!$this->time_in) {
-    //         $this->duration_hours = 0;
-    //         $this->night_diff_hours = 0;
-    //         $this->remarks = 'Invalid (No time-in found)';
-    //         $this->save();
-    //         $this->updateDailySummary();
-    //         return $this;
-    //     }
-
-    //     $actualIn = Carbon::parse($this->time_in);
-    //     $actualOut = $timeOut->copy();
-
-    //     // 🛑 Prevent reversed times
-    //     if ($actualOut->lt($actualIn)) {
-    //         $actualOut = $actualIn->copy();
-    //         $this->time_out = $actualOut;
-    //     }
-
-    //     // 🔍 Retrieve correct schedule for this punch
-    //     $schedule = $this->schedule;
-    //     $breakDuration = 0;
-
-    //     // 🍱 LUNCH BREAK HANDLING
-    //     if ($schedule && $schedule->break_start && $schedule->break_end) {
-    //         $breakStart = Carbon::parse($actualIn->toDateString() . ' ' . $schedule->break_start);
-    //         $breakEnd = Carbon::parse($actualIn->toDateString() . ' ' . $schedule->break_end);
-
-    //         // If employee TIME-OUT happens during break → mark as lunch break
-    //         if ($timeOut->between($breakStart, $breakEnd)) {
-    //             $this->remarks = 'Lunch Break';
-    //             $this->save();
-    //         }
-
-    //         if ($actualIn->lte($breakStart) && $timeOut->gte($breakEnd)) {
-    //             $breakDuration = $breakEnd->diffInMinutes($breakStart);
-    //         } elseif ($actualIn->between($breakStart, $breakEnd) && $timeOut->gte($breakEnd)) {
-    //             $breakDuration = $breakEnd->diffInMinutes($actualIn);
-    //         } elseif ($actualIn->between($breakStart, $breakEnd) && $timeOut->between($breakStart, $breakEnd)) {
-    //             $breakDuration = $timeOut->diffInMinutes($actualIn);
-    //         } else {
-    //             $breakDuration = 0;
-    //         }
-    //     }
-
-    //     // 🧭 If no schedule attached, find one
-    //     if (!$schedule) {
-    //         $schedule = EmployeeSchedule::where('employee_id', $this->employee_id)
-    //             ->where(function ($q) use ($actualIn, $actualOut) {
-    //                 $q->whereBetween('sched_start_date', [$actualIn->toDateString(), $actualOut->toDateString()])
-    //                     ->orWhereBetween('sched_end_date', [$actualIn->toDateString(), $actualOut->toDateString()]);
-    //             })
-    //             ->first();
-    //     }
-
-    //     // Fallback: today’s schedule
-    //     if (!$schedule) {
-    //         $schedule = EmployeeSchedule::where('employee_id', $this->employee_id)
-    //             ->whereDate('sched_start_date', '<=', $actualOut->toDateString())
-    //             ->whereDate('sched_end_date', '>=', $actualOut->toDateString())
-    //             ->first();
-    //     }
-
-    //     $this->schedule_id = $schedule?->id ?? $this->schedule_id;
-    //         // dd($schedule->sched_in);
-
-    //     //  ADJUST if actual time-in is earlier than scheduled time-in
-    //     if ($schedule && $schedule->sched_in) {
-    //         $schedIn = Carbon::parse($actualIn->toDateString() . ' ' . $schedule->sched_in);
-
-    //         // If employee clocked in before schedule start, adjust from schedIn
-    //         if ($actualIn->lt($schedIn) && $actualOut->gte($schedIn)) {
-    //             $actualIn = $schedIn->copy();
-    //         }
-    //     }
-
-    //     //  Evaluate punch (handles overnight or normal)
-    //     $evaluated = $this->evaluatePunch($actualIn, $actualOut);
-
-    //     // Convert punch duration to minutes
-    //     $totalMinutes = $evaluated['duration_hours'] * 60;
-
-    //     // Deduct lunch break minutes if applicable
-    //     if (isset($this->break_minutes) && $this->break_minutes > 0) {
-    //         $totalMinutes -= $this->break_minutes;
-    //     }
-
-    //     // Deduct computed break duration
-    //     $totalMinutes -= $breakDuration;
-
-    //     //  Prevent negative result
-    //     $totalMinutes = max($totalMinutes, 0);
-
-    //     // Convert back to hours
-    //     $this->duration_hours = $totalMinutes / 60;
-    //     $this->night_diff_hours = $evaluated['night_diff_hours'];
-    //     $this->remarks = $evaluated['remarks'];
-    //     $this->save();
-
-    //     //  Update summary only if valid or overnight
-    //     if (empty($evaluated['remarks']) || str_contains($evaluated['remarks'], 'Overnight')) {
-    //         $this->updateDailySummary();
-    //     }
-
-    //     return $this;
-    // }
+   
 
     
 
