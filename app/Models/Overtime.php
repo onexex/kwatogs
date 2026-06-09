@@ -26,6 +26,6 @@ class Overtime extends Model
 
     public function employee(): BelongsTo
     {
-        return $this->belongsTo(EmpDetail::class, 'emp_detail_id', 'id');
+        return $this->belongsTo(empDetail::class, 'emp_detail_id', 'id');
     }
 }
