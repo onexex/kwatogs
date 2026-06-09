@@ -635,6 +635,7 @@
                                 <div class="col-lg-3 col-md-6">
                                     <label for="selCivilStatus" class="field-label">Civil Status <span class="req">*</span></label>
                                     <select class="form-select" name="status" id="selCivilStatus">
+                                        <option value="">— Select —</option>
                                         <option value="0">Single</option>
                                         <option value="1">Married</option>
                                         <option value="2">Divorced</option>

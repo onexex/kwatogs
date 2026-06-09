@@ -607,13 +607,50 @@ $(document).ready(function () {
             });
     });
 
-    // Clear a tab's badge when the user fixes a field in it
-    $(document).on('input change', '.form-control, .form-select', function () {
-        // Only re-evaluate if there are active badges
+    // ── Live error clearing — as user fixes fields, clear their error
+    //    and immediately refresh the tab badge counts
+    $(document).on('input', '.form-control', function () {
+        const field = $(this);
+
+        // Only act if this field is currently marked invalid
+        if (!field.hasClass('is-invalid')) return;
+
+        const val = field.val().trim();
+        if (val === '') return; // still empty — leave the error showing
+
+        // Clear this field's error state
+        field.removeClass('is-invalid');
+
+        // Find the closest sibling error span (handles both patterns in the blade)
+        const errorSpan = field.siblings('.error-text').first();
+        if (errorSpan.length) {
+            errorSpan.text('').removeClass('text-danger text-success text-muted');
+        }
+
+        // Refresh badge counts immediately (no debounce needed — DOM already updated)
         if ($('.step-error-badge').length > 0) {
-            // Small debounce so we don't re-count on every keystroke
-            clearTimeout(window._badgeRefreshTimer);
-            window._badgeRefreshTimer = setTimeout(showTabErrorBadges, 300);
+            showTabErrorBadges();
+        }
+    });
+
+    $(document).on('change', '.form-select', function () {
+        const field = $(this);
+
+        if (!field.hasClass('is-invalid')) return;
+
+        const val = field.val();
+        if (val === null || val === '') return; // truly no selection — leave error
+
+        // Clear this select's error state
+        field.removeClass('is-invalid');
+
+        const errorSpan = field.siblings('.error-text').first();
+        if (errorSpan.length) {
+            errorSpan.text('').removeClass('text-danger text-success text-muted');
+        }
+
+        if ($('.step-error-badge').length > 0) {
+            showTabErrorBadges();
         }
     });
 
