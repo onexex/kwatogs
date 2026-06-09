@@ -11,6 +11,73 @@
         display: flex; 
         gap: 20px; 
     }
+
+    @media print {
+
+        /* 1. Hide Global Layout Elements (Sidebar, Header, Navbar) */
+    aside, header, nav, 
+    .sidebar, .main-sidebar, .navbar, .topbar, .main-header {
+        display: none !important;
+    }
+
+    /* 2. Reset Main Content Margins (Para hindi tabingi ang print) */
+    .content-wrapper, .main-content, main, #main-wrapper {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
+
+    /* 3. Hide module-specific elements (Yung binigay ko kanina) */
+    .employee-list-panel,
+    nav[aria-label="breadcrumb"],
+    .container-fluid > .d-flex.mb-4,
+    button[onclick="window.print()"], 
+    #editEmployee {
+        display: none !important;
+    }
+    /* 1. Hide everything we don't want to print */
+    .employee-list-panel,
+    nav[aria-label="breadcrumb"],
+    .container-fluid > .d-flex.mb-4, /* Hides the top header and back button */
+    button[onclick="window.print()"], 
+    #editEmployee {
+        display: none !important;
+    }
+
+    /* 2. Format the page background to save ink */
+    body {
+        background-color: white !important;
+    }
+
+    /* 3. Expand the wrapper so the dossier takes the full width */
+    .e201-wrapper {
+        height: auto !important;
+        display: block !important;
+        gap: 0 !important;
+    }
+
+    /* 4. Expand the details panel and remove scroll behavior */
+    .details-panel {
+        width: 100% !important;
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+
+    /* 5. Force the browser to print background colors for the header/avatar */
+    .dossier-header, .avatar-circle, #view_status {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    /* 6. Prevent info cards from breaking in half across multiple pages */
+    .info-card {
+        box-shadow: none !important;
+        border: 1px solid #cbd5e1 !important; /* Add a subtle border for print clarity */
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        margin-bottom: 20px !important;
+    }
+}
     
     /* Left Sidebar */
     .employee-list-panel { 
@@ -129,7 +196,7 @@
                         </div>
                         <div class="col-auto text-end d-flex gap-2">
                             <button class="btn btn-light rounded-pill px-4 fw-bold shadow-sm" onclick="window.print()">
-                                <i class="fa-solid fa-print me-2"></i>Export
+                                <i class="fa-solid fa-print me-2"></i>Print
                             </button>
                             <a target="_blank" class="btn btn-light rounded-pill px-4 fw-bold shadow-sm" id="editEmployee">
                                 <i class="fa-solid fa-pencil me-2"></i>Edit
@@ -245,61 +312,5 @@
 </div>
 
 <script src="{{ asset('js/modules/e201_admin.js') }}" defer></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.getElementById('empSearchInput');
-    const rows = document.querySelectorAll('.emp-row');
-    const sidePanel = document.getElementById('sidePanel');
-    const backBtn = document.getElementById('btnBackToList');
-    const mainDetails = document.getElementById('mainDetails');
-
-    // 🔍 SEARCH LOGIC
-    if(searchInput) {
-        searchInput.addEventListener('input', function() {
-            const query = this.value.toLowerCase().trim();
-            rows.forEach(row => {
-                const searchKey = row.getAttribute('data-search-key') || '';
-                // I-check kung nagma-match sa pangalan o ID
-                if(searchKey.includes(query)) {
-                    row.style.setProperty('display', 'flex', 'important');
-                } else {
-                    row.style.setProperty('display', 'none', 'important');
-                }
-            });
-        });
-    }
-
-    // ⚡ CLICK & SCROLL RESET
-    rows.forEach(row => {
-        row.addEventListener('click', function() {
-            // UI Update: Highlight selected row
-            rows.forEach(r => r.classList.remove('active-selection'));
-            this.classList.add('active-selection');
-
-            // Dossier display logic (siguraduhing hindi d-none)
-            const dossier = document.getElementById('dossierContent');
-            dossier.classList.remove('d-none');
-
-            // Mobile logic: Hide list and show back button
-            if (window.innerWidth < 992) {
-                sidePanel.classList.add('list-hidden-mobile');
-                backBtn.style.display = 'block';
-                window.scrollTo({ top: 0, behavior: 'instant' });
-            }
-
-            // Big Screen Auto-scroll: Reset the panel scroll position to top
-            // Gagamit ng scrollTop manual reset para sigurado
-            mainDetails.scrollTop = 0; 
-            mainDetails.scrollTo({ top: 0, behavior: 'smooth' });
-        });
-    });
-
-    // 🔙 BACK BUTTON (Mobile Only)
-    backBtn.addEventListener('click', function() {
-        sidePanel.classList.remove('list-hidden-mobile');
-        this.style.display = 'none';
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-});
-</script>
+ 
 @endsection

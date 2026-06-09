@@ -17,47 +17,100 @@ class AttendanceController extends Controller
 {
    
 
+    // public function getAttendanceList(Request $request)
+    // {
+    //     $empID = Session::get('LoggedUserEmpID');
+    //     if (!$empID) return response()->json([], 401);
+
+    //     $from = $request->get('from', now()->subDays(10)->toDateString());
+    //     $to   = $request->get('to', now()->toDateString());
+
+    //     $punches = homeAttendance::where('employee_id', $empID)
+    //                 ->whereBetween('attendance_date', [$from, $to])
+    //                 ->orderBy('attendance_date' , 'desc')
+    //                 ->orderBy('time_in','desc')
+    //                 ->get()
+    //                 ->map(function($a){
+    //                     return [
+    //                         'attendance_date' => $a->attendance_date->format('Y-m-d'),
+    //                         'day' => $a->attendance_date->format('l'),
+    //                         'time_in' => $a->time_in ? $a->time_in->format('h:i A') : '-',
+    //                         'time_out' => $a->time_out ? $a->time_out->format('h:i A') : '-',
+    //                         'duration' => $a->duration_hours,
+    //                         'night_diff' => $a->night_diff_hours,
+    //                         'remarks' => $a->remarks ?? '',
+    //                     ];
+    //                 });
+
+    //     $summary = AttendanceSummary::where('employee_id', $empID)
+    //                 ->whereBetween('attendance_date', [$from, $to])
+    //                 ->orderBy('attendance_date')
+    //                 ->get()
+    //                 ->map(function($s){
+    //                     return [
+    //                         'attendance_date' => Carbon::parse($s->attendance_date)->format('Y-m-d'),
+    //                         'total_hours' => $s->total_hours,
+    //                         'mins_late' => $s->mins_late ?? 0,
+    //                         'mins_undertime' => $s->mins_undertime ?? 0,
+    //                         'mins_night_diff' => $s->mins_night_diff ?? 0,
+    //                         'status' => $s->status,
+    //                     ];
+    //                 });
+
+    //     return response()->json([
+    //         'punches' => $punches,
+    //         'summary' => $summary
+    //     ]);
+    // }
+
     public function getAttendanceList(Request $request)
     {
         $empID = Session::get('LoggedUserEmpID');
-        if (!$empID) return response()->json([], 401);
+        
+        if (!$empID) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
 
         $from = $request->get('from', now()->subDays(10)->toDateString());
         $to   = $request->get('to', now()->toDateString());
 
+        // PUNCHES (Time In & Time Out Details)
         $punches = homeAttendance::where('employee_id', $empID)
                     ->whereBetween('attendance_date', [$from, $to])
-                    ->orderBy('attendance_date' , 'desc')
-                    ->orderBy('time_in','desc')
+                    ->orderBy('attendance_date', 'desc') // Parehas na desc
+                    ->orderBy('time_in', 'desc')
                     ->get()
-                    ->map(function($a){
+                    ->map(function($a) {
                         return [
-                            'attendance_date' => $a->attendance_date->format('Y-m-d'),
-                            'day' => $a->attendance_date->format('l'),
-                            'time_in' => $a->time_in ? $a->time_in->format('h:i A') : '-',
-                            'time_out' => $a->time_out ? $a->time_out->format('h:i A') : '-',
-                            'duration' => $a->duration_hours,
-                            'night_diff' => $a->night_diff_hours,
-                            'remarks' => $a->remarks ?? '',
+                            // Ginamitan ng Carbon::parse para 100% safe kahit hindi naka-cast sa model
+                            'attendance_date' => Carbon::parse($a->attendance_date)->format('Y-m-d'),
+                            'day'             => Carbon::parse($a->attendance_date)->format('l'),
+                            'time_in'         => $a->time_in ? Carbon::parse($a->time_in)->format('h:i A') : '-',
+                            'time_out'        => $a->time_out ? Carbon::parse($a->time_out)->format('h:i A') : '-',
+                            'duration'        => $a->duration_hours,
+                            'night_diff'      => $a->night_diff_hours,
+                            'remarks'         => $a->remarks ?? '',
                         ];
                     });
 
+        // SUMMARY (Daily Totals)
         $summary = AttendanceSummary::where('employee_id', $empID)
                     ->whereBetween('attendance_date', [$from, $to])
-                    ->orderBy('attendance_date')
+                    ->orderBy('attendance_date', 'desc') // Ginawa nating desc para match sa punches
                     ->get()
-                    ->map(function($s){
+                    ->map(function($s) {
                         return [
                             'attendance_date' => Carbon::parse($s->attendance_date)->format('Y-m-d'),
-                            'total_hours' => $s->total_hours,
-                            'mins_late' => $s->mins_late ?? 0,
-                            'mins_undertime' => $s->mins_undertime ?? 0,
+                            'total_hours'     => $s->total_hours ?? 0,
+                            'mins_late'       => $s->mins_late ?? 0,
+                            'mins_undertime'  => $s->mins_undertime ?? 0,
                             'mins_night_diff' => $s->mins_night_diff ?? 0,
-                            'status' => $s->status,
+                            'status'          => $s->status ?? 'Unknown',
                         ];
                     });
 
         return response()->json([
+            'status'  => 'success', // Maganda laging may status key para madali i-check sa JS
             'punches' => $punches,
             'summary' => $summary
         ]);
