@@ -3,7 +3,7 @@
 namespace App\Http\Services;
 
 use App\Enums\LeaveStatusEnum;
-use App\Models\EmpDetail;
+use App\Models\empDetail;
 use App\Models\Leave;
 use App\Models\LeaveCreditAllocation;
 use App\Models\leavevalidationModel;
@@ -24,7 +24,7 @@ class LeaveService
                 $leaveType = $leave->leaveType;
 
                 if ($leaveType) {
-                    $employeeDetail = EmpDetail::where('empID', $leave->employee_id)
+                    $employeeDetail = empDetail::where('empID', $leave->employee_id)
                         ->first();
                     
                     if ($employeeDetail) {
