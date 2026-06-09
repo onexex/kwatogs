@@ -80,7 +80,7 @@
 
                                                 <div class="col-lg-12 mb-2">
                                                     <div class="form-floating">
-                                                    <input class="form-control" id="txtCompany" value="{{ $employeeDetails->company->comp_name }}" name="company" type="text" placeholder="-" readonly/>
+                                                    <input class="form-control" id="txtCompany" value="{{ $employeeDetails->company->comp_name ?? '' }}" name="company" type="text" placeholder="-" readonly/>
                                                         <label class="form-check-label" for="txtCompany">Company Name <label for="" class="text-danger">*</label></label>
                                                         <span class="text-danger small error-text company_error"></span>
                                                     </div>
@@ -88,7 +88,7 @@
 
                                                 <div class="col-lg-12 mb-2">
                                                     <div class="form-floating">
-                                                        <input class="form-control" id="txtDepartment" value="{{ $employeeDetails->department->dep_name }}" name="department" type="text" placeholder="-" readonly/>
+                                                        <input class="form-control" id="txtDepartment" value="{{ $employeeDetails->department->dep_name ?? '' }}" name="department" type="text" placeholder="-" readonly/>
                                                         <label class="form-check-label" for="txtDepartment">Department<label for="" class="text-danger">*</label></label>
                                                         <span class="text-danger small error-text department_error"></span>
                                                     </div>
@@ -96,7 +96,7 @@
 
                                                 <div class="col-lg-12 mb-2">
                                                     <div class="form-floating">
-                                                        <input class="form-control" id="txtDesignation" value="{{ $employeeDetails->position->pos_desc }}" name="designation" type="text" placeholder="-" readonly/>
+                                                        <input class="form-control" id="txtDesignation" value="{{ $employeeDetails->position->pos_desc ?? '' }}" name="designation" type="text" placeholder="-" readonly/>
                                                         <label class="form-check-label" for="txtDesignation">Designation<label for="" class="text-danger">*</label></label>
                                                         <span class="text-danger small error-text designation_error"></span>
                                                     </div>
