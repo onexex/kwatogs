@@ -126,6 +126,24 @@
         .text-teal { color: var(--primary-teal); }
         .text-teal:hover { color: var(--dark-teal); text-decoration: underline !important; }
 
+        .toggle-password {
+            text-decoration: none;
+            z-index: 5;
+        }
+        .toggle-password:hover { color: var(--primary-teal) !important; }
+        .toggle-password:focus { box-shadow: none; }
+
+        .btn-color:disabled {
+            opacity: .75;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .form-control.is-invalid {
+            border-color: #dc3545;
+        }
+
         @media (max-width: 768px) {
             .img-logo { display: none; }
             .login-card-form { padding: 30px; }
@@ -140,17 +158,28 @@
                     <h2>Welcome Back</h2>
                     <p>Please enter your details to sign in.</p>
                     
-                    <form id="frmlogin" action="#">
+                    <form id="frmlogin" action="#" autocomplete="off" novalidate>
                         @csrf
+                        {{-- Honeypot field: hidden from real users, bots tend to fill it in --}}
+                        <div class="position-absolute" style="left:-9999px; top:-9999px;" aria-hidden="true">
+                            <label for="website">Website</label>
+                            <input type="text" name="website" id="website" tabindex="-1" autocomplete="off">
+                        </div>
                         <div class="form-floating mb-3">
-                            <input type="email" name="username" class="form-control" id="floatingInput" placeholder="name@example.com" value="{{ old('username') }}">
+                            <input type="email" name="username" class="form-control" id="floatingInput"
+                                placeholder="name@example.com" value="{{ old('username') }}"
+                                autocomplete="username" maxlength="50" required>
                             <label for="floatingInput"><i class="fa-regular fa-envelope me-2"></i>Email Address</label>
                             <span class="text-danger small error-text username_error"></span>
                         </div>
 
-                        <div class="form-floating mb-3">
-                            <input type="password" name="password" class="form-control" id="floatingPassword" placeholder="Password">
+                        <div class="form-floating mb-3 position-relative">
+                            <input type="password" name="password" class="form-control pe-5" id="floatingPassword"
+                                placeholder="Password" autocomplete="current-password" maxlength="500" required>
                             <label for="floatingPassword"><i class="fa-solid fa-lock me-2"></i>Password</label>
+                            <button type="button" class="btn btn-link position-absolute top-0 end-0 h-100 px-3 text-muted toggle-password" tabindex="-1" aria-label="Show password">
+                                <i class="fa-regular fa-eye"></i>
+                            </button>
                             <span class="text-danger small error-text password_error"></span>
                         </div>
 
@@ -163,12 +192,11 @@
                         </div>
 
                         <button type="submit" class="btn btn-color shadow-sm" id="btnLogin">
-                            Sign In <i class="fa-solid fa-arrow-right ms-2"></i>
+                            <span class="btn-label">Sign In <i class="fa-solid fa-arrow-right ms-2"></i></span>
                         </button>
 
                         <div class="text-center mt-4 pt-2">
-                            <span class="text-muted small">Don't have an account?</span> 
-                            <a href="#" class="small text-decoration-none text-teal fw-bold">Create Account</a>
+                            <span class="text-muted small"><i class="fa-solid fa-shield-halved me-1 text-teal"></i>Your connection to this portal is secured.</span>
                         </div>
                     </form>
                 </div>

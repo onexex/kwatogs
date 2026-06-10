@@ -47,22 +47,10 @@ use App\Http\Controllers\Roles\RolesController;
 use App\Http\Controllers\silCtrl;
 use App\Http\Controllers\sssCtrl;
 use App\Http\Controllers\workTimeCtrl;
-use App\Models\User;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/r', function () {
-    $updated = User::where('id', 1)->update([
-        'password' => Hash::make('1') // change as needed
-    ]);
-
-    return $updated 
-        ? "Password for user ID 1 has been reset successfully."
-        : "User not found.";
-});
-
-Route::get('/auth/login', function () {return view('login.login');});
-Route::post('/loginSystem',[loginCtrl::class, 'loginSystem']);
+Route::get('/auth/login', function () {return view('login.login');})->middleware('throttle:10,1');
+Route::post('/loginSystem',[loginCtrl::class, 'loginSystem'])->middleware('throttle:10,1');
 Route::get('/logoutSystem',[loginCtrl::class, 'logoutSystem']);
 // Route::get('/', function () {return view('home');});
 

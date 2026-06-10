@@ -4,17 +4,165 @@
 
 @section('content')
 <style>
+    /* ── Design tokens (shared with Edit Employee / Home / Attendance) ── */
+    :root {
+        --teal:         #008080;
+        --teal-dark:    #006666;
+        --teal-mid:     #4db6ac;
+        --teal-light:   #e0f2f1;
+        --slate:        #334155;
+        --slate-light:  #64748b;
+        --muted:        #94a3b8;
+        --bg:           #f1f5f9;
+        --surface:      #ffffff;
+        --border:       #e2e8f0;
+        --danger:       #ef4444;
+        --success:      #10b981;
+        --warning:      #f59e0b;
+        --radius-card:  14px;
+        --shadow-card:  0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+    }
+
+    .home-shell {
+        background: var(--bg);
+        min-height: 100vh;
+        margin: -1rem -1.5rem;
+        padding: 24px 28px 60px;
+    }
+
+    .home-topbar {
+        background: var(--surface);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-card);
+        padding: 16px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .home-topbar .page-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--slate);
+        margin: 0;
+        letter-spacing: -.2px;
+        text-transform: uppercase;
+    }
+    .home-topbar .breadcrumb {
+        font-size: 0.75rem;
+        margin: 2px 0 0;
+        padding: 0;
+        background: none;
+    }
+    .home-topbar .breadcrumb-item.active {
+        color: var(--teal);
+        font-weight: 600;
+    }
+
+    .sc {
+        background: var(--surface);
+        border-radius: var(--radius-card);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-card);
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+    .sc-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 22px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(to right, #fafcff, #f8fbfa);
+    }
+    .sc-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: var(--teal-light);
+        color: var(--teal);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.78rem;
+        flex-shrink: 0;
+    }
+    .sc-title {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--slate);
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        margin: 0;
+    }
+    .sc-body { padding: 22px; }
+
+    .field-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--slate-light);
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        margin-bottom: 5px;
+        display: block;
+    }
+    .field-label .req { color: var(--danger); margin-left: 2px; }
+
+    .form-control, .form-select {
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        font-size: 0.875rem;
+        color: var(--slate);
+        background: #fafbfc;
+        transition: border-color .15s, box-shadow .15s;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--teal);
+        box-shadow: 0 0 0 3px rgba(0,128,128,.1);
+        background-color: #fff;
+        outline: none;
+    }
+    .input-group-text {
+        background: #fafbfc;
+        border: 1.5px solid var(--border);
+        color: var(--muted);
+        font-size: 0.75rem;
+    }
+
+    .btn-teal {
+        background: var(--teal);
+        border-color: var(--teal);
+        color: #fff;
+    }
+    .btn-teal:hover {
+        background: var(--teal-dark);
+        border-color: var(--teal-dark);
+        color: #fff;
+    }
+    .btn-outline-teal {
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        color: var(--slate);
+    }
+    .btn-outline-teal:hover {
+        border-color: var(--teal);
+        color: var(--teal);
+        background: var(--teal-light);
+    }
+
     /* Professional Table Refinements */
     .table-sticky-header thead th {
         position: sticky !important;
         top: 0;
-        background-color: #f8f9fa;
+        background-color: #fafbfc;
         z-index: 10;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
-        color: #6c757d;
-        border-bottom: 2px solid #dee2e6;
+        color: var(--slate-light);
+        border-bottom: 2px solid var(--border);
     }
 
     .table tbody td {
@@ -22,51 +170,83 @@
         vertical-align: middle;
     }
 
+    .table-hover tbody tr:hover {
+        background-color: var(--teal-light);
+        transition: background-color 0.2s ease;
+    }
+
     /* Modern Badge for Duration/Status */
     .badge-soft-primary {
         background-color: rgba(0, 128, 128, 0.1);
-        color: #008080;
+        color: var(--teal);
         border: 1px solid rgba(0, 128, 128, 0.2);
     }
 
-    .search-card {
-        border: none;
-        border-radius: 1rem;
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.05);
+    /* ── Pagination ───────────────────────────────────────────── */
+    .pagination-wrap { background: #fafbfc; }
+    .pagination { margin: 0; gap: 4px; }
+    .pagination .page-link {
+        border: 1.5px solid var(--border);
+        color: var(--slate-light);
+        font-size: 0.8rem;
+        font-weight: 600;
+        border-radius: 8px !important;
+        margin: 0 2px;
+        min-width: 36px;
+        text-align: center;
+    }
+    .pagination .page-link:hover {
+        background: var(--teal-light);
+        border-color: var(--teal-mid);
+        color: var(--teal-dark);
+    }
+    .pagination .page-item.active .page-link {
+        background: var(--teal);
+        border-color: var(--teal);
+        color: #fff;
+    }
+    .pagination .page-item.disabled .page-link {
+        color: var(--muted);
+        background: var(--surface);
+        border-color: var(--border);
     }
 </style>
 
-<div class="container-fluid px-4 py-3">
+<div class="home-shell">
 
-    <div class="d-flex align-items-center justify-content-between mb-4">
+    <div class="home-topbar">
         <div>
-            <h4 class="fw-bold text-dark m-0">Employee Information</h4>
+            <h4 class="page-title">Employee Information</h4>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0">
                     <li class="breadcrumb-item text-muted">Reports</li>
-                    <li class="breadcrumb-item active fw-semibold text-primary" aria-current="page">Employee Information</li>
+                    <li class="breadcrumb-item active fw-semibold" aria-current="page">Employee Information</li>
                 </ol>
             </nav>
         </div>
     </div>
 
-    <div class="card search-card mb-4">
-        <div class="card-body p-4">
+    <div class="sc">
+        <div class="sc-head">
+            <div class="sc-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+            <h5 class="sc-title">Search Filters</h5>
+        </div>
+        <div class="sc-body">
             <form action='' id="frmSearch">
                 <div class="row g-3 align-items-end">
 
                     <div class="col-lg-3 col-md-6">
-                        <label class="form-label small fw-bold text-muted text-uppercase tracking-wider">Date Hired Range</label>
+                        <label class="field-label">Date Hired Range</label>
                         <div class="input-group ">
-                            <input value="{{ request('date_from') ? date('Y-m-d', strtotime(request('date_from'))) : '' }}" type="date" id="date_from" name="date_from" class="form-control bg-light border-0 rptdatefrom">
-                            <span class="input-group-text bg-light border-0 text-muted">to</span>
-                            <input value="{{ request('date_to') ? date('Y-m-d', strtotime(request('date_to'))) : '' }}" type="date" id="date_to" name="date_to" class="form-control bg-light border-0 rptdateto">
+                            <input value="{{ request('date_from') ? date('Y-m-d', strtotime(request('date_from'))) : '' }}" type="date" id="date_from" name="date_from" class="form-control rptdatefrom">
+                            <span class="input-group-text">to</span>
+                            <input value="{{ request('date_to') ? date('Y-m-d', strtotime(request('date_to'))) : '' }}" type="date" id="date_to" name="date_to" class="form-control rptdateto">
                         </div>
                     </div>
-                        
+
                     <div class="col-lg-3 col-md-6 ">
-                        <label for="selClassification" class="form-label small fw-semibold text-muted">Classification <span class="text-danger">*</span></label>
-                        <select class="form-select form-control-lg bg-light border-0 fs-6" name="classification_id" id="selClassification">
+                        <label for="selClassification" class="field-label">Classification <span class="req">*</span></label>
+                        <select class="form-select" name="classification_id" id="selClassification">
                             <option value="">Select Classification</option>
                             @if (count($classifications) > 0)
                                 @foreach ($classifications as $employeeClassification)
@@ -76,10 +256,10 @@
                         </select>
                         <span class="text-danger small error-text classification_error"></span>
                     </div>
-                        
+
                     <div class="col-lg-2 col-md-6 ">
-                        <label for="selCompany" class="form-label small fw-semibold text-muted">Company <span class="text-danger">*</span></label>
-                        <select class="form-select form-control-lg bg-light border-0 fs-6" name="company_id" id="selCompany">
+                        <label for="selCompany" class="field-label">Company <span class="req">*</span></label>
+                        <select class="form-select" name="company_id" id="selCompany">
                             <option value="">Select Company</option>
                             @if (count($companies) > 0)
                                 @foreach ($companies as $company)
@@ -89,10 +269,10 @@
                         </select>
                         <span class="text-danger small error-text classification_error"></span>
                     </div>
-                        
+
                     <div class="col-lg-2 col-md-6 ">
-                        <label for="selCompany" class="form-label small fw-semibold text-muted">Department <span class="text-danger">*</span></label>
-                        <select class="form-select form-control-lg bg-light border-0 fs-6" name="department_id" id="selCompany">
+                        <label for="selCompany" class="field-label">Department <span class="req">*</span></label>
+                        <select class="form-select" name="department_id" id="selCompany">
                             <option value="">Select Department</option>
                             @if (count($departments) > 0)
                                 @foreach ($departments as $department)
@@ -102,10 +282,10 @@
                         </select>
                         <span class="text-danger small error-text classification_error"></span>
                     </div>
-                        
+
                     <div class="col-lg-2 col-md-6 ">
-                        <label for="selCompany" class="form-label small fw-semibold text-muted">Position <span class="text-danger">*</span></label>
-                        <select class="form-select form-control-lg bg-light border-0 fs-6" name="position_id" id="selCompany">
+                        <label for="selCompany" class="field-label">Position <span class="req">*</span></label>
+                        <select class="form-select" name="position_id" id="selCompany">
                             <option value="">Select Position</option>
                             @if (count($positions) > 0)
                                 @foreach ($positions as $position)
@@ -118,12 +298,12 @@
 
                     <div class="col-lg-12 col-md-12 text-end">
                         <div class="d-flex gap-2 justify-content-lg-end">
-                            <button type="submit" id="btn_rptrefresh" class="btn btn-outline-primary rounded-pill px-4 fw-bold flex-fill flex-lg-grow-0 rptbtnref">
+                            <button type="submit" id="btn_rptrefresh" class="btn btn-outline-teal rounded-pill px-4 fw-bold flex-fill flex-lg-grow-0 rptbtnref">
                                 <i class="fa-solid fa-arrows-rotate me-2"></i>Search
                             </button>
                             <button
-                                onclick="exportData()"   
-                                type="button" id="btn_rptprint" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm flex-fill flex-lg-grow-0 rptbtnprint">
+                                onclick="exportData()"
+                                type="button" id="btn_rptprint" class="btn btn-teal rounded-pill px-4 fw-bold shadow-sm flex-fill flex-lg-grow-0 rptbtnprint">
                                 <i class="fa-solid fa-print me-2"></i>Export
                             </button>
                         </div>
@@ -134,9 +314,13 @@
         </div>
     </div>
 
-    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-        <div class="card-body p-0" id="Report_thisPrint">
-            
+    <div class="sc">
+        <div class="sc-head">
+            <div class="sc-icon"><i class="fa fa-users"></i></div>
+            <h5 class="sc-title">Employee Records</h5>
+        </div>
+        <div class="sc-body" style="padding:0;" id="Report_thisPrint">
+
             <div class="d-none p-4 border-bottom print-header">
                 <h3 class="fw-bold mb-1">Employee Information Report</h3>
                 <p class="text-muted mb-0">Date Range: <span class="rptDateRange"></span></p>
@@ -203,13 +387,9 @@
                 </table>
             </div>
              
-            <nav>
-                <ul id="pagination" class="pagination pagination-sm justify-content-center mt-2">
-                </ul>
-                <div class="mt-3 p-2">
-                    {{ $employees->links('pagination::bootstrap-5') }}
-                </div>
-            </nav>
+            <div class="pagination-wrap d-flex justify-content-center align-items-center py-3 border-top">
+                {{ $employees->links('pagination::bootstrap-5') }}
+            </div>
         </div>
     </div>
 </div>
