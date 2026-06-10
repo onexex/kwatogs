@@ -17,7 +17,7 @@ $(document).ready(function() {
                 }else{
                     htmlData +="<td> Yes </td>" ;
                 }
-                htmlData +="<td>" +  '<button type="button" value='+ row.id +' class="btn btn-details btn-sm" data-toggle="tooltip" data-placement="bottom"  id="btnUpdateTime" title=" Schedule" data-bs-toggle="modal" data-bs-target="#mdlTime" > <i class="fa fa-pencil"></i> </button>'  + "</td>" ;
+                htmlData +="<td class='pe-4 text-end'>" +  '<button type="button" value='+ row.id +' class="icon-action-btn" data-toggle="tooltip" data-placement="bottom"  id="btnUpdateTime" title="Edit Schedule" data-bs-toggle="modal" data-bs-target="#mdlTime" > <i class="fa fa-pencil"></i> </button>'  + "</td>" ;
                 htmlData += "</tr>";
             })
             $("#tblTime").empty().append(htmlData);

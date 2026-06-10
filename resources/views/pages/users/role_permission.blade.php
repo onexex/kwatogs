@@ -1,74 +1,184 @@
 @extends('layout.app', ['title' => 'Roles Permission'])
 
 @section('content')
-    
-    {{-- <div class="container-fluid">
-        
-        <div class="mb-2 d-sm-flex align-items-center justify-content-between">
-            <h4 class=" mb-0 text-gray-800">Roles Permission : {{ $role->name }}</h4>
-            <div>
-                <a 
-                    href="{{ route('user-roles.index') }}" 
-                    class=" btn text-white" 
-                    style="background-color: #008080" 
-                > <i class="fa fa-arrow-left"></i> 
-                    Back to Roles
-                </a>
-            </div>
-        </div>
-        <div>
-            <div class="row">
-                <ul class="nav nav-pills list-inline px-4" role="tablist">
-                    <li class="nav-item pr-2">
-                        <a
-                            href="{{ route('user-roles.show', ['user_role' => $role->id, 'permission' => 'page']) }}"
-                            class="nav-link text-secondary list-inline-item shadow-sm {{ $permissiontab === 'page' ? 'active' : '' }}"
-                        >
-                            <i class="tf-icons bx bx-user"></i> Page Permission
-                        </a>
-                    </li>
-                    <li class="nav-item pr-2">
-                        <a
-                            href="{{ route('user-roles.show', ['user_role' => $role->id, 'permission' => 'overtime']) }}"
-                            class="nav-link text-secondary list-inline-item shadow-sm {{ $permissiontab === 'overtime' ? 'active' : '' }}"
-                        >
-                            <i class="tf-icons bx bx-user"></i> Overtime Permission
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-        <div class="row mt-2">
-            <div class="col-xl-12 col-lg-12">
-                <div class="card mb-4">
-                    <!-- Card Body -->
-                    <div class="card-body">
-                        <div class="chart-area">
-                            <div class="table-responsive border-0">
-                                <table class="table table-hover table-border-none  ">
-                                    <thead>
-                                        <tr>
-                                            <th class="text-dark" scope="col">No</th>
-                                            <th class="text-dark" scope="col">Permissions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($permissions as $group)
-                                            <tr class="table-primary">
-                                                <td colspan="3"><strong>{{ $group['title'] }}</strong></td>
-                                            </tr> --}}
 
 <style>
-    /* Uniform Design Elements */
-    .table-sticky-header thead th {
-        position: sticky;
-        top: 0;
-        background-color: #ffffff;
-        z-index: 10;
-        border-bottom: 2px solid #f8f9fa;
+    /* ── Design tokens (shared with Edit Employee / Leave / Classification) ── */
+    :root {
+        --teal:         #008080;
+        --teal-dark:    #006666;
+        --teal-mid:     #4db6ac;
+        --teal-light:   #e0f2f1;
+        --slate:        #334155;
+        --slate-light:  #64748b;
+        --muted:        #94a3b8;
+        --bg:           #f1f5f9;
+        --surface:      #ffffff;
+        --border:       #e2e8f0;
+        --danger:       #ef4444;
+        --success:      #10b981;
+        --warning:      #f59e0b;
+        --radius-card:  14px;
+        --radius-input: 8px;
+        --shadow-card:  0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
     }
 
-    /* Modern Toggle Switch */
+    /* ── Page shell ──────────────────────────────────────────── */
+    .perm-shell {
+        background: var(--bg);
+        min-height: 100vh;
+        padding: 24px 28px 60px;
+        margin: -1.5rem -1.5rem 0;
+    }
+
+    /* ── Top header bar ──────────────────────────────────────── */
+    .perm-topbar {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-card);
+        padding: 16px 22px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .perm-topbar .page-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--slate);
+        margin: 0;
+        letter-spacing: -.2px;
+    }
+    .perm-topbar .page-sub {
+        font-size: .78rem;
+        color: var(--muted);
+        margin: 2px 0 0;
+    }
+
+    .btn-back-perm {
+        background: var(--surface);
+        color: var(--slate-light);
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 22px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: .4px;
+        cursor: pointer;
+        transition: all .2s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .btn-back-perm:hover { background: var(--bg); color: var(--slate); }
+
+    /* ── Pill navigation ─────────────────────────────────────── */
+    .perm-nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .perm-nav a {
+        border-radius: 50px;
+        font-weight: 700;
+        font-size: 0.8rem;
+        padding: 9px 20px;
+        color: var(--slate-light);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        text-decoration: none;
+        transition: all .15s;
+        display: inline-flex;
+        align-items: center;
+    }
+    .perm-nav a:hover { color: var(--teal); border-color: var(--teal-mid); }
+    .perm-nav a.active {
+        background: var(--teal);
+        border-color: var(--teal);
+        color: #fff;
+        box-shadow: 0 4px 14px rgba(0,128,128,.25);
+    }
+
+    /* ── Section card ────────────────────────────────────────── */
+    .sc {
+        background: var(--surface);
+        border-radius: var(--radius-card);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-card);
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+    .sc-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 14px 22px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(to right, #fafcff, #f8fbfa);
+    }
+    .sc-head-left { display: flex; align-items: center; gap: 10px; }
+    .sc-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: var(--teal-light);
+        color: var(--teal);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.78rem;
+        flex-shrink: 0;
+    }
+    .sc-title {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--slate);
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        margin: 0;
+    }
+    .sc-body { padding: 0; }
+
+    /* ── Table styling ───────────────────────────────────────── */
+    .perm-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: var(--surface);
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--slate-light);
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        border-bottom: 2px solid var(--border);
+        white-space: nowrap;
+        padding: 12px 16px;
+    }
+    .perm-table tbody td {
+        font-size: 0.83rem;
+        color: var(--slate);
+        vertical-align: middle;
+        padding: 12px 16px;
+    }
+    .perm-table tbody tr:hover { background: var(--teal-light); }
+
+    .perm-group-row td {
+        background: var(--teal-light);
+        color: var(--teal-dark);
+        font-weight: 700;
+        font-size: 0.73rem;
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        padding: 10px 16px;
+    }
+
+    /* ── Toggle switch ────────────────────────────────────────── */
     .switch {
         position: relative;
         display: inline-block;
@@ -80,7 +190,7 @@
         position: absolute;
         cursor: pointer;
         top: 0; left: 0; right: 0; bottom: 0;
-        background-color: #e9ecef;
+        background-color: var(--border);
         transition: .3s;
         border-radius: 20px;
     }
@@ -91,97 +201,70 @@
         width: 14px;
         left: 3px;
         bottom: 3px;
-        background-color: white;
+        background-color: #fff;
         transition: .3s;
         border-radius: 50%;
         box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     }
-    input:checked + .slider { background-color: #008080; }
+    input:checked + .slider { background-color: var(--teal); }
     input:checked + .slider:before { transform: translateX(20px); }
-
-    /* Pill Navigation Styling */
-    .nav-pills .nav-link {
-        border-radius: 50px;
-        font-weight: 600;
-        padding: 8px 20px;
-        color: #6c757d;
-        background: #fff;
-        border: 1px solid #dee2e6;
-        margin-right: 10px;
-    }
-    .nav-pills .nav-link:hover {
-        color: #008080 !important;
-    }
-    .nav-pills .nav-link.active {
-        background-color: #008080 !important;
-        border-color: #008080 !important;
-        color: #fff !important;
-        box-shadow: 0 4px 6px rgba(0,128,128,0.2);
-    }
 </style>
 
-<div class="container-fluid px-4 py-3">
+<div class="perm-shell">
 
-    <div class="d-flex align-items-center justify-content-between mb-4">
+    {{-- ── Top header ── --}}
+    <div class="perm-topbar">
         <div>
-            <h4 class="fw-bold text-dark m-0">Roles Permission</h4>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 small">
-                    <li class="breadcrumb-item text-muted">Settings</li>
-                    <li class="breadcrumb-item text-muted">User Roles</li>
-                    <li class="breadcrumb-item active fw-semibold text-primary" aria-current="page">{{ $role->name }}</li>
-                </ol>
-            </nav>
+            <p class="page-title">Roles Permission &mdash; {{ $role->name }}</p>
+            <p class="page-sub">Manage page, leave, overtime, and report permissions for this role</p>
         </div>
-        <a href="{{ route('user-roles.index') }}" class="btn btn-light rounded-pill px-4 shadow-sm fw-bold border">
-            <i class="fa fa-arrow-left me-2"></i> Back to Roles
+        <a href="{{ route('user-roles.index') }}" class="btn-back-perm">
+            <i class="fa fa-arrow-left"></i> Back to Roles
         </a>
     </div>
 
-    <div class="mb-4">
-        <ul class="nav nav-pills" role="tablist">
-            <li class="nav-item">
-                <a href="{{ route('user-roles.show', ['user_role' => $role->id, 'permission' => 'page']) }}"
-                   class="nav-link {{ $permissiontab === 'page' ? 'active' : '' }}">
-                   <i class="fas fa-file-alt me-2"></i> Page Permissions
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('user-roles.show', ['user_role' => $role->id, 'permission' => 'leave']) }}"
-                   class="nav-link {{ $permissiontab === 'leave' ? 'active' : '' }}">
-                   <i class="fas fa-file-alt me-2"></i> Leave Permissions
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('user-roles.show', ['user_role' => $role->id, 'permission' => 'overtime']) }}"
-                   class="nav-link {{ $permissiontab === 'overtime' ? 'active' : '' }}">
-                   <i class="fas fa-file-alt me-2"></i> Overtime Permissions
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="{{ route('user-roles.show', ['user_role' => $role->id, 'permission' => 'report']) }}"
-                   class="nav-link {{ $permissiontab === 'report' ? 'active' : '' }}">
-                   <i class="fas fa-file-alt me-2"></i> Report Permissions
-                </a>
-            </li>
-        </ul>
+    {{-- ── Permission tabs ── --}}
+    <div class="perm-nav">
+        <a href="{{ route('user-roles.show', ['user_role' => $role->id, 'permission' => 'page']) }}"
+           class="{{ $permissiontab === 'page' ? 'active' : '' }}">
+           <i class="fas fa-file-alt me-2"></i> Page Permissions
+        </a>
+        <a href="{{ route('user-roles.show', ['user_role' => $role->id, 'permission' => 'leave']) }}"
+           class="{{ $permissiontab === 'leave' ? 'active' : '' }}">
+           <i class="fas fa-file-alt me-2"></i> Leave Permissions
+        </a>
+        <a href="{{ route('user-roles.show', ['user_role' => $role->id, 'permission' => 'overtime']) }}"
+           class="{{ $permissiontab === 'overtime' ? 'active' : '' }}">
+           <i class="fas fa-file-alt me-2"></i> Overtime Permissions
+        </a>
+        <a href="{{ route('user-roles.show', ['user_role' => $role->id, 'permission' => 'report']) }}"
+           class="{{ $permissiontab === 'report' ? 'active' : '' }}">
+           <i class="fas fa-file-alt me-2"></i> Report Permissions
+        </a>
     </div>
 
-    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0 table-sticky-header">
-                    <thead class="bg-light">
-                        <tr class="text-secondary small fw-bold text-uppercase tracking-wider">
-                            <th class="ps-4 py-3" style="width: 100px;">Index</th>
-                            <th class="py-3">Permission Name</th>
-                            <th class="pe-4 py-3 text-center" style="width: 150px;">Status</th>
+    {{-- ── Permission Records ── --}}
+    <div class="sc">
+        <div class="sc-head">
+            <div class="sc-head-left">
+                <div class="sc-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                <h5 class="sc-title">Permission List</h5>
+            </div>
+        </div>
+        <div class="sc-body">
+            <div class="table-responsive" style="max-height: 75vh; overflow-y: auto;">
+                <table class="table table-hover align-middle perm-table mb-0">
+                    <thead>
+                        <tr>
+                            <th class="ps-4" style="width: 100px;">Index</th>
+                            <th>Permission Name</th>
+                            <th class="pe-4 text-center" style="width: 150px;">Status</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($permissions as $group)
-                            <tr class="bg-light bg-gradient">
-                                <td colspan="3" class="ps-4 py-2 border-bottom text-primary fw-bold small">
+                            <tr class="perm-group-row">
+                                <td colspan="3" class="ps-4">
                                     <i class="fas fa-folder-open me-2"></i> {{ strtoupper($group['title']) }}
                                 </td>
                             </tr>
@@ -197,7 +280,7 @@
                                     </td>
                                     <td class="pe-4 text-center">
                                         <label class="switch">
-                                            <input 
+                                            <input
                                                 type="checkbox"
                                                 class="permission-checkbox"
                                                 data-role-id="{{ $role->id }}"
@@ -227,7 +310,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const permission = checkboxEl.dataset.permission;
             const checked = checkboxEl.checked;
 
-            // Optional: Toast notification setup
             const Toast = Swal.mixin({
                 toast: true,
                 position: 'top-end',

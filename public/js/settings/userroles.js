@@ -99,18 +99,18 @@ $(document).ready(function() {
 
                     $(response.data.data).each(function(index, row) {
                         htmlData += "<tr>" +
-                            "<td class='text-lowercase'>" + row.fname + " " + row.lname +  "</td>" ;
+                            "<td class='ps-4 text-capitalize'>" + row.fname + " " + row.lname +  "</td>" ;
                             if(row.role==1){
-                                htmlData +="<td  >Superuser</td>" ;
+                                htmlData +="<td><span class='badge-role-superuser'>Superuser</span></td>" ;
                             }else if(row.role==2){
-                                htmlData +="<td  >Admin</td>" ;
+                                htmlData +="<td><span class='badge-role-admin'>Admin</span></td>" ;
 
                             }else{
-                                htmlData +="<td  >User</td>" ;
+                                htmlData +="<td><span class='badge-role-user'>User</span></td>" ;
 
                             }
 
-                        htmlData +="<td >" +  '<button type="button" value='+ row.id +' class="btn btn-details" data-toggle="tooltip" data-placement="bottom"  id="btnUpdateUserRole" data-bs-toggle="modal" data-bs-target="#mdlUserRole" > <i class="fa fa-pencil"></i> </button></td>' ;
+                        htmlData +="<td class='pe-4 text-end'>" +  '<button type="button" value='+ row.id +' class="icon-action-btn" data-toggle="tooltip" data-placement="bottom"  id="btnUpdateUserRole" title="Edit Role" data-bs-toggle="modal" data-bs-target="#mdlUserRole" > <i class="fa fa-pencil"></i> </button></td>' ;
                         htmlData += "</tr>";
                     })
                     $("#tblUserRole").empty().append(htmlData);
@@ -121,8 +121,7 @@ $(document).ready(function() {
                     $('span.error-text').text("");
                     $('input.border').removeClass('border border-danger');
                         htmlData += "<tr>" +
-                                    "<td class='text-lowercase'> Result not found</td>" +
-                                    "<td class='text-lowercase'> </td>" ;
+                                    "<td colspan='3'><div class='userrole-empty'><i class='fa-solid fa-circle-exclamation'></i>Result not found</div></td>" ;
                          htmlData += "</tr>";
 
                     $("#tblUserRole").empty().append(htmlData);

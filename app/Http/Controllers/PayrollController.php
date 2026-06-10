@@ -23,34 +23,6 @@ use Illuminate\Support\Facades\Log;
 class PayrollController extends Controller
 {
 
-    // public function fetchPayroll(Request $request)
-    // {
-    //     //  Extract query parameters
-    //     $dateFrom = $request->query('date_from');
-    //     $dateTo = $request->query('date_to');
-    //     $pay_date = $request->query('payDate');
-    //     $filter = $request->query('filter', 'all'); // optional filter: all, released, pending
-
-    //     //  Prepare base query with employee relation
-    //     $query = Payroll::with('employee');
-
-    //     //  Filter by date range (if provided)
-    //     if ($dateFrom && $dateTo) {
-    //         $query->where('pay_date', $pay_date);
-    //     }
-
-    //     //  Filter by status (if not "all")
-    //     if ($filter !== 'all') {
-    //         $query->where('status', $filter);
-    //     }
-
-    //     //  Get final list
-    //     $payrolls = $query->orderBy('pay_date', 'desc')->get();
-
-    //     return response()->json($payrolls);
-    // }
-
-    
 
     public function fetchPayroll(Request $request)
     {
@@ -188,17 +160,6 @@ class PayrollController extends Controller
                 date('Y-m-d', strtotime($holiday->date)) => $holiday->type
             ])->toArray();
 
-            // =======================================================
-            //   Preload all relevant records once
-            // =======================================================
-            // $allLeaves = LeaveDetail::where('status', 'APPROVEDBYCFO')
-            //     ->where(function ($q) use ($startDate, $endDate) {
-            //         $q->whereBetween('date', [$startDate, $endDate])
-            //         ->orWhereBetween('date', [$startDate, $endDate]);
-            //     })
-            //     ->get()
-            //     ->groupBy('employee_id');
-
             $allLeaves = LeaveDetail::where('status', 'APPROVEDBYCFO')
             ->whereBetween('date', [$startDate, $endDate])
             ->get()
@@ -259,12 +220,6 @@ class PayrollController extends Controller
 
                 if ($employeeSchedules->isEmpty()) continue;
 
-                //  Key attendance summaries by date
-                // $attendanceSummaries = $emp->attendanceSummaries()
-                //     ->whereBetween('attendance_date', [$startDate, $endDate])
-                //     ->get()
-                //     ->keyBy(fn($s) => date('Y-m-d', strtotime($s->attendance_date)));
-
                 // Hanapin at palitan itong part na ito:
                 $attendanceSummaries = $emp->attendanceSummaries()
                     ->with('manualDeductions') // ✨ ADD THIS PARA IWAS N+1 LAG ✨
@@ -305,14 +260,6 @@ class PayrollController extends Controller
                             // If OT pay is stored in the OT table
                             $totalOT += $otEntry->total_pay ?? 0;
                         } 
-
-                        //  Check absence
-                        // if ($onLeave || $onOB) {
-                        //     $isAbsent = false;
-                        // } else {
-                        //     $isAbsent = (!$summary || $summary->total_hours == 0);
-                        //     if ($isAbsent) $absentDays++;
-                        // }
 
                         if ($onLeave || $onOB) {
                             $isAbsent = false;
@@ -374,10 +321,6 @@ class PayrollController extends Controller
                         }
                           $logsType = $onLeave ? 'Leave' : ($onOB ? 'OB' : ($isAbsent ? 'Absent' : 'Present'));
                         //  Save daily record
-                        // NOTE: Only employee_id, payroll_date and date identify a unique
-                        // daily record. The computed figures below must go in the second
-                        // array so a recompute UPDATES the existing row instead of
-                        // inserting a duplicate (since these values change run to run).
                         PayrollDetail::updateOrCreate(
                             [
                                 'employee_id' => $emp->empID,
@@ -423,39 +366,7 @@ class PayrollController extends Controller
                     $grossPay = $empBasic - $deductions + $holidayPay + $night_diff_pay;
 
                 } else {
-                    //  DAILY / CONTRACTUAL EMPLOYEES
-                    // $basicPay = $dailyRate;
-                    // $regularPay = $totalHoursWorked * $hourlyRate;
-                    // $otPay = $totalOT;
-                    // $absentDeduction    = $absentDays * $dailyRate;
-                    // $lateDeduction      = ($totalLate / 60) * $hourlyRate;
-                    // $undertimeDeduction = ($totalUndertime / 60) * $hourlyRate;
-                    // $overBreakDeduction = ($over_break_minutes / 60) * $hourlyRate;
-                    // $outPassDeduction   = ($outpass_minutes / 60) * $hourlyRate;
-                    // $night_diff_pay =   ($night_diff_mins / 60) * $hourlyRate;
-
-                    // // $deductions = $absentDeduction + $lateDeduction + $undertimeDeduction + $outPassDeduction + $overBreakDeduction; 
-                    // $deductions = $absentDeduction + $lateDeduction + $undertimeDeduction + $outPassDeduction + $overBreakDeduction + $custom_deduction_pay;
-                    // $grossPay = max(($regularPay + $otPay + $holidayPay + $night_diff_pay ), 0);
-
-                    //  DAILY / CONTRACTUAL EMPLOYEES
-                    // $basicPay = $dailyRate;
-                    // $regularPay = $totalHoursWorked * $hourlyRate;
-                    // $otPay = $totalOT;
-
-                    // // ✨ TINANGGAL ANG ABSENT DEDUCTION DITO ✨
-                    // $lateDeduction      = ($totalLate / 60) * $hourlyRate;
-                    // $undertimeDeduction = ($totalUndertime / 60) * $hourlyRate;
-                    // $overBreakDeduction = ($over_break_minutes / 60) * $hourlyRate;
-                    // $outPassDeduction   = ($outpass_minutes / 60) * $hourlyRate;
-
-                    // // ✨ FIX 3: NIGHT DIFF PREMIUM (10% na lang, hindi 100%) ✨
-                    // $night_diff_pay =   ($night_diff_mins / 60) * ($hourlyRate * 0.10);
-
-                    // // KINOMPUTE ANG DEDUCTIONS WALANG ABSENCES
-                    // // $deductions = $lateDeduction + $undertimeDeduction + $outPassDeduction + $overBreakDeduction + $custom_deduction_pay;
-                    // $deductions = $custom_deduction_pay;
-                    
+                 
                     // // ✨ IBINAWAS NA ANG $deductions SA GROSS PAY ✨
                     // $grossPay = max(($regularPay - $deductions + $otPay + $holidayPay + $night_diff_pay ), 0);
                     $basicPay = $dailyRate;
@@ -576,25 +487,6 @@ class PayrollController extends Controller
                     ]
                 );
 
-                // ==============================
-                //  AUTO LOAN DEDUCTION (End of Month)
-                // ==============================
-                // if ($isEndOfMonth && $employeeClass !== 'TRN') {
-                //     foreach ($contributions['loan_details'] as $loan) {
-                //         LoanPayment::create([
-                //             'loan_id' => $loan['loan_id'],
-                //             'payroll_id' => $payroll->id,
-                //             'amount_paid' => $loan['deducted_amount'],
-                //             'payment_date' => now(),
-                //             'remarks' => 'Auto payroll deduction',
-                //         ]);
-
-                //         Loan::where('id', $loan['loan_id'])->update([
-                //             'balance' => $loan['new_balance'],
-                //             'status'  => $loan['new_balance'] <= 0 ? 'paid' : 'active'
-                //         ]);
-                //     }
-                // }
 
                 if ($isEndOfMonth && $employeeClass !== 'TRN' && $canAffordLoans) { 
                     foreach ($contributions['loan_details'] as $loan) {
@@ -644,159 +536,7 @@ class PayrollController extends Controller
         }
     }
 
-    // public function getDetailsByPayroll(Request $request)
-    // {
-    //     $request->validate([
-    //         'payroll_date' => 'required|date',
-    //     ]);
-
-    //     // 1. Fetch the data first
-    //     $rawDetails = PayrollDetail::with('employee')
-    //         ->where('payroll_date', $request->payroll_date)
-    //         ->get();
-
-    //     // 2. Sort the collection by Last Name (lname) then by Date
-    //     // Gagamit tayo ng sortBy na tumatanggap ng array para sa multiple levels of sorting
-    //     $sortedDetails = $rawDetails->sortBy(function ($row) {
-    //         return [
-    //             strtolower($row->employee->lname ?? ''), // Sort by lname first
-    //             $row->date                               // Then sort by date
-    //         ];
-    //     });
-
-    //     // 3. Group and Map
-    //     $details = $sortedDetails->groupBy('employee_id')->map(function ($rows) {
-    //         $employee = $rows->first()->employee;
-
-    //         return [
-    //             'employee_id'   => $employee?->empID ?? 'N/A',
-    //            'employee_name' => $employee
-    //             ? strtoupper(trim(($employee->lname ?? '') . ' ' . ($employee->fname ?? '')))
-    //             : 'UNKNOWN',
-    //             'department'    => $employee?->department ?? 'N/A',
-    //             'position'      => $employee?->position   ?? 'N/A',
-    //             'records'       => $rows->map(function ($row) {
-    //                 return [
-    //                     'date'                => $row->date?->format('Y-m-d') ?? 'N/A',
-    //                     'logsType'            => $row->logsType            ?? 'N/A',
-    //                     'totalHours'          => $row->totalHours          ?? 0,
-    //                     'late_minutes'        => $row->late_minutes        ?? 0,
-    //                     'undertime_minutes'   => $row->undertime_minutes   ?? 0,
-    //                     'late_deduction'      => $row->late_deduction      ?? 0,
-    //                     'undertime_deduction' => $row->undertime_deduction ?? 0,
-    //                     'night_diff_hours'    => $row->night_diff_hours    ?? 0,
-    //                     'night_diff_pay'      => $row->night_diff_pay      ?? 0,
-    //                     'penalty_amount'      => $row->penalty_amount      ?? 0,
-    //                     'adjustment_amount'   => $row->adjustment_amount   ?? 0,
-    //                     'remarks'             => $row->remarks             ?? '',
-    //                 ];
-    //             })->values(),
-    //             'totals' => [
-    //                 'totalHours'          => $rows->sum('totalHours'),
-    //                 'late_minutes'        => $rows->sum('late_minutes'),
-    //                 'undertime_minutes'   => $rows->sum('undertime_minutes'),
-    //                 'late_deduction'      => $rows->sum('late_deduction'),
-    //                 'undertime_deduction' => $rows->sum('undertime_deduction'),
-    //                 'night_diff_hours'    => $rows->sum('night_diff_hours'),
-    //                 'night_diff_pay'      => $rows->sum('night_diff_pay'),
-    //                 'penalty_amount'      => $rows->sum('penalty_amount'),
-    //                 'adjustment_amount'   => $rows->sum('adjustment_amount'),
-    //             ],
-    //         ];
-    //     })->values();
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'data'    => $details,
-    //     ]);
-    // }
-
-    // public function getDetailsByPayroll(Request $request)
-    // {
-    //     $request->validate([
-    //         'payroll_date' => 'required|date',
-    //         'company_id'   => 'nullable',
-    //         'class_id'     => 'nullable',
-    //     ]);
-
-    //     // 1. Build Query with Filters
-    //     // Isama na natin ang 'empdetails' sa 'with' para hindi na mag-query ulit (Eager Loading)
-    //     $query = PayrollDetail::with(['employee', 'empdetails'])
-    //         ->where('payroll_date', $request->payroll_date);
-
-    //     // Apply Company Filter
-    //     if ($request->has('company_id') && $request->company_id !== 'all') {
-    //         $query->whereHas('employee', function($q) use ($request) {
-    //             $q->where('company_id', $request->company_id);
-    //         });
-    //     }
-
-    //     // Apply Class Filter (Dito natin gagamitin ang empdetails)
-    //     if ($request->has('class_id') && $request->class_id !== 'all') {
-    //         $query->whereHas('empdetails', function($q) use ($request) {
-    //             $q->where('empClassification', $request->class_id);
-    //         });
-    //     }
-
-    //     $rawDetails = $query->get();
-
-    //     // 2. Sort the collection by Last Name (lname) then by Date
-    //     $sortedDetails = $rawDetails->sortBy(function ($row) {
-    //         return [
-    //             strtolower($row->employee->lname ?? ''), 
-    //             $row->date
-    //         ];
-    //     });
-
-    //     // 3. Group and Map
-    //     $details = $sortedDetails->groupBy('employee_id')->map(function ($rows) {
-    //         $employee = $rows->first()->employee;
-
-    //         return [
-    //             'employee_id'   => $employee?->empID ?? 'N/A',
-    //             'employee_name' => $employee
-    //                 ? strtoupper(trim(($employee->lname ?? '') . ' ' . ($employee->fname ?? '')))
-    //                 : 'UNKNOWN',
-    //             'department'    => $employee?->department ?? 'N/A',
-    //             'position'      => $employee?->position   ?? 'N/A',
-    //             'records'       => $rows->map(function ($row) {
-    //                 return [
-    //                     'date'                => $row->date?->format('Y-m-d') ?? 'N/A',
-    //                     'logsType'            => $row->logsType            ?? 'N/A',
-    //                     'totalHours'          => $row->totalHours          ?? 0,
-    //                     'late_minutes'        => $row->late_minutes        ?? 0,
-    //                     'undertime_minutes'   => $row->undertime_minutes   ?? 0,
-    //                     'late_deduction'      => $row->late_deduction      ?? 0,
-    //                     'undertime_deduction' => $row->undertime_deduction ?? 0,
-    //                     // Dito na-apply ang divide by 60
-    //                     'night_diff_hours'    => ($row->night_diff_hours ?? 0) / 60,
-    //                     'night_diff_pay'      => $row->night_diff_pay      ?? 0,
-    //                     'penalty_amount'      => $row->penalty_amount      ?? 0,
-    //                     'adjustment_amount'   => $row->adjustment_amount   ?? 0,
-    //                     'remarks'             => $row->remarks             ?? '',
-    //                 ];
-    //             })->values(),
-    //             'totals' => [
-    //                 'totalHours'          => $rows->sum('totalHours'),
-    //                 'late_minutes'        => $rows->sum('late_minutes'),
-    //                 'undertime_minutes'   => $rows->sum('undertime_minutes'),
-    //                 'late_deduction'      => $rows->sum('late_deduction'),
-    //                 'undertime_deduction' => $rows->sum('undertime_deduction'),
-    //                 // Total hours din dapat i-sum base sa divided value kung kinakailangan
-    //                 'night_diff_hours'    => ($rows->sum('night_diff_hours') ?? 0) / 60,
-    //                 'night_diff_pay'      => $rows->sum('night_diff_pay'),
-    //                 'penalty_amount'      => $rows->sum('penalty_amount'),
-    //                 'adjustment_amount'   => $rows->sum('adjustment_amount'),
-    //             ],
-    //         ];
-    //     })->values();
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'data'    => $details,
-    //     ]);
-    // }
-
+    
     public function getDetailsByPayroll(Request $request)
 {
     try {
