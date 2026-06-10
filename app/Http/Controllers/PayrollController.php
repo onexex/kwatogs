@@ -54,51 +54,82 @@ class PayrollController extends Controller
 
     public function fetchPayroll(Request $request)
     {
-        $dateFrom = $request->query('date_from');
-        $dateTo = $request->query('date_to');
-        $pay_date = $request->query('payDate');
-        
-        // ✨ Saluhin ang bagong parameters ✨
-        $companyId = $request->query('company_id', 'all');
-        $classificationId = $request->query('classification_id', 'all');
+        try {
+            $request->validate([
+                'date_from'         => 'nullable|date',
+                'date_to'           => 'nullable|date',
+                'payDate'           => 'nullable|date',
+                'company_id'        => 'nullable',
+                'classification_id' => 'nullable',
+                'department_id'     => 'nullable',
+            ]);
 
-        // Ginagamit ang 'users' table base sa iyong User::class relation
-        // ✨ Isinama ang 'employee.empDetail' para maka-access tayo sa classification at company ✨
-        $query = Payroll::with(['employee.empDetail'])
-            ->join('users', 'payrolls.employee_id', '=', 'users.empID')
-            ->select('payrolls.*');
+            $dateFrom = $request->query('date_from');
+            $dateTo = $request->query('date_to');
+            $pay_date = $request->query('payDate');
 
-        // ✨ FIX: Ihiwalay ang Pay Date filter para laging mag-trigger ✨
-        if (!empty($pay_date)) {
-            $query->where('payrolls.pay_date', $pay_date);
+            // ✨ Saluhin ang bagong parameters ✨
+            $companyId = $request->query('company_id', 'all') ?: 'all';
+            $classificationId = $request->query('classification_id', 'all') ?: 'all';
+            $departmentId = $request->query('department_id', 'all') ?: 'all';
+
+            // Ginagamit ang 'users' table base sa iyong User::class relation
+            // ✨ Isinama ang 'employee.empDetail' para maka-access tayo sa classification at company ✨
+            $query = Payroll::with(['employee.empDetail'])
+                ->join('users', 'payrolls.employee_id', '=', 'users.empID')
+                ->select('payrolls.*');
+
+            // ✨ FIX: Ihiwalay ang Pay Date filter para laging mag-trigger ✨
+            if (!empty($pay_date)) {
+                $query->where('payrolls.pay_date', $pay_date);
+            }
+
+            // ✨ OPTIONAL: Kung gusto mo rin mag-filter gamit ang cut-off dates ✨
+            if (!empty($dateFrom) && !empty($dateTo)) {
+                $query->where('payrolls.payroll_start_date', '>=', $dateFrom)
+                      ->where('payrolls.payroll_end_date', '<=', $dateTo);
+            }
+
+            // ✨ I-FILTER BASE SA COMPANY, CLASSIFICATION AT DEPARTMENT ✨
+            if ($companyId !== 'all' || $classificationId !== 'all' || $departmentId !== 'all') {
+                $query->whereHas('employee.empDetail', function ($q) use ($companyId, $classificationId, $departmentId) {
+
+                    if ($companyId !== 'all') {
+                        $q->where('empCompID', $companyId);
+                    }
+
+                    if ($classificationId !== 'all') {
+                        $q->where('empClassification', $classificationId);
+                    }
+
+                    if ($departmentId !== 'all') {
+                        $q->where('empDepID', $departmentId);
+                    }
+                });
+            }
+
+            // Pwede mo na i-order gamit ang columns mula sa users table
+            $payrolls = $query->orderBy('users.fname', 'asc')
+                            ->orderBy('users.lname', 'asc')
+                            ->get();
+
+            return response()->json($payrolls);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => collect($e->errors())->flatten()->first() ?? 'Invalid filter values.',
+                'error'   => $e->getMessage(),
+            ], 422);
+
+        } catch (\Exception $e) {
+            Log::error('Fetch Payroll Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching payroll records.',
+                'error'   => $e->getMessage(),
+            ], 500);
         }
-
-        // ✨ OPTIONAL: Kung gusto mo rin mag-filter gamit ang cut-off dates ✨
-        if (!empty($dateFrom) && !empty($dateTo)) {
-            $query->where('payrolls.payroll_start_date', '>=', $dateFrom)
-                  ->where('payrolls.payroll_end_date', '<=', $dateTo);
-        }
-
-        // ✨ I-FILTER BASE SA COMPANY AT CLASSIFICATION ✨
-        if ($companyId !== 'all' || $classificationId !== 'all') {
-            $query->whereHas('employee.empDetail', function ($q) use ($companyId, $classificationId) {
-                
-                if ($companyId !== 'all') {
-                    $q->where('empCompID', $companyId); 
-                }
-                
-                if ($classificationId !== 'all') {
-                    $q->where('empClassification', $classificationId);
-                }
-            });
-        }
-
-        // Pwede mo na i-order gamit ang columns mula sa users table
-        $payrolls = $query->orderBy('users.fname', 'asc')
-                        ->orderBy('users.lname', 'asc')
-                        ->get();
-
-        return response()->json($payrolls);
     }
 
     public function computePayroll(Request $request)
@@ -323,11 +354,19 @@ class PayrollController extends Controller
                             if ($holidayType == '1') {
                                 if ($worked){
                                     $holidayPay += $dailyRate * 1;
-                                 } elseif ($presentBefore || $onLeave || $onOB) {
+                                 } elseif ($onLeave || $onOB) {
+                                    // Already excluded from $absentDays above (isAbsent = false),
+                                    // so no adjustment needed here.
                                     $holidayPay += $dailyRate;
-                                    $absentDays = $absentDays - 1; // adjust absence
-                                } 
-                            } 
+                                } elseif ($presentBefore) {
+                                    // This day WAS counted as absent above; reverse that
+                                    // since the employee still qualifies for holiday pay.
+                                    $holidayPay += $dailyRate;
+                                    if ($absentDays > 0) {
+                                        $absentDays--;
+                                    }
+                                }
+                            }
                             // SPECIAL HOLIDAY
                             elseif ($holidayType == '0' && $worked) {
                                 $holidayPay += $dailyRate * .3;
@@ -335,12 +374,18 @@ class PayrollController extends Controller
                         }
                           $logsType = $onLeave ? 'Leave' : ($onOB ? 'OB' : ($isAbsent ? 'Absent' : 'Present'));
                         //  Save daily record
+                        // NOTE: Only employee_id, payroll_date and date identify a unique
+                        // daily record. The computed figures below must go in the second
+                        // array so a recompute UPDATES the existing row instead of
+                        // inserting a duplicate (since these values change run to run).
                         PayrollDetail::updateOrCreate(
                             [
-                                'payroll_id'  => null,
                                 'employee_id' => $emp->empID,
                                 'payroll_date'=> $payDate,
                                 'date'        => $dateStr,
+                            ],
+                            [
+                                'payroll_id'  => null,
                                 'logsType'    =>  $logsType,
                                 'totalHours'  => $summary->total_hours ?? 0,
                                 'late_minutes' => $summary->mins_late ?? 0,
@@ -351,11 +396,7 @@ class PayrollController extends Controller
                                 'undertime_deduction' => ($summary->mins_undertime ?? 0) / 60 * $hourlyRate,
                                 'penalty_amount' => 0, // Placeholder, compute if needed
                                 'adjustment_amount' => 0, // Placeholder, compute if needed
-
-
-
-                            ],
-                            []
+                            ]
                         );
                     }
                 }
@@ -465,6 +506,10 @@ class PayrollController extends Controller
                 $charges = $contributions['loan_breakdown']['charges/penalty'] ?? 0;
                 $cash_adv = $contributions['loan_breakdown']['cash_adv'] ?? 0;
                 $other = $contributions['loan_breakdown']['other'] ?? 0;
+                // Gov-type loans (SSS / Pag-IBIG). These reduce the loan balance via
+                // LoanPayment below, so they must also reduce take-home pay here.
+                $sssLoan = $contributions['loan_breakdown']['sss'] ?? 0;
+                $pagibigLoan = $contributions['loan_breakdown']['pagibig'] ?? 0;
                 $taxable_income = $contributions['taxable_income'] ?? 0;
 
                 //  Compute gov dues
@@ -474,26 +519,25 @@ class PayrollController extends Controller
                     + $contributions['withholding_tax'];
 
                 //  Compute net & receivable
-                // $netPay = max(0, ($grossPay - $govDues));
-                // $payRec = $netPay - $salaryLoan - $charges - $cash_adv - $other + $allowance;
-                //  Compute net & receivable
                 $netPay = max(0, ($grossPay - $govDues));
-                $payRec = $netPay - $salaryLoan - $charges - $cash_adv - $other + $allowance;
+                $payRec = $netPay - $salaryLoan - $charges - $cash_adv - $other - $sssLoan - $pagibigLoan + $allowance;
 
                 // ✨ ADD THIS SAFEGUARD ✨
                 $canAffordLoans = true;
                 if ($payRec < 0) {
                     // I-set sa 0 ang receivable para hindi negative ang ilalabas sa payslip
-                    $payRec = max(0, $netPay + $allowance); 
-                    
+                    $payRec = max(0, $netPay + $allowance);
+
                     // I-flag na hindi natuloy ang kaltas ng loans
-                    $canAffordLoans = false; 
-                    
+                    $canAffordLoans = false;
+
                     // Optional: I-zero out ang loan record sa payroll details para hindi lumabas sa payslip
                     $salaryLoan = 0;
                     $charges = 0;
                     $cash_adv = 0;
                     $other = 0;
+                    $sssLoan = 0;
+                    $pagibigLoan = 0;
                 }
 
                 // ==============================
@@ -514,8 +558,8 @@ class PayrollController extends Controller
                         'sss_contribution' => $contributions['sss']['employee_share'],
                         'philhealth_contribution' => $contributions['philhealth']['employee_share'],
                         'pagibig_contribution' => $contributions['pagibig']['employee_share'],
-                        'sss_loan' => $contributions['loan_breakdown']['sss'] ?? 0,
-                        'pagibig_loan' => $contributions['loan_breakdown']['pagibig'] ?? 0,
+                        'sss_loan' => $sssLoan,
+                        'pagibig_loan' => $pagibigLoan,
                         'taxable_income'=> $taxable_income,
                         'withholding_tax' => $contributions['withholding_tax'],
                         'allowances'   => $allowance,
@@ -757,13 +801,14 @@ class PayrollController extends Controller
 {
     try {
         $request->validate([
-            'payroll_date' => 'required|date',
-            'company_id'   => 'nullable',
-            'class_id'     => 'nullable',
+            'payroll_date'  => 'required|date',
+            'company_id'    => 'nullable',
+            'class_id'      => 'nullable',
+            'department_id' => 'nullable',
         ]);
 
         // 1. Build Query
-        $query = PayrollDetail::with(['employee', 'empdetails'])
+        $query = PayrollDetail::with(['employee', 'empdetails.department', 'empdetails.position'])
             ->where('payroll_date', $request->payroll_date);
 
         if ($request->has('company_id') && $request->company_id !== 'all') {
@@ -778,6 +823,12 @@ class PayrollController extends Controller
             });
         }
 
+        if ($request->has('department_id') && $request->department_id !== 'all') {
+            $query->whereHas('empdetails', function($q) use ($request) {
+                $q->where('empDepID', $request->department_id);
+            });
+        }
+
         $rawDetails = $query->get();
 
         // 2. Map and Grouping
@@ -785,22 +836,39 @@ class PayrollController extends Controller
             return [strtolower($row->employee->lname ?? ''), $row->date];
         })->groupBy('employee_id')->map(function ($rows) {
             $employee = $rows->first()->employee;
+            $empDetail = $rows->first()->empdetails;
 
             return [
                 'employee_id'   => $employee?->empID ?? 'N/A',
                 'employee_name' => $employee ? strtoupper(trim(($employee->lname ?? '') . ' ' . ($employee->fname ?? ''))) : 'UNKNOWN',
+                'department'    => $empDetail?->department?->dep_name ?? 'N/A',
+                'position'      => $empDetail?->position?->pos_desc ?? 'N/A',
                 'records'       => $rows->map(function ($row) {
                     return [
                         'date'                => $row->date?->format('Y-m-d') ?? 'N/A',
+                        'logsType'            => $row->logsType ?? '',
                         'totalHours'          => $row->totalHours ?? 0,
-                        'night_diff_hours'    => ($row->night_diff_hours ?? 0) / 60,
-                        // ... other fields
+                        'late_minutes'        => $row->late_minutes ?? 0,
+                        'undertime_minutes'   => $row->undertime_minutes ?? 0,
+                        'late_deduction'      => $row->late_deduction ?? 0,
+                        'undertime_deduction' => $row->undertime_deduction ?? 0,
+                        'night_diff_hours'    => $row->night_diff_hours ?? 0,
+                        'night_diff_pay'      => $row->night_diff_pay ?? 0,
+                        'penalty_amount'      => $row->penalty_amount ?? 0,
+                        'adjustment_amount'   => $row->adjustment_amount ?? 0,
+                        'remarks'             => $row->remarks ?? '',
                     ];
                 })->values(),
                 'totals' => [
-                    'totalHours'       => $rows->sum('totalHours'),
-                    'night_diff_hours' => ($rows->sum('night_diff_hours') ?? 0) / 60,
-                    // ... other totals
+                    'totalHours'          => $rows->sum('totalHours'),
+                    'late_minutes'        => $rows->sum('late_minutes'),
+                    'undertime_minutes'   => $rows->sum('undertime_minutes'),
+                    'late_deduction'      => $rows->sum('late_deduction'),
+                    'undertime_deduction' => $rows->sum('undertime_deduction'),
+                    'night_diff_hours'    => $rows->sum('night_diff_hours'),
+                    'night_diff_pay'      => $rows->sum('night_diff_pay'),
+                    'penalty_amount'      => $rows->sum('penalty_amount'),
+                    'adjustment_amount'   => $rows->sum('adjustment_amount'),
                 ],
             ];
         })->values();
@@ -809,6 +877,13 @@ class PayrollController extends Controller
             'success' => true,
             'data'    => $details,
         ]);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => collect($e->errors())->flatten()->first() ?? 'Invalid filter values.',
+            'error'   => $e->getMessage(),
+        ], 422);
 
     } catch (\Exception $e) {
         // I-log ang error para makita sa storage/logs/laravel.log
@@ -819,7 +894,7 @@ class PayrollController extends Controller
             'success' => false,
             'message' => 'Error processing payroll details.',
             'error'   => $e->getMessage(), // Pwede mong burahin ito sa production
-            'trace'   => $e->getTraceAsString() 
+            'trace'   => $e->getTraceAsString()
         ], 500);
     }
 }

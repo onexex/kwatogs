@@ -83,10 +83,13 @@ class pageCtrl extends Controller
         // Fetch all records from the classifications table
         $classifications = DB::table('classifications')->get();
 
+        // Fetch all departments for the department filter
+        $departments = department::get();
+
         // Get the current classification filter from the URL parameter (defaults to 'all')
         $selectedClassification = $request->query('classification', 'all');
 
-        return view('pages.modules.payroll', compact('companies', 'classifications', 'selectedClassification'));
+        return view('pages.modules.payroll', compact('companies', 'classifications', 'departments', 'selectedClassification'));
     }
 
     // JMC

@@ -2,121 +2,368 @@
 @section('content')
 
 <style>
-    /* Modern Badge Styles */
+    /* ── Design tokens (shared with Edit Employee / Leave / Overtime / Loan) ── */
+    :root {
+        --teal:         #008080;
+        --teal-dark:    #006666;
+        --teal-mid:     #4db6ac;
+        --teal-light:   #e0f2f1;
+        --slate:        #334155;
+        --slate-light:  #64748b;
+        --muted:        #94a3b8;
+        --bg:           #f1f5f9;
+        --surface:      #ffffff;
+        --border:       #e2e8f0;
+        --danger:       #ef4444;
+        --success:      #10b981;
+        --warning:      #f59e0b;
+        --radius-card:  14px;
+        --radius-input: 8px;
+        --shadow-card:  0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+    }
+
+    /* ── Page shell ──────────────────────────────────────────── */
+    .holiday-shell {
+        background: var(--bg);
+        min-height: 100vh;
+        padding: 24px 28px 60px;
+        margin: -1.5rem -1.5rem 0;
+    }
+
+    /* ── Top header bar ──────────────────────────────────────── */
+    .holiday-topbar {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-card);
+        padding: 16px 22px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .holiday-topbar .page-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--slate);
+        margin: 0;
+        letter-spacing: -.2px;
+    }
+    .holiday-topbar .page-sub {
+        font-size: .78rem;
+        color: var(--muted);
+        margin: 2px 0 0;
+    }
+
+    .btn-add-holiday {
+        background: var(--teal);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: .3px;
+        cursor: pointer;
+        box-shadow: 0 4px 14px rgba(0,128,128,.25);
+        transition: all .2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .btn-add-holiday:hover { background: var(--teal-dark); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,128,128,.35); color: #fff; }
+
+    /* ── Section card ────────────────────────────────────────── */
+    .sc {
+        background: var(--surface);
+        border-radius: var(--radius-card);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-card);
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+    .sc-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 14px 22px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(to right, #fafcff, #f8fbfa);
+    }
+    .sc-head-left { display: flex; align-items: center; gap: 10px; }
+    .sc-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: var(--teal-light);
+        color: var(--teal);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.78rem;
+        flex-shrink: 0;
+    }
+    .sc-title {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--slate);
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        margin: 0;
+    }
+    .sc-body { padding: 0; }
+
+    /* ── Field helpers ───────────────────────────────────────── */
+    .field-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--slate-light);
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        margin-bottom: 5px;
+        display: block;
+    }
+    .field-label .req { color: var(--danger); margin-left: 2px; }
+
+    .form-control, .form-select {
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius-input);
+        font-size: 0.875rem;
+        color: var(--slate);
+        background: #fafbfc;
+        transition: border-color .15s, box-shadow .15s;
+        padding: 0.55rem 0.85rem;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--teal);
+        box-shadow: 0 0 0 3px rgba(0,128,128,.1);
+        background-color: #fff;
+        outline: none;
+    }
+
+    /* ── Sub-section divider ─────────────────────────────────── */
+    .sub-divider {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 6px 0 18px;
+    }
+    .sub-divider span {
+        font-size: 0.73rem;
+        font-weight: 700;
+        color: var(--teal);
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        white-space: nowrap;
+    }
+    .sub-divider::after {
+        content: '';
+        flex-grow: 1;
+        height: 1px;
+        background: var(--border);
+    }
+
+    /* ── Table styling ───────────────────────────────────────── */
+    .holiday-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: var(--surface);
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--slate-light);
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        border-bottom: 2px solid var(--border);
+        white-space: nowrap;
+        padding: 12px 16px;
+    }
+    .holiday-table tbody td {
+        font-size: 0.83rem;
+        color: var(--slate);
+        vertical-align: middle;
+        padding: 12px 16px;
+    }
+    .holiday-table tbody tr:hover { background: var(--teal-light); }
+
+    /* ── Type badges (kept classnames used by JS: badge-regular / badge-special) ── */
     .badge-regular {
-        background-color: #e3f2fd;
-        color: #0d47a1;
-        border: 1px solid #bbdefb;
+        background: var(--teal-light);
+        color: var(--teal-dark);
+        border: 1px solid var(--teal-mid);
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: .3px;
+        padding: 5px 12px;
+        border-radius: 20px;
     }
     .badge-special {
-        background-color: #fff3e0;
-        color: #e65100;
-        border: 1px solid #ffe0b2;
-    }
-    
-    /* Sticky Header Polish */
-    .table-sticky-header thead th {
-        position: sticky !important;
-        top: 0;
-        background-color: #ffffff;
-        z-index: 10;
-        border-bottom: 2px solid #f8f9fa;
+        background: rgba(245,158,11,.1);
+        color: var(--warning);
+        border: 1px solid var(--warning);
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: .3px;
+        padding: 5px 12px;
+        border-radius: 20px;
     }
 
-    /* Row transition */
-    .table-hover tbody tr {
-        transition: all 0.2s ease;
+    .icon-action-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        border: 1.5px solid var(--border);
+        background: var(--surface);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all .15s;
     }
-    .table-hover tbody tr:hover {
-        background-color: #f8f9fa;
-        transform: scale(1.002);
+    .icon-action-btn:hover { border-color: var(--teal-mid); background: var(--teal-light); }
+    .icon-action-btn.danger:hover { border-color: var(--danger); background: #fff5f5; }
+
+    /* ── Modal styling ───────────────────────────────────────── */
+    #mdlHoliday .modal-content {
+        border-radius: var(--radius-card);
+        border: none;
+        overflow: hidden;
     }
+    #mdlHoliday .modal-header {
+        background: var(--teal);
+        color: #fff;
+        border-bottom: none;
+        padding: 16px 22px;
+    }
+    #mdlHoliday .modal-header .modal-title { color: #fff; }
+    #mdlHoliday .modal-header .modal-title i { color: #fff; }
+    #mdlHoliday .btn-close { filter: brightness(0) invert(1); }
+    #mdlHoliday .modal-body { background: var(--bg); padding: 22px; }
+    #mdlHoliday .modal-footer {
+        background: var(--surface);
+        border-top: 1px solid var(--border);
+    }
+
+    .btn-submit-holiday {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        padding: 10px 26px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: .4px;
+        text-transform: uppercase;
+        cursor: pointer;
+        box-shadow: 0 4px 14px rgba(245,158,11,.3);
+        transition: all .2s;
+    }
+    .btn-submit-holiday:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(245,158,11,.4); color: #fff; }
+
+    .btn-cancel-holiday {
+        background: var(--surface);
+        color: var(--slate-light);
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 22px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: .4px;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: all .2s;
+    }
+    .btn-cancel-holiday:hover { background: var(--bg); }
 </style>
 
-<div class="container-fluid px-4 py-3">
+<div class="holiday-shell">
 
-    <div class="d-flex align-items-center justify-content-between mb-4">
+    {{-- ── Top header ── --}}
+    <div class="holiday-topbar">
         <div>
-            <h4 class="fw-bold text-dark m-0">Holiday Logger</h4>
-            <p class="text-muted small mb-0">Manage and track company holidays and observances.</p>
+            <p class="page-title">Holiday Logger</p>
+            <p class="page-sub">Manage and track company holidays and observances</p>
         </div>
-        <button type="button" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold" name="btnCreateHoliday" id="btnCreateHoliday" data-bs-toggle="modal" data-bs-target="#mdlHoliday">
-            <i class="fas fa-calendar-plus me-2"></i> Add Holiday
+        <button type="button" class="btn-add-holiday" name="btnCreateHoliday" id="btnCreateHoliday" data-bs-toggle="modal" data-bs-target="#mdlHoliday">
+            <i class="fa-solid fa-calendar-plus"></i> Add Holiday
         </button>
     </div>
 
-    <div class="card border-0 shadow-sm rounded-4">
-        <div class="card-body p-0">
+    {{-- ── Holiday Records ── --}}
+    <div class="sc">
+        <div class="sc-head">
+            <div class="sc-head-left">
+                <div class="sc-icon"><i class="fa-solid fa-calendar-days"></i></div>
+                <h5 class="sc-title">Holiday Records</h5>
+            </div>
+        </div>
+        <div class="sc-body">
             <div class="table-responsive" style="max-height: 75vh; overflow-y: auto;">
-                <table class="table table-hover align-middle table-sticky-header mb-0">
-                    <thead class="bg-light">
-                        <tr class="text-secondary small fw-bold text-uppercase tracking-wider">
-                            <th class="ps-4 py-3">Date</th>
-                            <th class="py-3">Type</th>
-                            <th class="py-3">Description</th>
-                            <th class="pe-4 py-3 text-end">Action</th>
+                <table class="table table-hover align-middle holiday-table mb-0">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">Date</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th class="pe-4 text-end">Action</th>
                         </tr>
                     </thead>
                     <tbody id="tblHolidaysLog" class="border-top-0">
-                        
+
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
+</div>
 
-    <div class="modal fade" id="mdlHoliday" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content border-0 shadow rounded-4">
-                <div class="modal-header border-0 pt-4 px-4">
-                    <h5 class="modal-title fw-bold text-secondary text-uppercase tracking-wide">
-                        <i class="fas fa-calendar-check me-2 text-primary"></i> 
-                        <span id="lblTitleHoliday">Holiday Logger</span>
-                    </h5>
-                    <button type="button" class="btn-close closereset_update" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                
-                <div class="modal-body p-4">
-                    <form id="frmHoliday">
-                        <div class="row g-4">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label class="form-label small fw-semibold text-muted">Date <span class="text-danger">*</span></label>
-                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtDate" name="date" type="date" />
-                                    <span class="text-danger small error-text date_error"></span>
-                                </div>
-                            </div>
+<div class="modal fade" id="mdlHoliday" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fa-solid fa-calendar-check me-2"></i>
+                    <span id="lblTitleHoliday">Holiday Logger</span>
+                </h5>
+                <button type="button" class="btn-close closereset_update" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
 
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label class="form-label small fw-semibold text-muted">Holiday Type <span class="text-danger">*</span></label>
-                                    <select class="form-select form-control-lg bg-light border-0 fs-6" name="type" id="selTypeHoliday">
-                                        <option value="0">Regular Holiday</option>
-                                        <option value="1">Special Holiday</option>
-                                    </select>
-                                    <span class="text-danger small error-text type_error"></span>
-                                </div>
-                            </div>
-
-                            <div class="col-12">
-                                <div class="form-group">
-                                    <label class="form-label small fw-semibold text-muted">Description <span class="text-danger">*</span></label>
-                                    <input class="form-control form-control-lg bg-light border-0 fs-6" id="txtDescription" name="description" type="text" placeholder="e.g. Independence Day" />
-                                    <span class="text-danger small error-text description_error"></span>
-                                </div>
-                            </div>
+            <div class="modal-body">
+                <form id="frmHoliday">
+                    <div class="sub-divider"><span>Holiday Details</span></div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="field-label" for="txtDate">Date <span class="req">*</span></label>
+                            <input class="form-control" id="txtDate" name="date" type="date" />
+                            <span class="text-danger small error-text date_error"></span>
                         </div>
-                    </form>
-                </div>
-                
-                <div class="modal-footer border-0 pb-4 px-4">
-                    <button type="button" class="btn btn-light rounded-pill px-4 fw-bold text-muted me-2" data-bs-dismiss="modal">Cancel</button>
-                    <button id="btnSaveHoliday" type="button" class="btn btn-primary rounded-pill px-5 fw-bold shadow-sm">Create Holiday</button>
-                </div>
+
+                        <div class="col-md-6">
+                            <label class="field-label" for="selTypeHoliday">Holiday Type <span class="req">*</span></label>
+                            <select class="form-select" name="type" id="selTypeHoliday">
+                                <option value="0">Regular Holiday</option>
+                                <option value="1">Special Holiday</option>
+                            </select>
+                            <span class="text-danger small error-text type_error"></span>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="field-label" for="txtDescription">Description <span class="req">*</span></label>
+                            <input class="form-control" id="txtDescription" name="description" type="text" placeholder="e.g. Independence Day" />
+                            <span class="text-danger small error-text description_error"></span>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel-holiday" data-bs-dismiss="modal">Cancel</button>
+                <button id="btnSaveHoliday" type="button" class="btn-submit-holiday">Create Holiday</button>
             </div>
         </div>
     </div>
-
 </div>
 
 <script src="{{ asset('js/settings/holidaylogger.js') }}" defer></script>

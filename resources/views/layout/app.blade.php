@@ -56,6 +56,18 @@
 
         .nav-link i { font-size: 0.9rem; width: 20px; }
 
+        /* Allow notification badges (e.g. pending leave requests) to align right */
+        .nav-item .nav-link,
+        .collapse-item {
+            display: flex !important;
+            align-items: center;
+        }
+        .nav-item .nav-link .badge,
+        .collapse-item .badge {
+            font-size: 0.65rem;
+            padding: 0.3em 0.55em;
+        }
+
         /* Collapse Inner Styling */
         .collapse-inner {
             background: #ffffff !important;
@@ -84,6 +96,34 @@
         }
 
         .collapse-item i { width: 22px; color: #008080; opacity: 0.7; }
+
+        /* Active state highlighting so the user knows where they are */
+        .nav-item .nav-link.active-page,
+        .nav-item .nav-link.active-parent {
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff !important;
+            font-weight: 700;
+            position: relative;
+        }
+
+        .nav-item .nav-link.active-page::before,
+        .nav-item .nav-link.active-parent::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #ffc107;
+        }
+
+        .collapse-item.active {
+            background-color: #e0f2f1 !important;
+            color: #008080 !important;
+            font-weight: 700;
+        }
+
+        .collapse-item.active i { opacity: 1; }
 
         /* Topbar & Alerts */
         .topbar { box-shadow: 0 1px 10px rgba(0,0,0,0.05) !important; }
@@ -132,7 +172,7 @@
 
             @can('home')
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url('/') }}">
+                    <a class="nav-link {{ request()->is('/') ? 'active-page' : '' }}" href="{{ url('/') }}">
                         <i class="fas fa-fw fa-house"></i>
                         <span>Home</span>
                     </a>
@@ -141,7 +181,7 @@
 
             @can('registration')
                 <li class="nav-item">
-                    <a class="nav-link" href="/pages/modules/registration">
+                    <a class="nav-link {{ request()->is('pages/modules/registration*') ? 'active-page' : '' }}" href="/pages/modules/registration">
                         <i class="fas fa-fw fa-user-plus"></i>
                         <span>Registration</span>
                     </a>
@@ -172,21 +212,52 @@
                 $hasPagesAccess = collect($modulePages)->keys()->some(fn($key) => auth()->user()?->can($key));
 
                 // 3. Pass $modulePages to your view—it will now be alphabetical!
+
+                // 4. Determine if the current URL belongs to this group, so we can keep
+                //    it expanded and highlight the active item after navigation.
+                $modulePagesActiveKey = collect($modulePages)->keys()->first(function ($key) use ($modulePages) {
+                    return request()->is(ltrim($modulePages[$key]['url'], '/') . '*');
+                });
+                $modulePagesGroupActive = !is_null($modulePagesActiveKey);
+
+                // 5. Count pending leave requests waiting for the current user's approval
+                $pendingLeaveCount = 0;
+                if (auth()->user()?->can('pendingleaverequests')) {
+                    $pendingLeaveUser = auth()->user();
+                    $pendingLeaveCount = \App\Models\Leave::join('emp_details', 'emp_details.empID', '=', 'leaves.employee_id')
+                        ->where('emp_details.empISID', $pendingLeaveUser->empID)
+                        ->where(function ($q) use ($pendingLeaveUser) {
+                            if ($pendingLeaveUser->can('approveleave')) {
+                                $q->orWhere('leaves.status', \App\Enums\LeaveStatusEnum::FORAPPROVAL->name);
+                            }
+
+                            if ($pendingLeaveUser->can('approvecfoleave')) {
+                                $q->orWhere('leaves.status', \App\Enums\LeaveStatusEnum::APPROVED->name);
+                            }
+                        })
+                        ->count();
+                }
             @endphp
 
             @if ($hasPagesAccess)
                 <div class="sidebar-heading">Operations</div>
                 <li class="nav-item">
-                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseModules">
+                    <a class="nav-link {{ $modulePagesGroupActive ? 'active-parent' : 'collapsed' }}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseModules" aria-expanded="{{ $modulePagesGroupActive ? 'true' : 'false' }}">
                         <i class="fas fa-fw fa-cubes"></i>
                         <span>Workforce</span>
+                        @if ($pendingLeaveCount > 0)
+                            <span class="badge rounded-pill bg-danger ms-auto">{{ $pendingLeaveCount }}</span>
+                        @endif
                     </a>
-                    <div id="collapseModules" class="collapse" data-bs-parent="#accordionSidebar">
+                    <div id="collapseModules" class="collapse {{ $modulePagesGroupActive ? 'show' : '' }}" data-bs-parent="#accordionSidebar">
                         <div class="bg-white py-2 collapse-inner">
                             @foreach ($modulePages as $key => $page)
                                 @can($key)
-                                    <a class="collapse-item" href="{{ $page['url'] }}">
+                                    <a class="collapse-item {{ $key === $modulePagesActiveKey ? 'active' : '' }}" href="{{ $page['url'] }}">
                                         <i class="fa-solid {{ $page['icon'] }} me-1"></i> {{ $page['name'] }}
+                                        @if ($key === 'pendingleaverequests' && $pendingLeaveCount > 0)
+                                            <span class="badge rounded-pill bg-danger ms-auto">{{ $pendingLeaveCount }}</span>
+                                        @endif
                                     </a>
                                 @endcan
                             @endforeach
@@ -230,20 +301,27 @@
                 // 2. Perform your access check
                 $hasManagementAccess = collect($managementModules)->keys()->some(fn($key) => auth()->user()?->can($key));
                 // $hasManagementAccess = collect($managementModules)->keys()->some(fn($key) => auth()->user()?->can($key));
+
+                // 3. Determine the active item so the menu stays open and highlighted
+                //    after navigating to a Management page.
+                $managementActiveKey = collect($managementModules)->keys()->first(function ($key) use ($managementModules) {
+                    return request()->is(ltrim($managementModules[$key]['url'], '/') . '*');
+                });
+                $managementGroupActive = !is_null($managementActiveKey);
             @endphp
 
             @if ($hasManagementAccess)
                 <div class="sidebar-heading">Management</div>
                 <li class="nav-item">
-                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseSettings">
+                    <a class="nav-link {{ $managementGroupActive ? 'active-parent' : 'collapsed' }}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseSettings" aria-expanded="{{ $managementGroupActive ? 'true' : 'false' }}">
                         <i class="fas fa-fw fa-gears"></i>
                         <span>Settings</span>
                     </a>
-                    <div id="collapseSettings" class="collapse" data-bs-parent="#accordionSidebar">
+                    <div id="collapseSettings" class="collapse {{ $managementGroupActive ? 'show' : '' }}" data-bs-parent="#accordionSidebar">
                         <div class="bg-white py-2 collapse-inner">
                             @foreach ($managementModules as $key => $module)
                                 @can($key)
-                                    <a class="collapse-item" href="{{ $module['url'] }}">
+                                    <a class="collapse-item {{ $key === $managementActiveKey ? 'active' : '' }}" href="{{ $module['url'] }}">
                                         <i class="fa-solid {{ $module['icon'] }} me-1"></i> {{ $module['name'] }}
                                     </a>
                                 @endcan
@@ -259,20 +337,27 @@
                     'employeeinformation' => ['name' => 'Employee Information', 'url' => '/reports/employee-information', 'icon' => 'fa-chart-column']
                 ];
                 $hasReportAccess = collect($moduleReports)->keys()->some(fn($key) => auth()->user()?->can($key));
+
+                // Determine the active item so the menu stays open and highlighted
+                // after navigating to a Reports page.
+                $reportsActiveKey = collect($moduleReports)->keys()->first(function ($key) use ($moduleReports) {
+                    return request()->is(ltrim($moduleReports[$key]['url'], '/') . '*');
+                });
+                $reportsGroupActive = !is_null($reportsActiveKey);
             @endphp
 
             @if ($hasReportAccess)
                 <div class="sidebar-heading">Analysis</div>
                 <li class="nav-item">
-                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseReports">
+                    <a class="nav-link {{ $reportsGroupActive ? 'active-parent' : 'collapsed' }}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseReports" aria-expanded="{{ $reportsGroupActive ? 'true' : 'false' }}">
                         <i class="fas fa-fw fa-file-contract"></i>
                         <span>Reports</span>
                     </a>
-                    <div id="collapseReports" class="collapse" data-bs-parent="#accordionSidebar">
+                    <div id="collapseReports" class="collapse {{ $reportsGroupActive ? 'show' : '' }}" data-bs-parent="#accordionSidebar">
                         <div class="bg-white py-2 collapse-inner">
                             @foreach ($moduleReports as $key => $page)
                                 @can($key)
-                                    <a class="collapse-item" href="{{ $page['url'] }}">
+                                    <a class="collapse-item {{ $key === $reportsActiveKey ? 'active' : '' }}" href="{{ $page['url'] }}">
                                         <i class="fa-solid {{ $page['icon'] }} me-1"></i> {{ $page['name'] }}
                                     </a>
                                 @endcan

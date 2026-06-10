@@ -2,63 +2,392 @@
 
 @section('content')
 <style>
-    /* Uniform Table Design */
-    .table-sticky-header thead th {
-        position: sticky !important;
-        top: 0;
-        background-color: #ffffff;
-        z-index: 10;
-        border-bottom: 2px solid #f8f9fa;
+    /* ── Design tokens (shared with Edit Employee / Loan) ── */
+    :root {
+        --teal:         #008080;
+        --teal-dark:    #006666;
+        --teal-mid:     #4db6ac;
+        --teal-light:   #e0f2f1;
+        --slate:        #334155;
+        --slate-light:  #64748b;
+        --muted:        #94a3b8;
+        --bg:           #f1f5f9;
+        --surface:      #ffffff;
+        --border:       #e2e8f0;
+        --danger:       #ef4444;
+        --success:      #10b981;
+        --warning:      #f59e0b;
+        --radius-card:  14px;
+        --radius-input: 8px;
+        --shadow-card:  0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
     }
-    .table-hover tbody tr:hover {
-        background-color: #fcfcfc;
-        transition: background-color 0.2s ease;
+
+    .scheduler-shell {
+        background: var(--bg);
+        min-height: 100vh;
+        padding: 24px 28px 60px;
+        margin: -1.5rem -1.5rem 0;
+    }
+
+    .scheduler-topbar {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-card);
+        padding: 16px 22px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .scheduler-topbar .page-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--slate);
+        margin: 0;
+        letter-spacing: -.2px;
+    }
+    .scheduler-topbar .breadcrumb { margin: 2px 0 0; font-size: .78rem; }
+    .scheduler-topbar .breadcrumb-item.active { color: var(--teal); font-weight: 700; }
+    .scheduler-topbar .breadcrumb-item { color: var(--muted); }
+
+    .btn-add-schedule {
+        background: var(--teal);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 20px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: .3px;
+        cursor: pointer;
+        box-shadow: 0 4px 14px rgba(0,128,128,.25);
+        transition: all .2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .btn-add-schedule:hover { background: var(--teal-dark); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,128,128,.35); color: #fff; }
+
+    /* ── Filter bar ──────────────────────────────────────────── */
+    .scheduler-filterbar {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-card);
+        padding: 16px 22px;
+        margin-bottom: 20px;
+    }
+    .scheduler-filterbar .input-group {
+        border: 1.5px solid var(--border);
+        border-radius: 999px;
+        overflow: hidden;
+        background: #fafbfc;
+    }
+    .scheduler-filterbar .input-group:focus-within {
+        border-color: var(--teal);
+        box-shadow: 0 0 0 3px rgba(0,128,128,.1);
+    }
+    .scheduler-filterbar .input-group-text { background: transparent; border: none; }
+    .scheduler-filterbar .form-control { border: none; background: transparent; box-shadow: none !important; }
+    .scheduler-filterbar .form-select {
+        border: 1.5px solid var(--border);
+        border-radius: 999px;
+        background: #fafbfc;
+        font-size: 0.85rem;
+    }
+    .scheduler-filterbar .form-select:focus {
+        border-color: var(--teal);
+        box-shadow: 0 0 0 3px rgba(0,128,128,.1);
+        outline: none;
+    }
+
+    /* ── Section card ────────────────────────────────────────── */
+    .sc {
+        background: var(--surface);
+        border-radius: var(--radius-card);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-card);
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+    .sc-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 14px 22px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(to right, #fafcff, #f8fbfa);
+    }
+    .sc-head-left { display: flex; align-items: center; gap: 10px; }
+    .sc-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: var(--teal-light);
+        color: var(--teal);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.78rem;
+        flex-shrink: 0;
+    }
+    .sc-title {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--slate);
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        margin: 0;
+    }
+    .sc-body { padding: 0; }
+
+    /* ── Field helpers ───────────────────────────────────────── */
+    .field-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--slate-light);
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        margin-bottom: 5px;
+        display: block;
+    }
+    .field-label .req { color: var(--danger); margin-left: 2px; }
+
+    .form-control, .form-select {
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius-input);
+        font-size: 0.875rem;
+        color: var(--slate);
+        background: #fafbfc;
+        transition: border-color .15s, box-shadow .15s;
+        padding: 0.55rem 0.85rem;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--teal);
+        box-shadow: 0 0 0 3px rgba(0,128,128,.1);
+        background-color: #fff;
+        outline: none;
+    }
+
+    /* ── Sub-section divider ─────────────────────────────────── */
+    .sub-divider {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 6px 0 18px;
+    }
+    .sub-divider span {
+        font-size: 0.73rem;
+        font-weight: 700;
+        color: var(--teal);
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        white-space: nowrap;
+    }
+    .sub-divider::after {
+        content: '';
+        flex-grow: 1;
+        height: 1px;
+        background: var(--border);
+    }
+
+    /* ── Table styling ───────────────────────────────────────── */
+    .scheduler-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: var(--surface);
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--slate-light);
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        border-bottom: 2px solid var(--border);
+        white-space: nowrap;
+        padding: 12px 16px;
+    }
+    .scheduler-table tbody td {
+        font-size: 0.83rem;
+        color: var(--slate);
+        vertical-align: middle;
+        padding: 12px 16px;
+    }
+    .scheduler-table tbody tr:hover { background: var(--teal-light); }
+
+    .icon-action-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        border: 1.5px solid var(--border);
+        background: var(--surface);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all .15s;
+    }
+    .icon-action-btn:hover { border-color: var(--teal-mid); background: var(--teal-light); }
+    .icon-action-btn.danger:hover { border-color: var(--danger); background: #fff5f5; }
+
+    /* ── Day pill checkboxes ─────────────────────────────────── */
+    .day-label {
+        background: var(--surface);
+        color: var(--slate-light);
+        border: 1.5px solid var(--border) !important;
+        font-size: 0.75rem;
+        font-weight: 700;
+        transition: all .15s;
+    }
+    .day-check:checked + .day-label {
+        background: var(--teal) !important;
+        color: #fff !important;
+        border-color: var(--teal) !important;
+    }
+
+    /* ── Employee tags ───────────────────────────────────────── */
+    .employee-tag {
+        background: var(--teal-light);
+        color: var(--teal-dark);
+        border: 1px solid var(--teal-mid);
+        font-weight: 700;
+        font-size: 0.72rem;
+    }
+
+    /* ── Modal styling ───────────────────────────────────────── */
+    #mdlEmpScheduler .modal-content {
+        border-radius: var(--radius-card);
+        border: none;
+        overflow: hidden;
+    }
+    #mdlEmpScheduler .modal-header {
+        background: var(--teal);
+        color: #fff;
+        border-bottom: none;
+        padding: 16px 22px;
+    }
+    #mdlEmpScheduler .modal-header .modal-title { color: #fff; }
+    #mdlEmpScheduler .modal-header .modal-title i { color: #fff; }
+    #mdlEmpScheduler .btn-close { filter: brightness(0) invert(1); }
+    #mdlEmpScheduler .modal-body { background: var(--bg); padding: 22px; }
+    #mdlEmpScheduler .modal-footer {
+        background: var(--surface);
+        border-top: 1px solid var(--border);
+    }
+    #mdlEmpScheduler .bg-light.p-3.rounded-3 {
+        background: var(--surface) !important;
+        border: 1px solid var(--border);
+    }
+
+    .btn-submit-schedule {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        padding: 10px 26px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: .4px;
+        text-transform: uppercase;
+        cursor: pointer;
+        box-shadow: 0 4px 14px rgba(245,158,11,.3);
+        transition: all .2s;
+    }
+    .btn-submit-schedule:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(245,158,11,.4); color: #fff; }
+
+    .btn-cancel-schedule {
+        background: var(--surface);
+        color: var(--slate-light);
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 22px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: .4px;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: all .2s;
+    }
+    .btn-cancel-schedule:hover { background: var(--bg); }
+
+    /* ── Pagination ──────────────────────────────────────────── */
+    #paginationContainer .page-link {
+        color: var(--slate-light);
+    }
+    #paginationContainer .page-item.active .page-link {
+        background: var(--teal) !important;
+        border-color: var(--teal) !important;
+        color: #fff !important;
+    }
+
+    /* ── Add-employee button ─────────────────────────────────── */
+    #btnAddEmployee {
+        background: var(--teal);
+        border-color: var(--teal);
+    }
+    #btnAddEmployee:hover {
+        background: var(--teal-dark);
+        border-color: var(--teal-dark);
     }
 </style>
 
-<div class="container-fluid px-4 py-3">
-    <div class="d-flex align-items-center justify-content-between mb-4">
+<div class="scheduler-shell">
+
+    {{-- ── Top header ── --}}
+    <div class="scheduler-topbar">
         <div>
-            <h4 class="fw-bold text-dark m-0">Settings</h4>
+            <p class="page-title">Employee Scheduler</p>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item text-muted">Settings</li>
-                    <li class="breadcrumb-item active fw-semibold text-primary" aria-current="page">Scheduling Module</li>
+                    <li class="breadcrumb-item">Settings</li>
+                    <li class="breadcrumb-item active" aria-current="page">Scheduling Module</li>
                 </ol>
             </nav>
         </div>
-        <button class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold" id="btnCreateModal" data-bs-toggle="modal" data-bs-target="#mdlEmpScheduler">
-            <i class="fas fa-plus me-2"></i> Add Schedule
+        <button class="btn-add-schedule" id="btnCreateModal" data-bs-toggle="modal" data-bs-target="#mdlEmpScheduler">
+            <i class="fa-solid fa-plus"></i> Add Schedule
         </button>
     </div>
 
-    <div class="row g-3 mb-4 align-items-center">
-        <div class="col-lg-8">
-            <div class="input-group bg-white rounded-pill shadow-sm overflow-hidden px-3 border">
-                <span class="input-group-text bg-transparent border-0"><i class="fas fa-search text-muted"></i></span>
-                <input type="text" id="txtSearchEmp" class="form-control border-0 shadow-none" placeholder="Search by Employee Name...">
+    {{-- ── Filters ── --}}
+    <div class="scheduler-filterbar">
+        <div class="row g-3 align-items-center">
+            <div class="col-lg-8">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                    <input type="text" id="txtSearchEmp" class="form-control" placeholder="Search by Employee Name...">
+                </div>
             </div>
-        </div>
-        <div class="col-lg-4">
-            <select id="selPerPage" class="form-select rounded-pill shadow-sm border px-4">
-                <option value="10">10 entries per page</option>
-                <option value="25">25 entries</option>
-                <option value="50">50 entries</option>
-                <option value="100">100 entries</option>
-            </select>
+            <div class="col-lg-4">
+                <select id="selPerPage" class="form-select">
+                    <option value="10">10 entries per page</option>
+                    <option value="25">25 entries</option>
+                    <option value="50">50 entries</option>
+                    <option value="100">100 entries</option>
+                </select>
+            </div>
         </div>
     </div>
 
-    <div class="card border-0 shadow-sm rounded-4">
-        <div class="card-body p-0">
+    {{-- ── Schedule list ── --}}
+    <div class="sc">
+        <div class="sc-head">
+            <div class="sc-head-left">
+                <div class="sc-icon"><i class="fa-solid fa-calendar-days"></i></div>
+                <h5 class="sc-title">Employee Schedules</h5>
+            </div>
+        </div>
+        <div class="sc-body">
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0 table-sticky-header">
-                    <thead class="bg-light">
-                        <tr class="text-secondary small fw-bold text-uppercase tracking-wider">
-                            <th class="ps-4 py-3">Employee Name</th>
-                            <th class="py-3">From (Date & Time)</th>
-                            <th class="py-3">To (Date & Time)</th>
-                            <th class="pe-4 py-3 text-end">Action</th>
+                <table class="table table-hover align-middle mb-0 scheduler-table">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">Employee Name</th>
+                            <th>From (Date &amp; Time)</th>
+                            <th>To (Date &amp; Time)</th>
+                            <th class="pe-4 text-end">Action</th>
                         </tr>
                     </thead>
                     <tbody id="tblEmpScheduler" class="border-top-0">
@@ -73,28 +402,29 @@
 
 <div class="modal fade" id="mdlEmpScheduler" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content border-0 shadow rounded-4 overflow-hidden">
-            <div class="modal-header border-0 pt-4 px-4 bg-white">
-                <h5 class="modal-title fw-bold text-secondary text-uppercase tracking-wide">
-                    <i class="bi bi-calendar-check me-2 text-primary"></i> Employee Schedule
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fa-solid fa-calendar-days me-2"></i> Employee Schedule
                 </h5>
                 <button type="button" class="btn-close closereset_update" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
-            <div class="modal-body p-4">
+            <div class="modal-body">
                 <form id="frmEmpScheduler" autocomplete="off">
                     <input type="hidden" id="schedule_id">
 
+                    <div class="sub-divider"><span>Employees</span></div>
                     <div class="mb-4">
-                        <label class="form-label small fw-semibold text-muted">Select Employee <span class="text-danger">*</span></label>
+                        <label class="field-label" for="selEmployee">Select Employee <span class="req">*</span></label>
                         <div class="input-group">
-                            <select class="form-select form-control-lg bg-light border-0 fs-6 text-uppercase" id="selEmployee" name="employee_id">
+                            <select class="form-select text-uppercase" id="selEmployee" name="employee_id">
                                 <option selected disabled value="">Choose...</option>
                                 @foreach($employees as $emp)
                                     <option value="{{ $emp->empID }}">{{ $emp->lname }}, {{ $emp->fname }}</option>
                                 @endforeach
                             </select>
-                            <button type="button" class="btn btn-primary rounded-0" id="btnAddEmployee">
+                            <button type="button" class="btn btn-primary" id="btnAddEmployee">
                                 <i class="fas fa-plus"></i>
                             </button>
                         </div>
@@ -105,26 +435,27 @@
                         <input type="hidden" id="employeeArrayInput">
                     </div>
 
+                    <div class="sub-divider"><span>Schedule Period</span></div>
                     <div class="row g-3 mb-4">
                         <div class="col-md-6">
-                            <label class="form-label small fw-semibold text-muted">Start Date</label>
-                            <input type="date" class="form-control form-control-lg bg-light border-0 fs-6" name="sched_start_date" id="sched_start_date">
+                            <label class="field-label" for="sched_start_date">Start Date</label>
+                            <input type="date" class="form-control" name="sched_start_date" id="sched_start_date">
                             <span class="text-danger small error-text sched_start_date_error"></span>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label small fw-semibold text-muted">End Date</label>
-                            <input type="date" class="form-control form-control-lg bg-light border-0 fs-6" name="sched_end_date" id="sched_end_date">
+                            <label class="field-label" for="sched_end_date">End Date</label>
+                            <input type="date" class="form-control" name="sched_end_date" id="sched_end_date">
                             <span class="text-danger small error-text sched_end_date_error"></span>
                         </div>
                     </div>
 
-                    <div class="mb-4 bg-light p-3 rounded-3">
-                        <label class="form-label small fw-bold text-muted d-block mb-2">Repeat on these Days:</label>
+                    <div class="mb-4 p-3 rounded-3 bg-light">
+                        <label class="field-label d-block mb-2">Repeat on these Days:</label>
                         <div class="d-flex flex-wrap gap-2">
                             @foreach(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] as $day)
                                 <div class="form-check form-check-inline m-0">
                                     <input class="form-check-input day-check d-none" type="checkbox" value="{{ $day }}" id="chk{{ $day }}">
-                                    <label class="badge rounded-pill border py-2 px-3 fw-medium day-label" for="chk{{ $day }}" style="cursor: pointer; color: #666;">
+                                    <label class="badge rounded-pill border py-2 px-3 fw-medium day-label" for="chk{{ $day }}" style="cursor: pointer;">
                                         {{ $day }}
                                     </label>
                                 </div>
@@ -132,37 +463,38 @@
                         </div>
                     </div>
 
+                    <div class="sub-divider"><span>Working Hours</span></div>
                     <div class="row g-3 mb-4">
                         <div class="col-md-3">
-                            <label class="form-label small fw-semibold text-muted">Time In</label>
-                            <input type="time" class="form-control bg-light border-0" name="sched_in" id="sched_in">
+                            <label class="field-label" for="sched_in">Time In</label>
+                            <input type="time" class="form-control" name="sched_in" id="sched_in">
                             <span class="text-danger small error-text sched_in_error"></span>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small fw-semibold text-muted">Time Out</label>
-                            <input type="time" class="form-control bg-light border-0" name="sched_out" id="sched_out">
+                            <label class="field-label" for="sched_out">Time Out</label>
+                            <input type="time" class="form-control" name="sched_out" id="sched_out">
                             <span class="text-danger small error-text sched_out_error"></span>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small fw-semibold text-muted">Break Start</label>
-                            <input type="time" class="form-control bg-light border-0" name="break_start" id="break_start">
+                            <label class="field-label" for="break_start">Break Start</label>
+                            <input type="time" class="form-control" name="break_start" id="break_start">
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label small fw-semibold text-muted">Break End</label>
-                            <input type="time" class="form-control bg-light border-0" name="break_end" id="break_end">
+                            <label class="field-label" for="break_end">Break End</label>
+                            <input type="time" class="form-control" name="break_end" id="break_end">
                         </div>
                     </div>
 
                     <div class="mb-0">
-                        <label class="form-label small fw-semibold text-muted">Shift Type</label>
-                        <input type="text" class="form-control bg-light border-0" name="shift_type" id="shift_type" placeholder="e.g. Regular Morning">
+                        <label class="field-label" for="shift_type">Shift Type</label>
+                        <input type="text" class="form-control" name="shift_type" id="shift_type" placeholder="e.g. Regular Morning">
                     </div>
                 </form>
             </div>
 
-            <div class="modal-footer border-0 pb-4 px-4">
-                <button type="button" class="btn btn-light rounded-pill px-4 fw-bold text-muted me-2" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" id="btnSaveScheduler" class="btn btn-primary rounded-pill px-5 fw-bold shadow-sm">Save Schedule</button>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel-schedule" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="btnSaveScheduler" class="btn-submit-schedule">Save Schedule</button>
             </div>
         </div>
     </div>
@@ -201,10 +533,10 @@ $(document).ready(function(){
                             <td class="text-muted">${s.sched_end_date} <span class="badge bg-light text-dark border-0 ms-1 fw-bold">${s.sched_out}</span></td>
                             <td class="pe-4 text-end">
                                 <div class="d-flex justify-content-end gap-2">
-                                    <button class="btn btn-light btn-sm rounded-circle shadow-sm p-2 btnEdit" data-id="${s.id}" title="Edit">
-                                        <i class="fa-solid fa-pencil text-primary"></i>
+                                    <button class="icon-action-btn btnEdit" data-id="${s.id}" title="Edit">
+                                        <i class="fa-solid fa-pencil" style="color: var(--teal);"></i>
                                     </button>
-                                    <button class="btn btn-light btn-sm rounded-circle shadow-sm p-2 btnDelete" data-id="${s.id}" title="Delete">
+                                    <button class="icon-action-btn danger btnDelete" data-id="${s.id}" title="Delete">
                                         <i class="fa-solid fa-trash text-danger"></i>
                                     </button>
                                 </div>
@@ -326,7 +658,7 @@ $(document).ready(function(){
     $(document).on('click', '.btnEdit', function(){
         let id = $(this).data('id');
         const trimSeconds = (t) => t ? t.substring(0, 5) : '';
-        
+
         axios.get(`{{ url('employee-schedules/edit') }}/${id}`).then(res => {
             let s = res.data;
             $('#schedule_id').val(s.id);
@@ -338,7 +670,7 @@ $(document).ready(function(){
             $('#sched_out').val(trimSeconds(s.sched_out));
             $('#break_start').val(trimSeconds(s.break_start));
             $('#break_end').val(trimSeconds(s.break_end));
-            
+
             // Note: If you store days in DB, you'd trigger them here
             $('#mdlEmpScheduler').modal('show');
         });
@@ -392,8 +724,7 @@ $(document).ready(function(){
 
         selectedEmployees.forEach((emp, index) => {
             container.append(`
-                <span class="badge rounded-pill d-inline-flex align-items-center gap-2 px-3 py-2 fw-medium"
-                    style="background: var(--bs-primary-bg-subtle, #cfe2ff); color: var(--bs-primary-text-emphasis, #084298); font-size: 13px; border: 1px solid var(--bs-primary-border-subtle, #9ec5fe);">
+                <span class="badge rounded-pill d-inline-flex align-items-center gap-2 px-3 py-2 fw-medium employee-tag">
                     ${emp.name}
                     <button type="button" class="btn-close btn-close-sm ms-1 btnRemoveEmployee"
                             data-index="${index}"
