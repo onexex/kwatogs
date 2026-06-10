@@ -10,9 +10,10 @@ use App\Models\leavevalidationModel;
 
 class LeaveService
 {
-    public function updateStatus(int $leaveId, string $status): array
+    public function updateStatus(int $leaveId, string $status, ?string $remarks = null): array
     {
         $leave = Leave::find($leaveId);
+        $user = Auth::user();
 
         if ($leave) {
 
@@ -50,6 +51,15 @@ class LeaveService
                     }
 
                 }
+            }
+
+            if ($status == LeaveStatusEnum::DISAPPROVED->name) {
+                $leave->disapproved_remarks = $remarks;
+            }
+
+            if ($status == LeaveStatusEnum::APPROVED->name) {
+                $leave->approved_by = $user->id;
+                $leave->approved_at = now();
             }
 
             $leave->status = $status;
