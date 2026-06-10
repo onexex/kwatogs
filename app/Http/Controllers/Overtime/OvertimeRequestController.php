@@ -29,7 +29,7 @@ class OvertimeRequestController extends Controller
         $query = Overtime::select('overtimes.*')
             ->join('emp_details', 'emp_details.id', '=', 'overtimes.emp_detail_id')
             ->join('users', 'users.empID', '=', 'emp_details.empID')
-            ->where('empISID', $user->empID)
+            ->where('emp_details.empCompID', $user->empDetail->empCompID)
             ->where(function ($q) use ($user) {
 
                 if ($user->can('approveovertime')) {
@@ -65,7 +65,7 @@ class OvertimeRequestController extends Controller
 
     public function updateStatus(Request $request)
     {
-        $overtimeStatus = $this->service->updateStatus($request->leave_id, $request->status);
+        $overtimeStatus = $this->service->updateStatus($request->leave_id, $request->status, $request->remarks);
 
         return response()->json($overtimeStatus);
     }

@@ -75,7 +75,7 @@
                     icon: 'question',
                     showCancelButton: true,
                     confirmButtonText: 'Yes, Apporve',
-                    confirmButtonColor: '#0d6efd',
+                    confirmButtonColor: '#198754',
                     cancelButtonColor: '#6c757d',
                     reverseButtons: true,
                     customClass: { confirmButton: 'rounded-pill', cancelButton: 'rounded-pill' }
@@ -112,17 +112,28 @@
                     title: 'DisApprove Leave Request',
                     text: 'Are you sure you want to disapprove this leave request?',
                     icon: 'question',
+                    input: 'textarea',
+                    inputLabel: 'Disapproval Remarks',
+                    inputPlaceholder: 'Enter remarks for disapproval...',
                     showCancelButton: true,
-                    confirmButtonText: 'Yes, Apporve',
-                    confirmButtonColor: '#0d6efd',
+                    confirmButtonText: 'Yes, Disapprove',
+                    confirmButtonColor: '#dc3545',
                     cancelButtonColor: '#6c757d',
                     reverseButtons: true,
-                    customClass: { confirmButton: 'rounded-pill', cancelButton: 'rounded-pill' }
+                    cancelButtonColor: '#6c757d',
+                    reverseButtons: true,
+                    customClass: { confirmButton: 'rounded-pill', cancelButton: 'rounded-pill' },
+                    inputValidator: (value) => {
+                        if (!value || !value.trim()) {
+                            return 'Please enter remarks for disapproval!';
+                        }
+                    }
                 }).then((result) => {
                     if (result.isConfirmed) {
                         axios.post('/leaverequests/updateStatus', {
                             leave_id: id,
-                            status: 'DISAPPROVED'
+                            status: 'DISAPPROVED',
+                            remarks: result.value
                         })
                         .then(function (response) {
                             Swal.fire({

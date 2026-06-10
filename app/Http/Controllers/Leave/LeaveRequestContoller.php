@@ -29,7 +29,7 @@ class LeaveRequestContoller extends Controller
         $query = Leave::select('leaves.*')
             ->join('emp_details', 'emp_details.empID', '=', 'leaves.employee_id')
             ->join('users', 'users.empID', '=', 'leaves.employee_id')
-            ->where('empISID', $user->empID)
+            ->where('emp_details.empCompID', $user->empDetail->empCompID)
             ->where(function ($q) use ($user) {
 
                 if ($user->can('approveleave')) {
@@ -67,7 +67,7 @@ class LeaveRequestContoller extends Controller
 
     public function updateStatus(Request $request)
     {
-        $leaveStatus = $this->service->updateStatus($request->leave_id, $request->status);
+        $leaveStatus = $this->service->updateStatus($request->leave_id, $request->status, $request->remarks);
 
         return response()->json($leaveStatus);
     }

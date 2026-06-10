@@ -21,7 +21,8 @@ class Overtime extends Model
         'time_out',   
         'purpose',
         'total_hrs',
-        'total_pay'   
+        'total_pay',
+        'disapproved_remarks',   
     ];
 
     public function employee(): BelongsTo
