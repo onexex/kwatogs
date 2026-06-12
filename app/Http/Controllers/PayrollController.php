@@ -246,7 +246,7 @@ class PayrollController extends Controller
                 //key ob ot leave
                     $employeeLeaves = $allLeaves->get($emp->empID, collect());
                     $employeeObs    = $allObs->get($emp->empID, collect());
-                    $employeeOts = $allOts->get($emp->empID, collect())
+                    $employeeOts    = $allOts->get(optional($emp->empDetail)->id, collect()) // OT is keyed by emp_detail_id, not empID
                         ->keyBy(fn($ot) => Carbon::parse($ot->date_from)->format('Y-m-d'));  
 
                 // ==============================
