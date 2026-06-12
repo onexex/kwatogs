@@ -106,31 +106,44 @@ class PayrollController extends Controller
 
     public function computePayroll(Request $request)
     {
+        $employees = collect();
         DB::beginTransaction();
 
         try {
-            //  Fetch Active Employees (Test: single employee)
-            $employees = User::with('empDetail')
-                // ->where('empID', 'KWTGS-2026-0063')
-                ->whereHas('empDetail', function ($q) {
-                    $q->where('empStatus', '1');
-                })
-                ->get();
-
             $validated = $request->validate([
                 'date_from' => 'required|date',
                 'date_to' => 'required|date|after_or_equal:date_from',
                 'pay_date' => 'required|date',
+                'department_id' => 'nullable',
             ]);
 
             $startDate = $validated['date_from'];
             $endDate = $validated['date_to'];
             $payDate = $validated['pay_date'];
 
+            // 'all' = compute every active employee; otherwise limit to one department
+            $departmentId = $request->query('department_id', 'all') ?: 'all';
+
+            //  Fetch Active Employees (optionally filtered by department)
+            $employees = User::with('empDetail')
+                ->whereHas('empDetail', function ($q) use ($departmentId) {
+                    $q->where('empStatus', '1');
+                    if ($departmentId !== 'all') {
+                        $q->where('empDepID', $departmentId);
+                    }
+                })
+                ->get();
+
+            // IDs being processed in this run. Used to scope cleanup so computing a
+            // single department never deletes payroll belonging to other departments.
+            $employeeIds = $employees->pluck('empID');
+
             // ==============================
             //  CLEANUP OLD PAYROLL RECORDS
             // ==============================
-            $existingPayrolls = Payroll::where('pay_date', $payDate)->get();
+            $existingPayrolls = Payroll::where('pay_date', $payDate)
+                ->whereIn('employee_id', $employeeIds)
+                ->get();
             foreach ($existingPayrolls as $oldPayroll) {
 
                 //  Roll back previous loan payments
@@ -149,8 +162,10 @@ class PayrollController extends Controller
                 $oldPayroll->delete();
             }
 
-            //  Clean payroll details for same payDate
-            PayrollDetail::where('payroll_date', $payDate)->delete();
+            //  Clean payroll details for same payDate (scoped to processed employees)
+            PayrollDetail::where('payroll_date', $payDate)
+                ->whereIn('employee_id', $employeeIds)
+                ->delete();
 
             // ==============================
             //  LOAD HOLIDAYS
@@ -518,7 +533,8 @@ class PayrollController extends Controller
             //  COMMIT TRANSACTION
             // ==============================
             DB::commit();
-            return "Payroll computed successfully for pay date $payDate ($startDate to $endDate)";
+            $scope = $departmentId === 'all' ? 'all departments' : "department #$departmentId";
+            return "Payroll computed successfully for $scope — pay date $payDate ($startDate to $endDate). Employees processed: " . $employeeIds->count();
 
         } catch (\Throwable $e) {
             //  HANDLE ERRORS
