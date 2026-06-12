@@ -1,28 +1,16 @@
-    let lvAllRows = [];
     let lvCurrentPage = 1;
-    const lvPerPage = 10;
 
-    loadLeave()
+    loadLeave();
 
-    async function loadLeave() {
-        axios.get('/leaverequests/getAll')
+    async function loadLeave(page = lvCurrentPage) {
+        axios.get('/leaverequests/getAll', { params: { page } })
         .then(function (response) {
-            lvAllRows = (response.data && response.data.data) ? response.data.data : [];
-            lvCurrentPage = 1;
-            renderLeavePage();
-        })
-        .catch(function (error) {
-            dialog.alert({ message: error });
-        });
-    }
-
-    function renderLeavePage() {
-        const lastPage = Math.max(1, Math.ceil(lvAllRows.length / lvPerPage));
-        if (lvCurrentPage > lastPage) lvCurrentPage = lastPage;
-        const start = (lvCurrentPage - 1) * lvPerPage;
-        const pageRows = lvAllRows.slice(start, start + lvPerPage);
-        var htmlData='';
-        $(pageRows).each(function(index, row) {
+            const res = response.data || {};
+            const rows = res.data || [];
+            lvCurrentPage = res.current_page || 1;
+            const lastPage = res.last_page || 1;
+            var htmlData='';
+            $(rows).each(function(index, row) {
 
                 var actionButtons = '';
                 
@@ -68,18 +56,20 @@
                 
                 htmlData += "</tr>";
             })
-        if (!pageRows.length) {
-            htmlData = '<tr><td colspan="10" class="text-center text-muted py-3">No records found.</td></tr>';
-        }
-        $("#tblLeaveApp").empty().append(htmlData);
-        renderLeavePagination(lastPage);
+            if (!rows.length) {
+                htmlData = '<tr><td colspan="10" class="text-center text-muted py-3">No records found.</td></tr>';
+            }
+            $("#tblLeaveApp").empty().append(htmlData);
+            renderLeavePagination(lastPage, lvCurrentPage);
+        })
+        .catch(function (error) { dialog.alert({ message: error }); });
     }
 
-    function renderLeavePagination(lastPage) {
+    function renderLeavePagination(lastPage, cur) {
         const c = document.getElementById('leavePagination');
         if (!c) return;
         if (lastPage <= 1) { c.innerHTML = ''; return; }
-        const cur = lvCurrentPage, win = 1, pages = [];
+        const win = 1, pages = [];
         for (let i = 1; i <= lastPage; i++) { if (i===1||i===lastPage||(i>=cur-win&&i<=cur+win)) pages.push(i); }
         const item = (label, page, o) => (o && o.disabled)
             ? `<li class="page-item disabled"><span class="page-link">${label}</span></li>`
@@ -99,8 +89,7 @@
         if ($(this).closest('.page-item').hasClass('disabled')) return;
         const page = parseInt($(this).data('page'), 10);
         if (!page) return;
-        lvCurrentPage = page;
-        renderLeavePage();
+        loadLeave(page);
     });
 
     document.addEventListener("DOMContentLoaded", function () {

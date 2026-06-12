@@ -1,28 +1,16 @@
-    let otAllRows = [];
     let otCurrentPage = 1;
-    const otPerPage = 10;
 
-    loadOvertime()
+    loadOvertime();
 
-    async function loadOvertime() {
-        axios.get('/overtimerequests/getAll')
+    async function loadOvertime(page = otCurrentPage) {
+        axios.get('/overtimerequests/getAll', { params: { page } })
         .then(function (response) {
-            otAllRows = (response.data && response.data.data) ? response.data.data : [];
-            otCurrentPage = 1;
-            renderOvertimePage();
-        })
-        .catch(function (error) {
-            dialog.alert({ message: error });
-        });
-    }
-
-    function renderOvertimePage() {
-        const lastPage = Math.max(1, Math.ceil(otAllRows.length / otPerPage));
-        if (otCurrentPage > lastPage) otCurrentPage = lastPage;
-        const start = (otCurrentPage - 1) * otPerPage;
-        const pageRows = otAllRows.slice(start, start + otPerPage);
-        var htmlData='';
-        $(pageRows).each(function(index, row) {
+            const res = response.data || {};
+            const rows = res.data || [];
+            otCurrentPage = res.current_page || 1;
+            const lastPage = res.last_page || 1;
+            var htmlData='';
+            $(rows).each(function(index, row) {
 
                 var actionButtons = '';
                 
@@ -66,18 +54,20 @@
                 
                 htmlData += "</tr>";
             })
-        if (!pageRows.length) {
-            htmlData = '<tr><td colspan="8" class="text-center text-muted py-3">No records found.</td></tr>';
-        }
-        $("#tblOvertimeApp").empty().append(htmlData);
-        renderOvertimePagination(lastPage);
+            if (!rows.length) {
+                htmlData = '<tr><td colspan="8" class="text-center text-muted py-3">No records found.</td></tr>';
+            }
+            $("#tblOvertimeApp").empty().append(htmlData);
+            renderOvertimePagination(lastPage, otCurrentPage);
+        })
+        .catch(function (error) { dialog.alert({ message: error }); });
     }
 
-    function renderOvertimePagination(lastPage) {
+    function renderOvertimePagination(lastPage, cur) {
         const c = document.getElementById('overtimePagination');
         if (!c) return;
         if (lastPage <= 1) { c.innerHTML = ''; return; }
-        const cur = otCurrentPage, win = 1, pages = [];
+        const win = 1, pages = [];
         for (let i = 1; i <= lastPage; i++) { if (i===1||i===lastPage||(i>=cur-win&&i<=cur+win)) pages.push(i); }
         const item = (label, page, o) => (o && o.disabled)
             ? `<li class="page-item disabled"><span class="page-link">${label}</span></li>`
@@ -97,8 +87,7 @@
         if ($(this).closest('.page-item').hasClass('disabled')) return;
         const page = parseInt($(this).data('page'), 10);
         if (!page) return;
-        otCurrentPage = page;
-        renderOvertimePage();
+        loadOvertime(page);
     });
 
       document.addEventListener("DOMContentLoaded", function () {

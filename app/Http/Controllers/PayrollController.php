@@ -314,7 +314,7 @@ class PayrollController extends Controller
                             $presentBefore = isset($attendanceSummaries[$prevDay]) && $attendanceSummaries[$prevDay]->total_hours > 0;
 
                             // LEGAL HOLIDAY
-                            if ($holidayType == '1') {
+                            if ($holidayType == '0') {
                                 if ($worked){
                                     $holidayPay += $dailyRate * 1;
                                  } elseif ($onLeave || $onOB) {
@@ -331,7 +331,7 @@ class PayrollController extends Controller
                                 }
                             }
                             // SPECIAL HOLIDAY
-                            elseif ($holidayType == '0' && $worked) {
+                            elseif ($holidayType == '1' && $worked) {
                                 $holidayPay += $dailyRate * .3;
                             } 
                         }
