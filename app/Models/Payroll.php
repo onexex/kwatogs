@@ -40,6 +40,7 @@ class Payroll extends Model
         'gross_pay',
         'total_deductions',
         'net_pay',
+        'pay_rec',
         'status',
         'sss_employer',
         'philhealth_employer',

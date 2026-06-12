@@ -6,6 +6,7 @@ use App\Http\Controllers\archiveCtrl;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\classiticationCtrl;
 use App\Http\Controllers\companyCtrl;
+use App\Http\Controllers\DatabaseBackupController;
 use App\Http\Controllers\departmentCtrl;
 use App\Http\Controllers\earlyoutCtrl;
 use App\Http\Controllers\EmployeeRecordController;
@@ -137,6 +138,11 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     // SHAIRA
     //MANAGEMENT
     Route::get('/pages/management/accessrights',[EmployeeRoleController::class, 'index']);
+    Route::get('/pages/management/databasebackup',[DatabaseBackupController::class, 'index'])->name('database-backup.index');
+    Route::post('/pages/management/databasebackup',[DatabaseBackupController::class, 'store'])->name('database-backup.store');
+    Route::get('/pages/management/databasebackup/{filename}/download',[DatabaseBackupController::class, 'download'])->name('database-backup.download');
+    Route::post('/pages/management/databasebackup/{filename}/restore',[DatabaseBackupController::class, 'restore'])->name('database-backup.restore');
+    Route::delete('/pages/management/databasebackup/{filename}',[DatabaseBackupController::class, 'destroy'])->name('database-backup.destroy');
     Route::get('/pages/management/departments',[pageCtrl::class, 'departments']);
     Route::get('/pages/management/relationship',[pageCtrl::class, 'relationship']);
     Route::get('/pages/management/leavevalidations',[pageCtrl::class, 'leavevalidations']);

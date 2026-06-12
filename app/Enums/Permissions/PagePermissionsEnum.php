@@ -55,5 +55,9 @@ enum PagePermissionsEnum: string
     case admine201 = 'Admin E-201';
     case leavecreditallocation = 'Leave Credit Allocations';
     case manual_entry = 'HR Manual Time Adjustment';
-    
+    case databasebackup = 'Database Backup';
+    case databasebackupcreate = 'Database Backup Create';
+    case databasebackuprestore = 'Database Backup Restore';
+    case databasebackupdelete = 'Database Backup Delete';
+
 }

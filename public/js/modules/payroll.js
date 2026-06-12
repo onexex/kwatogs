@@ -527,7 +527,8 @@ $(document).ready(function () {
 
                             <td>${formatNumber(payroll.penalty_amount || 0)}</td>
                             <td>${formatNumber(payroll.company_loan || 0)}</td>
-                            <td class="pe-4 fw-bold">${formatNumber(payroll.net_pay || 0)}</td>
+                            <td class="bg-light fw-bold">${formatNumber(payroll.net_pay || 0)}</td>
+                            <td class="pe-4 fw-bold">${formatNumber(payroll.pay_rec || 0)}</td>
                     </tr>
                     `;
                     $payrollTableBody.append(row);

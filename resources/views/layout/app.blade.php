@@ -273,6 +273,7 @@
                     'archive'             => ['name' => 'Archive', 'url' => '/pages/management/archive', 'icon' => 'fa-box-archive'],
                     'classification'      => ['name' => 'Classification', 'url' => '/pages/management/classification', 'icon' => 'fa-tags'],
                     'companies'           => ['name' => 'Companies', 'url' => '/pages/management/companies', 'icon' => 'fa-building'],
+                    'databasebackup'      => ['name' => 'Database Backup', 'url' => '/pages/management/databasebackup', 'icon' => 'fa-database', 'permissions' => ['databasebackup', 'databasebackupcreate', 'databasebackuprestore', 'databasebackupdelete']],
                     'departments'         => ['name' => 'Departments', 'url' => '/pages/management/departments', 'icon' => 'fa-sitemap'],
                     'employeestatus'      => ['name' => 'Emp Status', 'url' => '/pages/management/employeestatus', 'icon' => 'fa-user-tag'],
                     'hmo'                 => ['name' => 'HMOs', 'url' => '/pages/management/hmo', 'icon' => 'fa-heart-pulse'],
@@ -299,8 +300,11 @@
                 $managementModules = collect($managementModules)->sort()->toArray();
 
                 // 2. Perform your access check
-                $hasManagementAccess = collect($managementModules)->keys()->some(fn($key) => auth()->user()?->can($key));
-                // $hasManagementAccess = collect($managementModules)->keys()->some(fn($key) => auth()->user()?->can($key));
+                $hasManagementAccess = collect($managementModules)->some(function ($module, $key) {
+                    $permissions = $module['permissions'] ?? [$key];
+
+                    return collect($permissions)->some(fn($permission) => auth()->user()?->can($permission));
+                });
 
                 // 3. Determine the active item so the menu stays open and highlighted
                 //    after navigating to a Management page.
@@ -320,11 +324,15 @@
                     <div id="collapseSettings" class="collapse {{ $managementGroupActive ? 'show' : '' }}" data-bs-parent="#accordionSidebar">
                         <div class="bg-white py-2 collapse-inner">
                             @foreach ($managementModules as $key => $module)
-                                @can($key)
+                                @php
+                                    $modulePermissions = $module['permissions'] ?? [$key];
+                                    $hasModuleAccess = collect($modulePermissions)->some(fn($permission) => auth()->user()?->can($permission));
+                                @endphp
+                                @if ($hasModuleAccess)
                                     <a class="collapse-item {{ $key === $managementActiveKey ? 'active' : '' }}" href="{{ $module['url'] }}">
                                         <i class="fa-solid {{ $module['icon'] }} me-1"></i> {{ $module['name'] }}
                                     </a>
-                                @endcan
+                                @endif
                             @endforeach
                         </div>
                     </div>

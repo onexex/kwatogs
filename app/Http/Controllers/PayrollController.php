@@ -475,6 +475,7 @@ class PayrollController extends Controller
                         'withholding_tax' => $contributions['withholding_tax'],
                         'allowances'   => $allowance,
                         'net_pay'      => $netPay,
+                        'pay_rec'      => $payRec,
                         'holiday_pay'=>$holidayPay,
                         'company_loan' => $contributions['loan_breakdown']['salary'] ?? 0,
                         'sss_employer' => $contributions['sss']['employer_share'],

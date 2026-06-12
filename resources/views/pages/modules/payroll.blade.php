@@ -494,6 +494,7 @@
                                 <th rowspan="2">Adjustments</th>
                                 <th rowspan="2">Charges</th>
                                 <th rowspan="2">Cash Adv</th>
+                                <th rowspan="2" class="bg-light fw-bold">Net Pay</th>
                                 <th rowspan="2" class="pe-4 fw-bold-total">Pay Receivable</th>
                             </tr>
                             <tr>
