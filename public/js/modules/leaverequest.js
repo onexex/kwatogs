@@ -1,12 +1,28 @@
+    let lvAllRows = [];
+    let lvCurrentPage = 1;
+    const lvPerPage = 10;
 
     loadLeave()
 
     async function loadLeave() {
         axios.get('/leaverequests/getAll')
         .then(function (response) {
-            var htmlData='';
+            lvAllRows = (response.data && response.data.data) ? response.data.data : [];
+            lvCurrentPage = 1;
+            renderLeavePage();
+        })
+        .catch(function (error) {
+            dialog.alert({ message: error });
+        });
+    }
 
-            $(response.data.data).each(function(index, row) {
+    function renderLeavePage() {
+        const lastPage = Math.max(1, Math.ceil(lvAllRows.length / lvPerPage));
+        if (lvCurrentPage > lastPage) lvCurrentPage = lastPage;
+        const start = (lvCurrentPage - 1) * lvPerPage;
+        const pageRows = lvAllRows.slice(start, start + lvPerPage);
+        var htmlData='';
+        $(pageRows).each(function(index, row) {
 
                 var actionButtons = '';
                 
@@ -52,15 +68,40 @@
                 
                 htmlData += "</tr>";
             })
-            $("#tblLeaveApp").empty().append(htmlData);
-        })
-        .catch(function (error) {
-            dialog.alert({
-                message: error
-            });
-        })
-        .then(function () {});
+        if (!pageRows.length) {
+            htmlData = '<tr><td colspan="10" class="text-center text-muted py-3">No records found.</td></tr>';
+        }
+        $("#tblLeaveApp").empty().append(htmlData);
+        renderLeavePagination(lastPage);
     }
+
+    function renderLeavePagination(lastPage) {
+        const c = document.getElementById('leavePagination');
+        if (!c) return;
+        if (lastPage <= 1) { c.innerHTML = ''; return; }
+        const cur = lvCurrentPage, win = 1, pages = [];
+        for (let i = 1; i <= lastPage; i++) { if (i===1||i===lastPage||(i>=cur-win&&i<=cur+win)) pages.push(i); }
+        const item = (label, page, o) => (o && o.disabled)
+            ? `<li class="page-item disabled"><span class="page-link">${label}</span></li>`
+            : `<li class="page-item ${o&&o.active?'active':''}"><a href="#" class="page-link lv-page-link" data-page="${page}">${label}</a></li>`;
+        const ell = () => `<li class="page-item disabled"><span class="page-link">&hellip;</span></li>`;
+        let html = '<nav><ul class="pagination pagination-sm justify-content-end mb-0 gap-1">';
+        html += item('&lsaquo;', cur-1, {disabled: cur<=1});
+        let prev = 0;
+        pages.forEach(i => { if (prev && i-prev>1) html += ell(); html += item(i, i, {active: i===cur}); prev = i; });
+        html += item('&rsaquo;', cur+1, {disabled: cur>=lastPage});
+        html += '</ul></nav>';
+        c.innerHTML = html;
+    }
+
+    $(document).on('click', '.lv-page-link', function (e) {
+        e.preventDefault();
+        if ($(this).closest('.page-item').hasClass('disabled')) return;
+        const page = parseInt($(this).data('page'), 10);
+        if (!page) return;
+        lvCurrentPage = page;
+        renderLeavePage();
+    });
 
     document.addEventListener("DOMContentLoaded", function () {
 

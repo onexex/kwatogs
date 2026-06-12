@@ -1,10 +1,28 @@
+    let otAllRows = [];
+    let otCurrentPage = 1;
+    const otPerPage = 10;
+
     loadOvertime()
 
     async function loadOvertime() {
-         axios.get('/overtimerequests/getAll')
+        axios.get('/overtimerequests/getAll')
         .then(function (response) {
-            var htmlData='';
-            $(response.data.data).each(function(index, row) {
+            otAllRows = (response.data && response.data.data) ? response.data.data : [];
+            otCurrentPage = 1;
+            renderOvertimePage();
+        })
+        .catch(function (error) {
+            dialog.alert({ message: error });
+        });
+    }
+
+    function renderOvertimePage() {
+        const lastPage = Math.max(1, Math.ceil(otAllRows.length / otPerPage));
+        if (otCurrentPage > lastPage) otCurrentPage = lastPage;
+        const start = (otCurrentPage - 1) * otPerPage;
+        const pageRows = otAllRows.slice(start, start + otPerPage);
+        var htmlData='';
+        $(pageRows).each(function(index, row) {
 
                 var actionButtons = '';
                 
@@ -48,15 +66,40 @@
                 
                 htmlData += "</tr>";
             })
-            $("#tblOvertimeApp").empty().append(htmlData);
-        })
-        .catch(function (error) {
-            dialog.alert({
-                message: error
-            });
-        })
-        .then(function () {});
+        if (!pageRows.length) {
+            htmlData = '<tr><td colspan="8" class="text-center text-muted py-3">No records found.</td></tr>';
+        }
+        $("#tblOvertimeApp").empty().append(htmlData);
+        renderOvertimePagination(lastPage);
     }
+
+    function renderOvertimePagination(lastPage) {
+        const c = document.getElementById('overtimePagination');
+        if (!c) return;
+        if (lastPage <= 1) { c.innerHTML = ''; return; }
+        const cur = otCurrentPage, win = 1, pages = [];
+        for (let i = 1; i <= lastPage; i++) { if (i===1||i===lastPage||(i>=cur-win&&i<=cur+win)) pages.push(i); }
+        const item = (label, page, o) => (o && o.disabled)
+            ? `<li class="page-item disabled"><span class="page-link">${label}</span></li>`
+            : `<li class="page-item ${o&&o.active?'active':''}"><a href="#" class="page-link ot-page-link" data-page="${page}">${label}</a></li>`;
+        const ell = () => `<li class="page-item disabled"><span class="page-link">&hellip;</span></li>`;
+        let html = '<nav><ul class="pagination pagination-sm justify-content-end mb-0 gap-1">';
+        html += item('&lsaquo;', cur-1, {disabled: cur<=1});
+        let prev = 0;
+        pages.forEach(i => { if (prev && i-prev>1) html += ell(); html += item(i, i, {active: i===cur}); prev = i; });
+        html += item('&rsaquo;', cur+1, {disabled: cur>=lastPage});
+        html += '</ul></nav>';
+        c.innerHTML = html;
+    }
+
+    $(document).on('click', '.ot-page-link', function (e) {
+        e.preventDefault();
+        if ($(this).closest('.page-item').hasClass('disabled')) return;
+        const page = parseInt($(this).data('page'), 10);
+        if (!page) return;
+        otCurrentPage = page;
+        renderOvertimePage();
+    });
 
       document.addEventListener("DOMContentLoaded", function () {
 
