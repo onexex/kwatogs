@@ -222,7 +222,22 @@ class OvertimeController extends Controller
                 default => 1.25,
             };
 
-            $overtimeHourlyPay = $hourlyRate * $overtimeRate * $totalHours;
+            // ── OT computation ──────────────────────────────────────────────
+            // Regular & rest day: two-tier (first 8 hrs x1.30, beyond 8 x1.25),
+            //   with a 1-hour meal break deducted when the span is >= 9 hours.
+            // Holidays & combo day types: unchanged (flat $overtimeRate).
+            if (in_array($day_type, ['regular', 'rest_day'])) {
+                $payableHours = $totalHours >= 9 ? $totalHours - 1 : $totalHours;
+                $premiumHours = min($payableHours, 8);
+                $excessHours  = max($payableHours - 8, 0);
+
+                $overtimeHourlyPay = ($hourlyRate * 1.30 * $premiumHours)
+                                   + ($hourlyRate * 1.25 * $excessHours);
+
+                $totalHours = $payableHours; // store payable hours (after meal break)
+            } else {
+                $overtimeHourlyPay = $hourlyRate * $overtimeRate * $totalHours;
+            }
             
             $overtime = Overtime::create([
                 'emp_detail_id' => $user->empDetail->id,

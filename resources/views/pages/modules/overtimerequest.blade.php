@@ -17,6 +17,16 @@
                     </div>
                     <!-- Card Body -->
                     <div class="card-body">
+                        <div class="alert alert-info d-flex align-items-start gap-2 py-2 px-3 small mb-3" role="alert">
+                            <i class="fa fa-circle-info mt-1" style="color:#008080;"></i>
+                            <div>
+                                <strong>OT pay rule (Regular &amp; Rest day):</strong>
+                                first 8 hrs &times; <strong>1.30</strong>, hours beyond 8 &times; <strong>1.25</strong>.
+                                A <strong>1-hour meal break</strong> is deducted when the filed span is <strong>&ge; 9 hours</strong>.
+                                Holiday day-types use the standard multipliers.
+                            </div>
+                        </div>
+
                         <div class="chart-area">
                             <div class="table-responsive border-0">
                                 <table class="table table-hover table-border-none  ">
