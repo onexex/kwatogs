@@ -248,20 +248,33 @@ class PayrollController extends Controller
                     ->with('attendanceSummaries')
                     ->get();
 
-                if ($employeeSchedules->isEmpty()) continue;
-
-                // Hanapin at palitan itong part na ito:
+                // Attendance summaries for the period
                 $attendanceSummaries = $emp->attendanceSummaries()
                     ->with('manualDeductions') // ✨ ADD THIS PARA IWAS N+1 LAG ✨
                     ->whereBetween('attendance_date', [$startDate, $endDate])
                     ->get()
                     ->keyBy(fn($s) => date('Y-m-d', strtotime($s->attendance_date)));
-                    
-                //key ob ot leave
-                    $employeeLeaves = $allLeaves->get($emp->empID, collect());
-                    $employeeObs    = $allObs->get($emp->empID, collect());
-                    $employeeOts    = $allOts->get(optional($emp->empDetail)->id, collect()) // OT is keyed by emp_detail_id, not empID
-                        ->keyBy(fn($ot) => Carbon::parse($ot->date_from)->format('Y-m-d'));  
+
+                // OB / OT / Leave lookups
+                $employeeLeaves = $allLeaves->get($emp->empID, collect());
+                $employeeObs    = $allObs->get($emp->empID, collect());
+                $employeeOtsAll = $allOts->get(optional($emp->empDetail)->id, collect()); // ALL approved OT this period (keyed by emp_detail_id)
+                $employeeOts    = $employeeOtsAll->keyBy(fn($ot) => Carbon::parse($ot->date_from)->format('Y-m-d'));
+
+                // ✨ OT is paid for EVERY approved OT in the period, independent of the schedule.
+                //    Rest-day / holiday OT falls on non-scheduled days, so it is summed here and
+                //    NOT inside the schedule-driven daily loop below.
+                $totalOT = $employeeOtsAll->sum(fn($ot) => (float) ($ot->total_pay ?? 0));
+
+                // Skip only when there is truly nothing to pay this cut-off:
+                // no schedule AND no OT AND no OB AND no approved leave.
+                if ($employeeSchedules->isEmpty()
+                    && $employeeOtsAll->isEmpty()
+                    && $employeeObs->isEmpty()
+                    && $employeeLeaves->isEmpty()
+                ) {
+                    continue;
+                }
 
                 // ==============================
                 //  DAILY ATTENDANCE LOOP
@@ -283,13 +296,7 @@ class PayrollController extends Controller
                             $dateStr >= $ob->start_date && $dateStr <= $ob->end_date
                         );
 
-                        $otEntry = $employeeOts->get($dateStr);
-
-                        // OT Pay (precomputed)
-                        if ($otEntry) {
-                            // If OT pay is stored in the OT table
-                            $totalOT += $otEntry->total_pay ?? 0;
-                        } 
+                        // OT total is computed once above from all approved OT (see $totalOT).
 
                         if ($onLeave || $onOB) {
                             $isAbsent = false;
