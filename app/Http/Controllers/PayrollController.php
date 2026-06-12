@@ -379,7 +379,8 @@ class PayrollController extends Controller
                     
                     // $deductions = $absentDeduction + $lateDeduction + $undertimeDeduction + $outPassDeduction + $overBreakDeduction; 
                     $deductions = $absentDeduction + $lateDeduction + $undertimeDeduction + $outPassDeduction + $overBreakDeduction + $custom_deduction_pay;
-                    $grossPay = $empBasic - $deductions + $holidayPay + $night_diff_pay;
+                    $otPay = $totalOT; // regular employees are also entitled to OT pay
+                    $grossPay = $empBasic - $deductions + $holidayPay + $night_diff_pay + $otPay;
 
                 } else {
                  
@@ -501,6 +502,7 @@ class PayrollController extends Controller
                         'overBreakDeduction'      => $overBreakDeduction,
                         'outPassDeduction'      => $outPassDeduction,
                         'night_diff_pay' => $night_diff_pay,
+                        'overtime_pay' => $totalOT, // OT computed in loop; now persisted for display
                         // Breakdown for the Abs/Trd/Ut column (was never being stored before)
                         'late_deduction'       => $lateDeduction,
                         'undertime_deduction'  => $undertimeDeduction,
