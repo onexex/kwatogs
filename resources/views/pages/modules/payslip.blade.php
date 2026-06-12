@@ -130,6 +130,7 @@
                 <div class="col">
                     <h4>Earnings</h4>
                     <div class="ln"><span>Basic Pay (Semi-monthly)</span><span class="v">{{ $peso($basic) }}</span></div>
+                    <div class="ln"><span>Holiday Pay</span><span class="v">{{ $peso($holiday) }}</span></div>
                     <div class="ln"><span>Overtime Pay</span><span class="v">{{ $peso($ot) }}</span></div>
                     <div class="ln"><span>Night Differential</span><span class="v">{{ $peso($nd) }}</span></div>
                     <div class="ln"><span>Allowance</span><span class="v">{{ $peso($allow) }}</span></div>

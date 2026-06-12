@@ -463,7 +463,7 @@ $(document).ready(function () {
         const classificationId = $("#selFilter").val() || "all";
         const departmentId = $("#selDepartment").val() || "all";
 
-        $payrollTableBody.html('<tr><td colspan="24">Loading...</td></tr>');
+        $payrollTableBody.html('<tr><td colspan="25">Loading...</td></tr>');
 
         axios
             .get("/payroll/fetch", {
@@ -482,14 +482,14 @@ $(document).ready(function () {
 
                 if (data && data.success === false) {
                     $payrollTableBody.html(
-                        `<tr><td colspan="24">${data.message || "Error fetching payroll data."}${data.error ? " (" + data.error + ")" : ""}</td></tr>`,
+                        `<tr><td colspan="25">${data.message || "Error fetching payroll data."}${data.error ? " (" + data.error + ")" : ""}</td></tr>`,
                     );
                     return;
                 }
 
                 if (!Array.isArray(data) || data.length === 0) {
                     $payrollTableBody.html(
-                        '<tr><td colspan="24">No payroll data found.</td></tr>',
+                        '<tr><td colspan="25">No payroll data found.</td></tr>',
                     );
                     return;
                 }
@@ -508,6 +508,7 @@ $(document).ready(function () {
                             <td>${formatNumber(payroll.basicPay)}</td>
                             <td>${formatNumber(payroll.abs_ut_deduction || 0)}</td>
 
+                            <td>${formatNumber(payroll.holiday_pay || 0)}</td>
                             <td>${formatNumber(payroll.overtime_pay || 0)}</td>
                             <td>${formatNumber(payroll.night_diff_pay || 0)}</td>
 
@@ -538,7 +539,7 @@ $(document).ready(function () {
                 console.error(error);
                 const apiError = error.response?.data;
                 $payrollTableBody.html(
-                    `<tr><td colspan="24">${apiError?.message || "Error fetching payroll data."}${apiError?.error ? " (" + apiError.error + ")" : ""}</td></tr>`,
+                    `<tr><td colspan="25">${apiError?.message || "Error fetching payroll data."}${apiError?.error ? " (" + apiError.error + ")" : ""}</td></tr>`,
                 );
             });
     }

@@ -326,21 +326,36 @@ class PayrollController extends Controller
                         }
 
                         // ==============================
-                        //  HOLIDAY HANDLING (pay handled via OT module)
+                        //  HOLIDAY HANDLING (OT on the date overrides; otherwise pay holiday)
                         // ==============================
                         if (array_key_exists($dateStr, $holidayDates)) {
                             $holidayType   = $holidayDates[$dateStr];
                             $worked        = $summary && $summary->total_hours > 0;
                             $prevDay       = $date->copy()->subDay()->format('Y-m-d');
                             $presentBefore = isset($attendanceSummaries[$prevDay]) && $attendanceSummaries[$prevDay]->total_hours > 0;
+                            $hasOtToday    = $employeeOts->has($dateStr);
 
-                            // Holiday pay/premium is NOT computed here anymore — work rendered on a
-                            // holiday is filed and paid through the Overtime (OT) module.
-                            // Safeguard: a regular holiday not worked (but present the workday before)
-                            // must not be charged as an absence for monthly employees.
-                            if ($holidayType == '0' && !$worked && !$onLeave && !$onOB && $presentBefore) {
-                                if ($absentDays > 0) {
+                            if ($hasOtToday) {
+                                // Worked on the holiday and filed OT — the OT module already pays it.
+                                // Just make sure the day is not charged as an absence.
+                                if ($isAbsent && $absentDays > 0) {
                                     $absentDays--;
+                                }
+                            } else {
+                                // No OT on this holiday — grant the standard holiday benefit.
+                                if ($holidayType == '0') { // REGULAR holiday
+                                    if ($worked) {
+                                        $holidayPay += $dailyRate * 1;
+                                    } elseif ($onLeave || $onOB) {
+                                        $holidayPay += $dailyRate;
+                                    } elseif ($presentBefore) {
+                                        $holidayPay += $dailyRate;
+                                        if ($absentDays > 0) {
+                                            $absentDays--;
+                                        }
+                                    }
+                                } elseif ($holidayType == '1' && $worked) { // SPECIAL holiday, worked
+                                    $holidayPay += $dailyRate * 0.3;
                                 }
                             }
                         }
@@ -418,8 +433,6 @@ class PayrollController extends Controller
                     // Ibabawas ang deductions sa regular pay
                     $grossPay = max(($regularPay - $deductions + $otPay + $holidayPay + $night_diff_pay), 0);
                 }
-
-                
 
                 // ==============================
                 //  CONTRIBUTIONS & LOANS
@@ -722,3 +735,4 @@ class PayrollController extends Controller
     }
 
 }
+                    
