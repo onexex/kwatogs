@@ -105,7 +105,7 @@ class PayrollController extends Controller
     }
 
     /**
-     * Per-day late bracket rounding (company policy):
+     * Late/undertime bracket rounding on the PERIOD TOTAL (company policy):
      *   1..30 min  => 0.5 hr ; 31..59 min => 1.0 hr (per hour block).
      */
     private function lateBracketHours($mins): float
@@ -229,9 +229,7 @@ class PayrollController extends Controller
                     $totalHoursWorked = 0;
                     $totalOT = 0;
                     $totalLate = 0;
-                    $totalLateHrs = 0; // per-day bracket-rounded late hours
                     $totalUndertime = 0;
-                    $totalUndertimeHrs = 0; // per-day bracket-rounded undertime hours
                     $holidayPay = 0;
                     $basicPay=0;
                     $netPay=0;
@@ -310,9 +308,7 @@ class PayrollController extends Controller
                         if ($summary) {
                             $totalHoursWorked += $summary->total_hours;
                             $totalLate        += $summary->mins_late;
-                            $totalLateHrs += $this->lateBracketHours($summary->mins_late);
                             $totalUndertime   += $summary->mins_undertime;
-                            $totalUndertimeHrs += $this->lateBracketHours($summary->mins_undertime);
                             $over_break_minutes  += $summary->over_break_minutes;
                             $outpass_minutes   += $summary->outpass_minutes;
                             $night_diff_mins +=  $summary->mins_night_diff;
@@ -323,35 +319,23 @@ class PayrollController extends Controller
                         }
 
                         // ==============================
-                        //  HOLIDAY PAY HANDLING
+                        //  HOLIDAY HANDLING (pay handled via OT module)
                         // ==============================
                         if (array_key_exists($dateStr, $holidayDates)) {
-                            $holidayType = $holidayDates[$dateStr];
-                            $worked = $summary && $summary->total_hours > 0;
-                            $prevDay = $date->copy()->subDay()->format('Y-m-d');
+                            $holidayType   = $holidayDates[$dateStr];
+                            $worked        = $summary && $summary->total_hours > 0;
+                            $prevDay       = $date->copy()->subDay()->format('Y-m-d');
                             $presentBefore = isset($attendanceSummaries[$prevDay]) && $attendanceSummaries[$prevDay]->total_hours > 0;
 
-                            // LEGAL HOLIDAY
-                            if ($holidayType == '0') {
-                                if ($worked){
-                                    $holidayPay += $dailyRate * 1;
-                                 } elseif ($onLeave || $onOB) {
-                                    // Already excluded from $absentDays above (isAbsent = false),
-                                    // so no adjustment needed here.
-                                    $holidayPay += $dailyRate;
-                                } elseif ($presentBefore) {
-                                    // This day WAS counted as absent above; reverse that
-                                    // since the employee still qualifies for holiday pay.
-                                    $holidayPay += $dailyRate;
-                                    if ($absentDays > 0) {
-                                        $absentDays--;
-                                    }
+                            // Holiday pay/premium is NOT computed here anymore — work rendered on a
+                            // holiday is filed and paid through the Overtime (OT) module.
+                            // Safeguard: a regular holiday not worked (but present the workday before)
+                            // must not be charged as an absence for monthly employees.
+                            if ($holidayType == '0' && !$worked && !$onLeave && !$onOB && $presentBefore) {
+                                if ($absentDays > 0) {
+                                    $absentDays--;
                                 }
                             }
-                            // SPECIAL HOLIDAY
-                            elseif ($holidayType == '1' && $worked) {
-                                $holidayPay += $dailyRate * .3;
-                            } 
                         }
                           $logsType = $onLeave ? 'Leave' : ($onOB ? 'OB' : ($isAbsent ? 'Absent' : 'Present'));
                         //  Save daily record
@@ -369,8 +353,8 @@ class PayrollController extends Controller
                                 'undertime_minutes' => $summary->mins_undertime ?? 0,
                                 'night_diff_hours' => ($summary->mins_night_diff ?? 0) / 60,
                                 'night_diff_pay' => ($summary->mins_night_diff ?? 0) / 60 * ($hourlyRate * 0.10),
-                                'late_deduction' => $this->lateBracketHours($summary->mins_late ?? 0) * $hourlyRate,
-                                'undertime_deduction' => $this->lateBracketHours($summary->mins_undertime ?? 0) * $hourlyRate,
+                                'late_deduction' => ($summary->mins_late ?? 0) / 60 * $hourlyRate,
+                                'undertime_deduction' => ($summary->mins_undertime ?? 0) / 60 * $hourlyRate,
                                 'penalty_amount' => 0, // Placeholder, compute if needed
                                 'adjustment_amount' => 0, // Placeholder, compute if needed
                             ]
@@ -388,8 +372,8 @@ class PayrollController extends Controller
                     //  MONTHLY-PAID EMPLOYEES
                     $basicPay = $empBasic / 2;
                     $absentDeduction    = $absentDays * $dailyRate;
-                    $lateDeduction      = $totalLateHrs * $hourlyRate;
-                    $undertimeDeduction = $totalUndertimeHrs * $hourlyRate;
+                    $lateDeduction      = $this->lateBracketHours($totalLate) * $hourlyRate;
+                    $undertimeDeduction = $this->lateBracketHours($totalUndertime) * $hourlyRate;
                     $overBreakDeduction = ($over_break_minutes / 60) * $hourlyRate;
                     $outPassDeduction   = ($outpass_minutes / 60) * $hourlyRate;
                     $night_diff_pay =   ($night_diff_mins / 60) * $hourlyRate;
@@ -415,8 +399,8 @@ class PayrollController extends Controller
                     // HINDI na natin kailangan ang absentDeduction dito dahil 
                     // kung absent siya, hindi siya kasama sa $daysPresent (No Work, No Pay)
                     
-                    $lateDeduction      = $totalLateHrs * $hourlyRate;
-                    $undertimeDeduction = $totalUndertimeHrs * $hourlyRate;
+                    $lateDeduction      = $this->lateBracketHours($totalLate) * $hourlyRate;
+                    $undertimeDeduction = $this->lateBracketHours($totalUndertime) * $hourlyRate;
                     $overBreakDeduction = ($over_break_minutes / 60) * $hourlyRate;
                     $outPassDeduction   = ($outpass_minutes / 60) * $hourlyRate;
                     $night_diff_pay     = ($night_diff_mins / 60) * ($hourlyRate * 0.10);

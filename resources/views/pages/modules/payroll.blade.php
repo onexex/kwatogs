@@ -484,7 +484,7 @@
                                 <th rowspan="2">Bi-Monthly</th>
                                 <th rowspan="2">Abs/Trd/Ut</th>
 
-                                <th colspan="3" class="bg-earnings text-teal text-center">Earnings</th>
+                                <th colspan="2" class="bg-earnings text-teal text-center">Earnings</th>
 
                                 <th rowspan="2" class="bg-light fw-bold">Gross Pay</th>
 
@@ -501,7 +501,6 @@
                                 <th rowspan="2" class="pe-4 fw-bold-total">Pay Receivable</th>
                             </tr>
                             <tr>
-                                <th class="bg-earnings">HD Pay</th>
                                 <th class="bg-earnings">OT Pay</th>
                                 <th class="bg-earnings">ND Pay</th>
 
