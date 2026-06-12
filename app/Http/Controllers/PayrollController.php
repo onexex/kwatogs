@@ -664,4 +664,52 @@ class PayrollController extends Controller
     }
 }
 
+
+    /**
+     * Render printable payslip(s) for a given pay date.
+     * - Single employee: pass employee_id.
+     * - Bulk: omit employee_id (optionally scope by company/classification/department).
+     */
+    public function payslip(Request $request)
+    {
+        $request->validate([
+            'pay_date'          => 'required|date',
+            'employee_id'       => 'nullable',
+            'company_id'        => 'nullable',
+            'classification_id' => 'nullable',
+            'department_id'     => 'nullable',
+        ]);
+
+        $payDate          = $request->query('pay_date');
+        $employeeId       = $request->query('employee_id');
+        $companyId        = $request->query('company_id', 'all') ?: 'all';
+        $classificationId = $request->query('classification_id', 'all') ?: 'all';
+        $departmentId     = $request->query('department_id', 'all') ?: 'all';
+
+        $query = Payroll::with([
+                'employee.empDetail.department',
+                'employee.empDetail.position',
+                'employee.empDetail.company',
+            ])
+            ->join('users', 'payrolls.employee_id', '=', 'users.empID')
+            ->where('payrolls.pay_date', $payDate)
+            ->select('payrolls.*');
+
+        if (!empty($employeeId)) {
+            $query->where('payrolls.employee_id', $employeeId);
+        }
+
+        if ($companyId !== 'all' || $classificationId !== 'all' || $departmentId !== 'all') {
+            $query->whereHas('employee.empDetail', function ($q) use ($companyId, $classificationId, $departmentId) {
+                if ($companyId !== 'all')        { $q->where('empCompID', $companyId); }
+                if ($classificationId !== 'all') { $q->where('empClassification', $classificationId); }
+                if ($departmentId !== 'all')     { $q->where('empDepID', $departmentId); }
+            });
+        }
+
+        $payrolls = $query->orderBy('users.lname')->orderBy('users.fname')->get();
+
+        return view('pages.modules.payslip', compact('payrolls', 'payDate'));
+    }
+
 }

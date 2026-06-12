@@ -469,6 +469,9 @@
                 <button class="btn btn-light btn-sm rounded-pill px-3 fw-bold shadow-sm" id="btnPrint">
                     <i class="fa fa-print me-2 text-teal"></i> Print Report
                 </button>
+                <button class="btn btn-teal btn-sm rounded-pill px-3 fw-bold shadow-sm ms-2" id="btnPrintPayslips">
+                    <i class="fa fa-file-invoice me-2"></i> Print Payslips
+                </button>
             </div>
             <div class="sc-body p-0">
                 <div class="table-responsive">

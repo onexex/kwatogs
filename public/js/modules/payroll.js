@@ -502,6 +502,7 @@ $(document).ready(function () {
                             ${((payroll.employee?.fname || "") + " " + (payroll.employee?.lname || ""))
                                 .toLowerCase()
                                 .replace(/\b\w/g, (char) => char.toUpperCase())}
+                            <br><a href="/payroll/payslip?pay_date=${encodeURIComponent(payDate)}&employee_id=${encodeURIComponent(payroll.employee_id || '')}" target="_blank" class="badge bg-secondary text-white text-decoration-none mt-1 d-inline-block" style="font-size:10px;"><i class="fa fa-file-invoice me-1"></i>Payslip</a>
                         </td>
                             <td>${formatNumber(payroll.basic_salary)}</td>
                             <td>${formatNumber(payroll.basicPay)}</td>
@@ -546,6 +547,19 @@ $(document).ready(function () {
     // ✅ Bind event: Fetch Payroll
     $("#btnPayroll").on("click", fetchPayroll);
     $("#selCompany, #selFilter, #selDepartment").on("change", fetchPayroll);
+
+    // ✅ Bulk: open printable payslips for everyone in the current pay date (respects filters)
+    $("#btnPrintPayslips").on("click", function () {
+        const payDate = $("#pay_date").val();
+        if (!payDate) { showAlert("Select a pay date first.", "warning", "No Pay Date"); return; }
+        const params = new URLSearchParams({
+            pay_date: payDate,
+            company_id: $("#selCompany").val() || "all",
+            classification_id: $("#selFilter").val() || "all",
+            department_id: $("#selDepartment").val() || "all",
+        });
+        window.open(`/payroll/payslip?${params.toString()}`, "_blank");
+    });
 
     // ✅ Bind event: Generate Payroll
     $(document).on("click", "#btnGenerate", function (e) {
