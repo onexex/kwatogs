@@ -103,9 +103,8 @@
         <div class="payslip">
             <div class="ps-head">
                 <div class="ps-company">
-                    @if ($company && $company->comp_logo_path)
-                        <img src="{{ asset($company->comp_logo_path) }}" alt="logo">
-                    @endif
+                    @php $logo = ($company && $company->comp_logo_path) ? asset($company->comp_logo_path) : asset('img/kwatogslogo.jpg'); @endphp
+                    <img src="{{ $logo }}" alt="logo">
                     <div>
                         <div class="name">{{ $company->comp_name ?? config('app.name', 'Company') }}</div>
                         <div class="sub">Payslip</div>
