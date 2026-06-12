@@ -380,7 +380,8 @@ class PayrollController extends Controller
                     // $deductions = $absentDeduction + $lateDeduction + $undertimeDeduction + $outPassDeduction + $overBreakDeduction; 
                     $deductions = $absentDeduction + $lateDeduction + $undertimeDeduction + $outPassDeduction + $overBreakDeduction + $custom_deduction_pay;
                     $otPay = $totalOT; // regular employees are also entitled to OT pay
-                    $grossPay = $empBasic - $deductions + $holidayPay + $night_diff_pay + $otPay;
+                    // Semi-monthly base = half of monthly basic (matches $basicPay and the halved allowance)
+                    $grossPay = $basicPay - $deductions + $holidayPay + $night_diff_pay + $otPay;
 
                 } else {
                  
