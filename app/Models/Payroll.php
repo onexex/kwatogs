@@ -27,6 +27,7 @@ class Payroll extends Model
         'undertime_minutes',
         'late_deduction',
         'undertime_deduction',
+        'abs_ut_deduction',
         'night_diff_hours',
         'night_diff_pay',
         'penalty_amount',

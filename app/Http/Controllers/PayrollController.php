@@ -225,6 +225,7 @@ class PayrollController extends Controller
                     $night_diff_pay = 0;
                     $night_diff_mins = 0;
                     $custom_deduction_mins = 0;
+                    $absentDeduction = 0; // 0 for daily/probationary (no-work-no-pay); set for RGLR below
                 }
 
                 //  Get employee schedules + attendance summaries
@@ -500,6 +501,10 @@ class PayrollController extends Controller
                         'overBreakDeduction'      => $overBreakDeduction,
                         'outPassDeduction'      => $outPassDeduction,
                         'night_diff_pay' => $night_diff_pay,
+                        // Breakdown for the Abs/Trd/Ut column (was never being stored before)
+                        'late_deduction'       => $lateDeduction,
+                        'undertime_deduction'  => $undertimeDeduction,
+                        'abs_ut_deduction'     => $absentDeduction + $lateDeduction + $undertimeDeduction,
                     ]
                 );
 
