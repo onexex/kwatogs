@@ -104,6 +104,20 @@ class PayrollController extends Controller
         }
     }
 
+    /**
+     * Per-day late bracket rounding (company policy):
+     *   1..30 min  => 0.5 hr ; 31..59 min => 1.0 hr (per hour block).
+     */
+    private function lateBracketHours($mins): float
+    {
+        $mins = (int) $mins;
+        if ($mins <= 0) return 0.0;
+        $full = intdiv($mins, 60);
+        $rem  = $mins % 60;
+        if ($rem === 0) return (float) $full;
+        return $full + ($rem <= 30 ? 0.5 : 1.0);
+    }
+
     public function computePayroll(Request $request)
     {
         $employees = collect();
@@ -215,7 +229,9 @@ class PayrollController extends Controller
                     $totalHoursWorked = 0;
                     $totalOT = 0;
                     $totalLate = 0;
+                    $totalLateHrs = 0; // per-day bracket-rounded late hours
                     $totalUndertime = 0;
+                    $totalUndertimeHrs = 0; // per-day bracket-rounded undertime hours
                     $holidayPay = 0;
                     $basicPay=0;
                     $netPay=0;
@@ -294,7 +310,9 @@ class PayrollController extends Controller
                         if ($summary) {
                             $totalHoursWorked += $summary->total_hours;
                             $totalLate        += $summary->mins_late;
+                            $totalLateHrs += $this->lateBracketHours($summary->mins_late);
                             $totalUndertime   += $summary->mins_undertime;
+                            $totalUndertimeHrs += $this->lateBracketHours($summary->mins_undertime);
                             $over_break_minutes  += $summary->over_break_minutes;
                             $outpass_minutes   += $summary->outpass_minutes;
                             $night_diff_mins +=  $summary->mins_night_diff;
@@ -351,8 +369,8 @@ class PayrollController extends Controller
                                 'undertime_minutes' => $summary->mins_undertime ?? 0,
                                 'night_diff_hours' => ($summary->mins_night_diff ?? 0) / 60,
                                 'night_diff_pay' => ($summary->mins_night_diff ?? 0) / 60 * ($hourlyRate * 0.10),
-                                'late_deduction' => ($summary->mins_late ?? 0) / 60 * $hourlyRate,
-                                'undertime_deduction' => ($summary->mins_undertime ?? 0) / 60 * $hourlyRate,
+                                'late_deduction' => $this->lateBracketHours($summary->mins_late ?? 0) * $hourlyRate,
+                                'undertime_deduction' => $this->lateBracketHours($summary->mins_undertime ?? 0) * $hourlyRate,
                                 'penalty_amount' => 0, // Placeholder, compute if needed
                                 'adjustment_amount' => 0, // Placeholder, compute if needed
                             ]
@@ -370,8 +388,8 @@ class PayrollController extends Controller
                     //  MONTHLY-PAID EMPLOYEES
                     $basicPay = $empBasic / 2;
                     $absentDeduction    = $absentDays * $dailyRate;
-                    $lateDeduction      = ($totalLate / 60) * $hourlyRate;
-                    $undertimeDeduction = ($totalUndertime / 60) * $hourlyRate;
+                    $lateDeduction      = $totalLateHrs * $hourlyRate;
+                    $undertimeDeduction = $totalUndertimeHrs * $hourlyRate;
                     $overBreakDeduction = ($over_break_minutes / 60) * $hourlyRate;
                     $outPassDeduction   = ($outpass_minutes / 60) * $hourlyRate;
                     $night_diff_pay =   ($night_diff_mins / 60) * $hourlyRate;
@@ -397,8 +415,8 @@ class PayrollController extends Controller
                     // HINDI na natin kailangan ang absentDeduction dito dahil 
                     // kung absent siya, hindi siya kasama sa $daysPresent (No Work, No Pay)
                     
-                    $lateDeduction      = ($totalLate / 60) * $hourlyRate;
-                    $undertimeDeduction = ($totalUndertime / 60) * $hourlyRate;
+                    $lateDeduction      = $totalLateHrs * $hourlyRate;
+                    $undertimeDeduction = $totalUndertimeHrs * $hourlyRate;
                     $overBreakDeduction = ($over_break_minutes / 60) * $hourlyRate;
                     $outPassDeduction   = ($outpass_minutes / 60) * $hourlyRate;
                     $night_diff_pay     = ($night_diff_mins / 60) * ($hourlyRate * 0.10);
