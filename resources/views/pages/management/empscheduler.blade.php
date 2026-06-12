@@ -549,16 +549,42 @@ $(document).ready(function(){
 
             $('#tblEmpScheduler').html(html);
 
-            // Pagination builder
+            // Pagination builder (windowed: Prev/Next, current ±1, first/last with ellipses)
+            const lastPage = res.data.last_page;
+            const currentPage = res.data.current_page;
             let pagination = '';
-            if (res.data.last_page > 1) {
-                pagination += `<nav><ul class="pagination pagination-sm justify-content-end gap-1">`;
-                for (let i = 1; i <= res.data.last_page; i++) {
-                    pagination += `
-                        <li class="page-item ${i === res.data.current_page ? 'active' : ''}">
-                            <a href="#" class="page-link rounded border-0 ${i === res.data.current_page ? 'bg-primary shadow-sm' : 'text-muted'}" data-page="${i}">${i}</a>
+            if (lastPage > 1) {
+                const pageItem = (label, page, { active = false, disabled = false } = {}) => {
+                    if (disabled) {
+                        return `<li class="page-item disabled"><span class="page-link rounded border-0 text-muted">${label}</span></li>`;
+                    }
+                    return `
+                        <li class="page-item ${active ? 'active' : ''}">
+                            <a href="#" class="page-link rounded border-0 ${active ? 'bg-primary shadow-sm' : 'text-muted'}" data-page="${page}">${label}</a>
                         </li>`;
+                };
+                const ellipsis = () => `<li class="page-item disabled"><span class="page-link rounded border-0 text-muted">&hellip;</span></li>`;
+
+                // Decide which page numbers to show
+                const windowSize = 1; // pages on each side of current
+                const pages = [];
+                for (let i = 1; i <= lastPage; i++) {
+                    if (i === 1 || i === lastPage || (i >= currentPage - windowSize && i <= currentPage + windowSize)) {
+                        pages.push(i);
+                    }
                 }
+
+                pagination += `<nav><ul class="pagination pagination-sm justify-content-end gap-1">`;
+                pagination += pageItem('&lsaquo;', currentPage - 1, { disabled: currentPage <= 1 });
+
+                let prev = 0;
+                pages.forEach(i => {
+                    if (prev && i - prev > 1) pagination += ellipsis();
+                    pagination += pageItem(i, i, { active: i === currentPage });
+                    prev = i;
+                });
+
+                pagination += pageItem('&rsaquo;', currentPage + 1, { disabled: currentPage >= lastPage });
                 pagination += `</ul></nav>`;
             }
             $('#paginationContainer').html(pagination);
@@ -586,7 +612,10 @@ $(document).ready(function(){
     $('#selPerPage').on('change', function(){ loadSchedules($('#txtSearchEmp').val(), 1, $(this).val()); });
     $(document).on('click', '.page-link', function(e){
         e.preventDefault();
-        loadSchedules($('#txtSearchEmp').val(), $(this).data('page'), $('#selPerPage').val());
+        if ($(this).closest('.page-item').hasClass('disabled')) return;
+        const page = $(this).data('page');
+        if (!page) return;
+        loadSchedules($('#txtSearchEmp').val(), page, $('#selPerPage').val());
     });
 
     // 💾 Save Logic
