@@ -44,6 +44,12 @@ document.addEventListener("DOMContentLoaded", function () {
             // Get current logged-in user name (Laravel Blade interpolation)
             const generatedBy = window.loggedEmployee || "Unknown User";
 
+            // Company name (for branded header)
+            const companySelMain = document.getElementById("selCompany");
+            const companyName = companySelMain && companySelMain.value !== "all"
+                ? (companySelMain.selectedOptions[0]?.text || "All Organizations")
+                : "All Organizations";
+
             // Open print window
             const printWindow = window.open("", "", "width=1200,height=800");
 
@@ -74,9 +80,33 @@ document.addEventListener("DOMContentLoaded", function () {
                                 color: #555;
                             }
                             .report-header {
+                                text-align: center;
                                 margin-bottom: 20px;
-                                padding-bottom: 10px;
-                                border-bottom: 2px solid #008080;
+                                padding-bottom: 12px;
+                                border-bottom: 3px solid #008080;
+                            }
+                            .brand {
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                gap: 14px;
+                                margin-bottom: 10px;
+                            }
+                            .brand-logo { height: 52px; width: auto; }
+                            .brand-name {
+                                font-size: 17px;
+                                font-weight: 800;
+                                color: #008080;
+                                letter-spacing: .5px;
+                                line-height: 1.15;
+                                text-align: left;
+                            }
+                            .brand-sub {
+                                font-size: 10px;
+                                color: #64748b;
+                                text-transform: uppercase;
+                                letter-spacing: 2px;
+                                text-align: left;
                             }
                             .report-meta {
                                 margin-top: 10px;
@@ -95,11 +125,18 @@ document.addEventListener("DOMContentLoaded", function () {
                                 padding: 6px 10px;
                                 text-align: center;
                             }
+                            thead th {
+                                background-color: #008080 !important;
+                                color: #fff !important;
+                                text-transform: uppercase;
+                                font-size: 0.7rem;
+                                letter-spacing: .3px;
+                            }
                             tbody tr:nth-child(even) {
                                 background-color: #f9f9f9;
                             }
                             tbody tr:hover {
-                                background-color: #ffe5e5;
+                                background-color: #e0f2f1;
                             }
                             .footer {
                                 margin-top: 25px;
@@ -108,15 +145,24 @@ document.addEventListener("DOMContentLoaded", function () {
                                 font-style: italic;
                                 color: #555;
                             }
+                            .no-print { display: none !important; }
                             @media print {
                                 body { padding: 0; }
                                 table { page-break-inside: auto; }
                                 tr { page-break-inside: avoid; page-break-after: auto; }
+                                .no-print { display: none !important; }
                             }
                         </style>
                     </head>
                     <body>
                         <div class="report-header">
+                            <div class="brand">
+                                <img src="${window.payrollLogoUrl || (window.location.origin + '/img/kwatogslogo.jpg')}" class="brand-logo" alt="logo" onerror="this.style.display='none'">
+                                <div>
+                                    <div class="brand-name">${companyName}</div>
+                                    <div class="brand-sub">Human Resource &amp; Payroll System</div>
+                                </div>
+                            </div>
                             <h2>Payroll Report</h2>
                             <h4>Payroll Period: ${dateFrom} to ${dateTo}</h4>
                             <div class="report-meta">
@@ -136,8 +182,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
             printWindow.document.close();
             printWindow.focus();
-            printWindow.print();
-            printWindow.close();
+            let __printed = false;
+            const __doPrint = () => {
+                if (__printed) return;
+                __printed = true;
+                try { printWindow.print(); } catch (e) {}
+                printWindow.close();
+            };
+            const __logo = printWindow.document.querySelector(".brand-logo");
+            if (__logo && !__logo.complete) {
+                __logo.addEventListener("load", __doPrint);
+                __logo.addEventListener("error", __doPrint);
+                setTimeout(__doPrint, 2500); // safety fallback
+            } else {
+                setTimeout(__doPrint, 200);
+            }
         });
     }
 });
@@ -299,6 +358,12 @@ document.addEventListener("DOMContentLoaded", function () {
             });
             const generatedBy = window.loggedEmployee || "Unknown User";
 
+            // Company name (for branded header)
+            const companySelDetail = document.getElementById("selCompany");
+            const companyName = companySelDetail && companySelDetail.value !== "all"
+                ? (companySelDetail.selectedOptions[0]?.text || "All Organizations")
+                : "All Organizations";
+
             // ── 5. Open print window ─────────────────────────────────────────
             const printWindow = window.open("", "", "width=1400,height=900");
 
@@ -321,8 +386,8 @@ document.addEventListener("DOMContentLoaded", function () {
                             .report-header {
                                 text-align: center;
                                 margin-bottom: 20px;
-                                padding-bottom: 10px;
-                                border-bottom: 2px solid #008080;
+                                padding-bottom: 12px;
+                                border-bottom: 3px solid #008080;
                             }
                             .report-header h2 {
                                 margin: 0 0 4px;
@@ -339,6 +404,29 @@ document.addEventListener("DOMContentLoaded", function () {
                                 font-size: 0.82rem;
                                 line-height: 1.6;
                                 color: #444;
+                            }
+                            .brand {
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                gap: 14px;
+                                margin-bottom: 10px;
+                            }
+                            .brand-logo { height: 52px; width: auto; }
+                            .brand-name {
+                                font-size: 17px;
+                                font-weight: 800;
+                                color: #008080;
+                                letter-spacing: .5px;
+                                line-height: 1.15;
+                                text-align: left;
+                            }
+                            .brand-sub {
+                                font-size: 10px;
+                                color: #64748b;
+                                text-transform: uppercase;
+                                letter-spacing: 2px;
+                                text-align: left;
                             }
 
                             /* ── Employee block ── */
@@ -413,6 +501,13 @@ document.addEventListener("DOMContentLoaded", function () {
                     </head>
                     <body>
                         <div class="report-header">
+                            <div class="brand">
+                                <img src="${window.payrollLogoUrl || (window.location.origin + '/img/kwatogslogo.jpg')}" class="brand-logo" alt="logo" onerror="this.style.display='none'">
+                                <div>
+                                    <div class="brand-name">${companyName}</div>
+                                    <div class="brand-sub">Human Resource &amp; Payroll System</div>
+                                </div>
+                            </div>
                             <h2>Payroll Detail Report</h2>
                             <h4>Payroll Period: ${dateFrom} to ${dateTo}</h4>
                             <div class="report-meta">
@@ -434,8 +529,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
             printWindow.document.close();
             printWindow.focus();
-            printWindow.print();
-            printWindow.close();
+            let __printed = false;
+            const __doPrint = () => {
+                if (__printed) return;
+                __printed = true;
+                try { printWindow.print(); } catch (e) {}
+                printWindow.close();
+            };
+            const __logo = printWindow.document.querySelector(".brand-logo");
+            if (__logo && !__logo.complete) {
+                __logo.addEventListener("load", __doPrint);
+                __logo.addEventListener("error", __doPrint);
+                setTimeout(__doPrint, 2500); // safety fallback
+            } else {
+                setTimeout(__doPrint, 200);
+            }
         });
     }
 });
@@ -494,6 +602,10 @@ $(document).ready(function () {
                     return;
                 }
 
+                const sumFields = ['basic_salary','basicPay','abs_ut_deduction','holiday_pay','overtime_pay','night_diff_pay','gross_pay','sss_contribution','sss_loan','pagibig_contribution','pagibig_loan','philhealth_contribution','taxable_income','withholding_tax','allowances','adjustment','penalty_amount','company_loan','net_pay','pay_rec'];
+                const totals = {};
+                sumFields.forEach((fld) => { totals[fld] = 0; });
+
                 $.each(data, function (index, payroll) {
                     const row = `
                     <tr>
@@ -502,7 +614,10 @@ $(document).ready(function () {
                             ${((payroll.employee?.fname || "") + " " + (payroll.employee?.lname || ""))
                                 .toLowerCase()
                                 .replace(/\b\w/g, (char) => char.toUpperCase())}
-                            <br><a href="/payroll/payslip?pay_date=${encodeURIComponent(payDate)}&employee_id=${encodeURIComponent(payroll.employee_id || '')}" target="_blank" class="badge bg-secondary text-white text-decoration-none mt-1 d-inline-block" style="font-size:10px;"><i class="fa fa-file-invoice me-1"></i>Payslip</a>
+                            <div class="no-print mt-1 d-flex flex-wrap gap-1">
+                                <a href="/payroll/payslip?pay_date=${encodeURIComponent(payDate)}&employee_id=${encodeURIComponent(payroll.employee_id || '')}" target="_blank" class="badge bg-secondary text-white text-decoration-none d-inline-block" style="font-size:10px;"><i class="fa fa-file-invoice me-1"></i>Payslip</a>
+                                ${window.canViewPayrollLogs ? `<a href="/payroll-logs/print?pay_date=${encodeURIComponent(payDate)}&employee_id=${encodeURIComponent(payroll.employee_id || '')}" target="_blank" class="badge text-white text-decoration-none d-inline-block" style="font-size:10px;background-color:#008080;"><i class="fa fa-list-ul me-1"></i>Payroll Log</a>` : ''}
+                            </div>
                         </td>
                             <td>${formatNumber(payroll.basic_salary)}</td>
                             <td>${formatNumber(payroll.basicPay)}</td>
@@ -532,8 +647,37 @@ $(document).ready(function () {
                             <td class="pe-4 fw-bold">${formatNumber(payroll.pay_rec || 0)}</td>
                     </tr>
                     `;
+                    sumFields.forEach((fld) => { totals[fld] += Number(payroll[fld]) || 0; });
                     $payrollTableBody.append(row);
                 });
+
+                // ── Grand totals row ──
+                const totalsRow = `
+                    <tr class="payroll-totals fw-bold" style="background:#e0f2f1;border-top:2px solid #008080;">
+                        <td colspan="2" class="ps-4 text-uppercase">Totals</td>
+                        <td>${formatNumber(totals.basic_salary)}</td>
+                        <td>${formatNumber(totals.basicPay)}</td>
+                        <td>${formatNumber(totals.abs_ut_deduction)}</td>
+                        <td>${formatNumber(totals.holiday_pay)}</td>
+                        <td>${formatNumber(totals.overtime_pay)}</td>
+                        <td>${formatNumber(totals.night_diff_pay)}</td>
+                        <td>${formatNumber(totals.gross_pay)}</td>
+                        <td>${formatNumber(totals.sss_contribution)}</td>
+                        <td>${formatNumber(totals.sss_loan)}</td>
+                        <td>${formatNumber(totals.pagibig_contribution)}</td>
+                        <td>${formatNumber(totals.pagibig_loan)}</td>
+                        <td>${formatNumber(totals.philhealth_contribution)}</td>
+                        <td>${formatNumber(totals.taxable_income)}</td>
+                        <td>${formatNumber(totals.withholding_tax)}</td>
+                        <td>${formatNumber(totals.allowances)}</td>
+                        <td>${formatNumber(totals.adjustment)}</td>
+                        <td>${formatNumber(totals.penalty_amount)}</td>
+                        <td>${formatNumber(totals.company_loan)}</td>
+                        <td>${formatNumber(totals.net_pay)}</td>
+                        <td class="pe-4">${formatNumber(totals.pay_rec)}</td>
+                    </tr>
+                `;
+                $payrollTableBody.append(totalsRow);
             })
             .catch(function (error) {
                 console.error(error);

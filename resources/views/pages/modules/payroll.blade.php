@@ -466,12 +466,14 @@
                     <div class="sc-icon"><i class="fa fa-list-ol"></i></div>
                     <h5 class="sc-title">Payroll Register</h5>
                 </div>
-                <button class="btn btn-light btn-sm rounded-pill px-3 fw-bold shadow-sm" id="btnPrint">
-                    <i class="fa fa-print me-2 text-teal"></i> Print Report
-                </button>
-                <button class="btn btn-teal btn-sm rounded-pill px-3 fw-bold shadow-sm ms-2" id="btnPrintPayslips">
-                    <i class="fa fa-file-invoice me-2"></i> Print Payslips
-                </button>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-light btn-sm rounded-pill px-3 fw-bold shadow-sm" id="btnPrint">
+                        <i class="fa fa-print me-2 text-teal"></i> Print Report
+                    </button>
+                    <button class="btn btn-teal btn-sm rounded-pill px-3 fw-bold shadow-sm" id="btnPrintPayslips">
+                        <i class="fa fa-file-invoice me-2"></i> Print Payslips
+                    </button>
+                </div>
             </div>
             <div class="sc-body p-0">
                 <div class="table-responsive">
@@ -584,5 +586,7 @@
     </div>
 
     <script>window.companyPayrollPeriods = @json($companyPeriods ?? []);</script>
+    <script>window.canViewPayrollLogs = @can('payrolllogs') true @else false @endcan;</script>
+    <script>window.payrollLogoUrl = "{{ asset('img/kwatogslogo.jpg') }}";</script>
     <script src="{{ asset('js/modules/payroll.js') }}"></script>
 @endsection

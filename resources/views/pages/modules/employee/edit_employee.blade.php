@@ -945,6 +945,24 @@
                                         <span class="text-danger error-text hourly_rate_error"></span>
                                     </div>
                                 </div>
+                                @php $__ptype = strtoupper($user->empDetail->empPayrollType ?? 'CASH'); @endphp
+                                <div class="col-lg-4">
+                                    <div class="mb-3">
+                                        <label for="selPayrollType" class="field-label">Payroll Type <span class="req">*</span></label>
+                                        <select class="form-select" name="payroll_type" id="selPayrollType"
+                                            onchange="document.getElementById('cardNoWrap').style.display = this.value === 'CARD' ? 'block' : 'none';">
+                                            <option value="CASH" {{ $__ptype === 'CASH' ? 'selected' : '' }}>Cash</option>
+                                            <option value="CARD" {{ $__ptype === 'CARD' ? 'selected' : '' }}>Card</option>
+                                        </select>
+                                        <span class="text-danger error-text payroll_type_error"></span>
+                                    </div>
+                                    <div class="mb-0" id="cardNoWrap" style="display:{{ $__ptype === 'CARD' ? 'block' : 'none' }};">
+                                        <label for="txtCardNo" class="field-label">Card / Account Number <span class="req">*</span></label>
+                                        <input type="text" class="form-control" id="txtCardNo" name="card_number" placeholder="0000 0000 0000"
+                                            value="{{ $user->empDetail->empCardNo }}">
+                                        <span class="text-danger error-text card_number_error"></span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

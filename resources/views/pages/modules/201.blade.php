@@ -306,10 +306,23 @@
                                 <span class="field-label mb-0">Allowance</span>
                                 <span class="field-value fw-bold">₱ {{ number_format($emp->empAllowance ?? 0, 2) }}</span>
                             </div>
-                            <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex justify-content-between align-items-center mb-3 pb-2" style="border-bottom: 1px solid var(--border);">
                                 <span class="field-label mb-0">Hourly Rate</span>
                                 <span class="field-value fw-bold">₱ {{ number_format($emp->empHrate ?? 0, 2) }}</span>
                             </div>
+                            @php $__ptype = strtoupper($emp->empPayrollType ?? 'CASH'); @endphp
+                            <div class="d-flex justify-content-between align-items-center @if($__ptype === 'CARD') mb-3 pb-2 @endif" @if($__ptype === 'CARD') style="border-bottom: 1px solid var(--border);" @endif>
+                                <span class="field-label mb-0">Payroll Type</span>
+                                <span class="field-value fw-bold">
+                                    <span class="badge {{ $__ptype === 'CARD' ? 'bg-info' : 'bg-secondary' }}">{{ ucfirst(strtolower($__ptype)) }}</span>
+                                </span>
+                            </div>
+                            @if($__ptype === 'CARD')
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="field-label mb-0">Card / Account No.</span>
+                                <span class="field-value fw-bold">{{ $emp->empCardNo ?: '---' }}</span>
+                            </div>
+                            @endif
                         </div>
                     </div>
                 </div>

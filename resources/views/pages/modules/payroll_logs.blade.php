@@ -1,51 +1,301 @@
 @extends('layout.app', ['title' => 'Payroll Logs'])
 @section('content')
 
-<div class="container-fluid">
+<style>
+    /* ── Design tokens (shared with Overtime Filing / Leave Application) ── */
+    :root {
+        --teal:         #008080;
+        --teal-dark:    #006666;
+        --teal-mid:     #4db6ac;
+        --teal-light:   #e0f2f1;
+        --slate:        #334155;
+        --slate-light:  #64748b;
+        --muted:        #94a3b8;
+        --bg:           #f1f5f9;
+        --surface:      #ffffff;
+        --border:       #e2e8f0;
+        --danger:       #ef4444;
+        --success:      #10b981;
+        --warning:      #f59e0b;
+        --radius-card:  14px;
+        --radius-input: 8px;
+        --shadow-card:  0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+    }
 
-    <div class="mb-2 d-flex justify-content-between align-items-center">
-        <h4 class="mb-0 text-gray-800">Payroll Computation Logs</h4>
+    /* ── Page shell ──────────────────────────────────────────── */
+    .pl-shell {
+        background: var(--bg);
+        min-height: 100vh;
+        padding: 24px 28px 60px;
+        margin: -1.5rem -1.5rem 0;
+    }
+
+    /* ── Top header bar ──────────────────────────────────────── */
+    .pl-topbar {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-card);
+        padding: 16px 22px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .pl-topbar .page-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--slate);
+        margin: 0;
+        letter-spacing: -.2px;
+    }
+    .pl-topbar .page-sub {
+        font-size: .78rem;
+        color: var(--muted);
+        margin: 2px 0 0;
+    }
+
+    /* ── Section card ────────────────────────────────────────── */
+    .sc {
+        background: var(--surface);
+        border-radius: var(--radius-card);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-card);
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+    .sc-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 14px 22px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(to right, #fafcff, #f8fbfa);
+    }
+    .sc-head-left { display: flex; align-items: center; gap: 10px; }
+    .sc-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: var(--teal-light);
+        color: var(--teal);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.78rem;
+        flex-shrink: 0;
+    }
+    .sc-title {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--slate);
+        text-transform: uppercase;
+        letter-spacing: .5px;
+        margin: 0;
+    }
+    .sc-body { padding: 22px; }
+
+    .btn-refresh {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        border: 1.5px solid var(--border);
+        background: var(--surface);
+        color: var(--teal);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all .15s;
+    }
+    .btn-refresh:hover { background: var(--teal-light); border-color: var(--teal-mid); }
+
+    /* ── Filter bar ──────────────────────────────────────────── */
+    .filter-bar {
+        display: flex;
+        align-items: flex-end;
+        gap: 14px;
+        flex-wrap: wrap;
+    }
+    .filter-bar .fb-field { display: flex; flex-direction: column; }
+    .filter-bar .fb-grow { flex: 1 1 220px; min-width: 180px; }
+
+    /* ── Field helpers ───────────────────────────────────────── */
+    .field-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--slate-light);
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        margin-bottom: 5px;
+        display: block;
+    }
+    .form-control, .form-select {
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius-input);
+        font-size: 0.875rem;
+        color: var(--slate);
+        background: #fafbfc;
+        transition: border-color .15s, box-shadow .15s;
+        padding: 0.55rem 0.85rem;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--teal);
+        box-shadow: 0 0 0 3px rgba(0,128,128,.1);
+        background-color: #fff;
+        outline: none;
+    }
+
+    /* ── Action buttons ──────────────────────────────────────── */
+    .btn-filter {
+        background: var(--teal);
+        color: #fff;
+        border: none;
+        border-radius: var(--radius-input);
+        padding: 0.55rem 1.1rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: .3px;
+        cursor: pointer;
+        box-shadow: 0 4px 14px rgba(0,128,128,.25);
+        transition: all .2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        white-space: nowrap;
+    }
+    .btn-filter:hover { background: var(--teal-dark); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,128,128,.35); color: #fff; }
+
+    .btn-ghost {
+        background: var(--surface);
+        color: var(--slate-light);
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius-input);
+        padding: 0.55rem 1.1rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: .3px;
+        cursor: pointer;
+        transition: all .2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        white-space: nowrap;
+    }
+    .btn-ghost:hover { background: var(--teal-light); border-color: var(--teal-mid); color: var(--teal); }
+
+    /* ── Table styling ───────────────────────────────────────── */
+    .pl-table { margin-bottom: 0; }
+    .pl-table thead th {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--slate-light);
+        text-transform: uppercase;
+        letter-spacing: .4px;
+        border-bottom: 2px solid var(--border);
+        background: #f8fafc;
+        white-space: nowrap;
+        padding: 12px 10px;
+    }
+    .pl-table tbody td {
+        font-size: 0.83rem;
+        color: var(--slate);
+        vertical-align: middle;
+        padding: 11px 10px;
+    }
+    .pl-table tbody tr:hover { background: var(--teal-light); }
+
+    .btnView {
+        border: 1.5px solid var(--teal);
+        color: var(--teal);
+        background: var(--surface);
+        border-radius: var(--radius-input);
+        padding: 5px 11px;
+        transition: all .15s;
+    }
+    .btnView:hover { background: var(--teal); color: #fff; }
+
+    .pagination .page-item.active .page-link {
+        background: var(--teal);
+        border-color: var(--teal);
+    }
+    .pagination .page-link { color: var(--teal); }
+
+    /* ── Modal styling ───────────────────────────────────────── */
+    #mdlLogDetail .modal-content {
+        border-radius: var(--radius-card);
+        border: none;
+        overflow: hidden;
+    }
+    #mdlLogDetail .modal-header {
+        background: var(--teal);
+        color: #fff;
+        border-bottom: none;
+        padding: 16px 22px;
+    }
+    #mdlLogDetail .modal-body { background: var(--bg); padding: 22px; }
+</style>
+
+<div class="pl-shell">
+
+    {{-- ── Top header ── --}}
+    <div class="pl-topbar">
+        <div>
+            <p class="page-title">Payroll Computation Logs</p>
+            <p class="page-sub">Review the technical breakdown behind each employee's payroll</p>
+        </div>
     </div>
 
-    {{-- Filters --}}
-    <div class="card mb-3">
-        <div class="card-body">
-            <div class="row g-2 align-items-end">
-                <div class="col-6 col-md-3">
-                    <label class="form-label small text-muted mb-1">Pay Date</label>
-                    <input type="date" id="fltPayDate" class="form-control form-control-sm">
+    {{-- ── Filters ── --}}
+    <div class="sc">
+        <div class="sc-body" style="padding: 18px 22px;">
+            <div class="filter-bar">
+                <div class="fb-field">
+                    <label class="field-label" for="fltPayDate">Pay Date</label>
+                    <input type="date" id="fltPayDate" class="form-control">
                 </div>
-                <div class="col-6 col-md-3">
-                    <label class="form-label small text-muted mb-1">Department</label>
-                    <select id="fltDepartment" class="form-select form-select-sm">
+                <div class="fb-field">
+                    <label class="field-label" for="fltDepartment">Department</label>
+                    <select id="fltDepartment" class="form-select">
                         <option value="all">All Departments</option>
                         @foreach ($departments as $d)
                             <option value="{{ $d->id }}">{{ $d->dep_name }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-12 col-md-4">
-                    <label class="form-label small text-muted mb-1">Search (name or ID)</label>
-                    <input type="text" id="fltSearch" class="form-control form-control-sm" placeholder="Employee name or ID...">
+                <div class="fb-field fb-grow">
+                    <label class="field-label" for="fltSearch">Search (name or ID)</label>
+                    <input type="text" id="fltSearch" class="form-control" placeholder="Employee name or ID...">
                 </div>
-                <div class="col-12 col-md-2 d-grid gap-2">
-                    <button class="btn btn-sm btn-teal fw-bold" id="btnFilter" style="background:#008080;color:#fff;">
-                        <i class="fa fa-search me-1"></i> Filter
-                    </button>
-                    <button class="btn btn-sm btn-outline-secondary fw-bold" id="btnPrintAll">
-                        <i class="fa fa-print me-1"></i> Print
-                    </button>
-                </div>
+                <button class="btn-filter" id="btnFilter">
+                    <i class="fa fa-search"></i> Filter
+                </button>
+                <button class="btn-ghost" id="btnPrintAll">
+                    <i class="fa fa-print"></i> Print
+                </button>
             </div>
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-body p-0">
+    {{-- ── Computation Records ── --}}
+    <div class="sc">
+        <div class="sc-head">
+            <div class="sc-head-left">
+                <div class="sc-icon"><i class="fa fa-list-ul"></i></div>
+                <h5 class="sc-title">Computation Records</h5>
+            </div>
+            <button class="btn-refresh" id="btnRefreshLogs" title="Refresh">
+                <i class="fa fa-refresh fa-sm"></i>
+            </button>
+        </div>
+        <div class="sc-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
+                <table class="table table-hover align-middle pl-table">
                     <thead>
-                        <tr class="text-secondary small text-uppercase">
+                        <tr>
                             <th class="ps-3">Employee</th>
                             <th>Dept</th>
                             <th>Class</th>
@@ -70,13 +320,13 @@
 <div class="modal fade" id="mdlLogDetail" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
-            <div class="modal-header" style="background:#008080;color:#fff;">
+            <div class="modal-header">
                 <h6 class="modal-title" id="mdlLogTitle">Computation Breakdown</h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="mdlLogBody"></div>
             <div class="modal-footer">
-                <a href="#" id="mdlPrintLink" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="fa fa-print me-1"></i> Print this</a>
+                <a href="#" id="mdlPrintLink" target="_blank" class="btn-ghost"><i class="fa fa-print"></i> Print this</a>
                 <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
@@ -118,7 +368,7 @@ $(function () {
                     <td class="text-end">${peso(r.net_pay)}</td>
                     <td class="text-end fw-bold">${peso(r.pay_rec)}</td>
                     <td class="text-end pe-3">
-                        <button class="btn btn-sm btn-outline-primary btnView" data-i="${i}"><i class="fa fa-eye"></i></button>
+                        <button class="btn btn-sm btnView" data-i="${i}"><i class="fa fa-eye"></i></button>
                     </td>
                 </tr>`;
             });
@@ -166,6 +416,7 @@ $(function () {
 
     // events
     $('#btnFilter').on('click', () => loadLogs(1));
+    $('#btnRefreshLogs').on('click', () => loadLogs(curPage));
     $('#fltSearch').on('keyup', e => { if (e.key === 'Enter') loadLogs(1); });
     $('#fltPayDate, #fltDepartment').on('change', () => loadLogs(1));
 

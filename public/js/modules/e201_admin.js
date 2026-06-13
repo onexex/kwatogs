@@ -95,6 +95,15 @@ $(document).ready(function() {
             $('#view_salary').text(basic.toLocaleString('en-US', { minimumFractionDigits: 2 }));
             $('#view_allowance').text(allowance.toLocaleString('en-US', { minimumFractionDigits: 2 }));
 
+            const ptype = (detail.empPayrollType || 'CASH').toString().toUpperCase();
+            $('#view_payroll_type').text(ptype.charAt(0) + ptype.slice(1).toLowerCase());
+            if (ptype === 'CARD') {
+                $('#view_card_no').text(detail.empCardNo || '---');
+                $('#view_card_no_wrap').show();
+            } else {
+                $('#view_card_no_wrap').hide();
+            }
+
             $('#view_sss').text(detail.empSSS ?? '---');
             $('#view_phil').text(detail.empPhilhealth ?? '---');
             $('#view_pagibig').text(detail.empPagibig ?? '---');

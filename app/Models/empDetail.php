@@ -16,7 +16,7 @@ class empDetail extends Model
 
     protected $fillable = [
         'empID', 'empISID', 'empDepID', 'empCompID', 'empClassification', 'empPos',
-        'empBasic', 'empStatus', 'empAllowance', 'empHrate', 'empWday', 'empJobLevel',
+        'empBasic', 'empStatus', 'empAllowance', 'empPayrollType', 'empCardNo', 'empHrate', 'empWday', 'empJobLevel',
         'empAgencyID', 'empHMOID', 'empHMONo', 'empPicPath', 'empDateHired',
         'empDateResigned', 'empDateRegular', 'empPrevPos', 'empPrevDep',
         'empPrevWorkStartDate', 'empPassport', 'empPassportExpDate', 'empPassportIssueAuth',

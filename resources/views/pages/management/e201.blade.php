@@ -230,6 +230,14 @@
                                     <div class="label-caps">Allowance</div>
                                     <div class="value-text" id="view_allowance">---</div>
                                 </div>
+                                <div class="col-6 col-md-4">
+                                    <div class="label-caps">Payroll Type</div>
+                                    <div class="value-text" id="view_payroll_type">---</div>
+                                </div>
+                                <div class="col-6 col-md-4" id="view_card_no_wrap" style="display:none;">
+                                    <div class="label-caps">Card / Account No.</div>
+                                    <div class="value-text" id="view_card_no">---</div>
+                                </div>
                             </div>
                         </div>
 
