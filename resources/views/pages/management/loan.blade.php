@@ -401,7 +401,7 @@
                             <select class="form-select text-uppercase" name="employee_id" id="employee_id" required>
                                 <option value="" selected disabled>Select Employee</option>
                                 @foreach($employees as $emp)
-                                    <option value="{{ $emp->empID }}">{{ $emp->lname }}, {{ $emp->fname }}</option>
+                                    <option value="{{ $emp->empID }}">{{ strtoupper($emp->lname) }}, {{ strtoupper($emp->fname) }}</option>
                                 @endforeach
                             </select>
                         </div>

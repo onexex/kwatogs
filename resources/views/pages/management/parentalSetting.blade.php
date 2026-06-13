@@ -313,7 +313,7 @@
                                         @if(count($resultEmp)>0)
                                             @foreach($resultEmp as $resultEmpS)
                                                                                                 <!--CONCAT-->
-                                            <option value='{{ $resultEmpS->empID }}'>{{ $resultEmpS->lname . " " . $resultEmpS->fname}}</option>
+                                            <option value='{{ $resultEmpS->empID }}'>{{ strtoupper($resultEmpS->lname . " " . $resultEmpS->fname) }}</option>
                                             @endforeach
                                         @else
 

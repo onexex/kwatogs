@@ -15,6 +15,7 @@ enum OvertimePermissionEnum: string
     case approveovertime = 'Approve Overtime';
 
     case disapproveovertime = 'DisApprove Overtime';
+    case overtimeimport = 'Overtime Import';
 
     case approvecfoovertime = 'CFO Approve Overtime';
 }

@@ -364,7 +364,7 @@
                                     <select class="form-select text-capitalize" name="employee_id" id="txtEmployee">
                                         @if(count($employees)>0)
                                             @foreach($employees as $employee)
-                                            <option class="text-capitalize" value='{{$employee->empID }}'>{{$employee->lname }} {{$employee->fname }}</option>
+                                            <option class="text-capitalize" value='{{$employee->empID }}'>{{ strtoupper($employee->lname) }} {{ strtoupper($employee->fname) }}</option>
                                             @endforeach
                                         @else
 

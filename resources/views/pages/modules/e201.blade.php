@@ -184,7 +184,7 @@
                     <select class="form-select fw-bold" id="txtSearchEmployee">
                         <option selected value="">Choose Personnel...</option>
                         @foreach($resultUser as $user)
-                            <option value="{{ $user->empID }}">{{ strtoupper($user->lname) }}, {{ $user->fname }}</option>
+                            <option value="{{ $user->empID }}">{{ strtoupper($user->lname) }}, {{ strtoupper($user->fname) }}</option>
                         @endforeach
                     </select>
                 </div>

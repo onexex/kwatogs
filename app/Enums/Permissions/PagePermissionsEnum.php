@@ -25,6 +25,7 @@ enum PagePermissionsEnum: string
     case payadjustments = 'Pay Adjustments';
     case approvepayroll = 'Approve Payroll';
     case regeneratepayroll = 'Regenerate / Override Payroll';
+    case attendanceimport = 'Attendance Import';
     // case debitadvise = 'Debit Advise';
     // case sendobt = 'Send to OBT';
     // case accessrights = 'Access Rights';

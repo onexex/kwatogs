@@ -18,7 +18,7 @@ $(document).ready(function() {
                 // select += "<option>" + "---" + "</option>";
                 $(resultData).each(function(index, item){
 
-                    select += '<option value='+ item.empID +'>' + item.fname + " " + item.lname + '</option>';
+                    select += '<option value='+ item.empID +'>' + (item.fname + " " + item.lname).toUpperCase() + '</option>';
                 });
                 $("#selEmployee").empty().append(select);
             }

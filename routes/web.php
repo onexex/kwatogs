@@ -39,6 +39,9 @@ use App\Http\Controllers\parentalSettingsCtrl;
 use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\PayrollApprovalController;
 use App\Http\Controllers\PayrollExportController;
+use App\Http\Controllers\AttendanceImportController;
+use App\Http\Controllers\OvertimeImportController;
+use App\Http\Controllers\LeaveImportController;
 use App\Http\Controllers\PayrollLogController;
 use App\Http\Controllers\philhealthCtrl;
 use App\Http\Controllers\positionCtrl;
@@ -370,6 +373,21 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     Route::get('/attendance/viewer', [reportAttendanceCtrl::class, 'index'])->name('attendance.viewer');
     Route::post('/attendance/fetch', [reportAttendanceCtrl::class, 'fetchAttendance'])->name('attendance.fetch');
     Route::get('/payroll/compute', [PayrollController::class, 'computePayroll']);
+
+    // Attendance import (schedule + home attendance + summaries)
+    Route::get('/attendance-import', [AttendanceImportController::class, 'index'])->name('attendance-import.index')->middleware('can:attendanceimport');
+    Route::get('/attendance-import/template', [AttendanceImportController::class, 'template'])->name('attendance-import.template')->middleware('can:attendanceimport');
+    Route::post('/attendance-import/upload', [AttendanceImportController::class, 'import'])->name('attendance-import.upload')->middleware('can:attendanceimport');
+
+    // Overtime import
+    Route::get('/overtime-import', [OvertimeImportController::class, 'index'])->name('overtime-import.index')->middleware('can:overtimeimport');
+    Route::get('/overtime-import/template', [OvertimeImportController::class, 'template'])->name('overtime-import.template')->middleware('can:overtimeimport');
+    Route::post('/overtime-import/upload', [OvertimeImportController::class, 'import'])->name('overtime-import.upload')->middleware('can:overtimeimport');
+
+    // Leave import
+    Route::get('/leave-import', [LeaveImportController::class, 'index'])->name('leave-import.index')->middleware('can:leaveimport');
+    Route::get('/leave-import/template', [LeaveImportController::class, 'template'])->name('leave-import.template')->middleware('can:leaveimport');
+    Route::post('/leave-import/upload', [LeaveImportController::class, 'import'])->name('leave-import.upload')->middleware('can:leaveimport');
     Route::get('/payroll/approval/status', [PayrollApprovalController::class, 'status'])->name('payroll.approval.status');
     Route::post('/payroll/approve', [PayrollApprovalController::class, 'approve'])->name('payroll.approve')->middleware('can:approvepayroll');
     Route::post('/payroll/reopen', [PayrollApprovalController::class, 'reopen'])->name('payroll.reopen')->middleware('can:regeneratepayroll');

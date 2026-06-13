@@ -17,4 +17,5 @@ enum LeavePermissionEnum: string
     case disapproveleave = 'DisApprove leave';
 
     case approvecfoleave = 'CFO Approve leave';
+    case leaveimport = 'Leave Import';
 }

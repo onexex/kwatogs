@@ -30,6 +30,23 @@
         margin: -1.5rem -1.5rem 0;
     }
 
+    /* ── Standard top header bar (uniform with other modules) ── */
+    .e201-topbar {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-card);
+        padding: 16px 22px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .e201-topbar .page-title { font-size: 1.1rem; font-weight: 700; color: var(--slate); margin: 0; letter-spacing: -.2px; }
+    .e201-topbar .page-sub { font-size: .78rem; color: var(--muted); margin: 2px 0 0; }
+
     /* ── Profile hero ────────────────────────────────────────── */
     .profile-hero {
         background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%);
@@ -179,6 +196,14 @@
 </style>
 
 <div class="e201-shell">
+
+    {{-- Top header (uniform with other modules) --}}
+    <div class="e201-topbar">
+        <div>
+            <p class="page-title">Employee 201 File</p>
+            <p class="page-sub">Personal, education, employment and compliance records</p>
+        </div>
+    </div>
 
     {{-- Hero Section --}}
     <div class="card profile-hero mb-4">

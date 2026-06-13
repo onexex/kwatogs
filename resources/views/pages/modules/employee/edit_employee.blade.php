@@ -866,7 +866,7 @@
                                             <option value="">— Select Superior —</option>
                                             @foreach ($immediateData as $im)
                                                 <option {{ $user->empDetail->empISID == $im->empID ? 'selected' : '' }}
-                                                    value="{{ $im->empID }}">{{ $im->fname . ' ' . $im->lname }}</option>
+                                                    value="{{ $im->empID }}">{{ strtoupper($im->fname . ' ' . $im->lname) }}</option>
                                             @endforeach
                                         </select>
                                         <span class="text-danger error-text immediate_error"></span>

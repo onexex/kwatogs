@@ -421,7 +421,7 @@
                             <select class="form-select text-uppercase" id="selEmployee" name="employee_id">
                                 <option selected disabled value="">Choose...</option>
                                 @foreach($employees as $emp)
-                                    <option value="{{ $emp->empID }}">{{ $emp->lname }}, {{ $emp->fname }}</option>
+                                    <option value="{{ $emp->empID }}">{{ strtoupper($emp->lname) }}, {{ strtoupper($emp->fname) }}</option>
                                 @endforeach
                             </select>
                             <button type="button" class="btn btn-primary" id="btnAddEmployee">
