@@ -307,6 +307,7 @@
                             <th class="ps-4">Date</th>
                             <th>Type</th>
                             <th>Description</th>
+                            <th>Department</th>
                             <th class="pe-4 text-end">Action</th>
                         </tr>
                     </thead>
@@ -353,6 +354,16 @@
                             <label class="field-label" for="txtDescription">Description <span class="req">*</span></label>
                             <input class="form-control" id="txtDescription" name="description" type="text" placeholder="e.g. Independence Day" />
                             <span class="text-danger small error-text description_error"></span>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="field-label" for="selDepartmentHoliday">Department</label>
+                            <select class="form-select" name="department_id" id="selDepartmentHoliday">
+                                @foreach($departments as $dept)
+                                    <option value="{{ $dept->id }}">{{ $dept->dep_name }}</option>
+                                @endforeach
+                            </select>
+                            <span class="text-danger small error-text department_id_error"></span>
                         </div>
                     </div>
                 </form>

@@ -144,6 +144,7 @@ $(document).ready(function() {
                         "<td class='ps-4 fw-medium'>" + item.date + "</td>" + // ps-4 matches header padding
                         "<td>" + holidayBadge + "</td>" +
                         "<td class='text-muted'>" + item.description + "</td>" +
+                        "<td class='text-muted'>" + item.department?.dep_name + "</td>" +
                         "<td class='pe-4 text-end'>" + 
                             "<button type='button' class='btn btn-light btn-sm rounded-circle shadow-sm p-2' value='" + item.id + "' data-bs-toggle='modal' data-bs-target='#mdlHoliday' id='btnUpdateHL' title='Edit'>" + 
                                 "<i class='fa-solid fa-pencil text-primary'></i>" + 
