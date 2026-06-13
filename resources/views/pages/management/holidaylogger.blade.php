@@ -359,6 +359,7 @@
                         <div class="col-12">
                             <label class="field-label" for="selDepartmentHoliday">Department</label>
                             <select class="form-select" name="department_id" id="selDepartmentHoliday">
+                                <option value="">All Departments</option>
                                 @foreach($departments as $dept)
                                     <option value="{{ $dept->id }}">{{ $dept->dep_name }}</option>
                                 @endforeach

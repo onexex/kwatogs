@@ -618,11 +618,39 @@ $(document).ready(function () {
                 })
                 .catch(function (error) {
                     console.error(error);
-                    showAlert(
-                        error.response?.data?.message || error.response?.data?.error || "An error occurred while generating payroll.",
-                        "error",
-                        "Error"
-                    );
+                    const data = (error.response && error.response.data) ? error.response.data : {};
+                    if (data.validation === "pending_approvals" && Array.isArray(data.issues)) {
+                        const rows = data.issues.map(it => `
+                            <tr>
+                                <td style="text-align:left;text-transform:uppercase;">${it.employee_name || it.employee_id}</td>
+                                <td>${it.type}</td>
+                                <td>${it.period}</td>
+                                <td>${it.detail}</td>
+                                <td><span style="color:#b45309;font-weight:600;">${it.status}</span></td>
+                            </tr>`).join("");
+                        Swal.fire({
+                            icon: "error",
+                            title: "Payroll Generation Cancelled",
+                            html: `<p style="margin:0 0 8px;">${data.message}</p>`
+                                + `<div style="max-height:320px;overflow:auto;">`
+                                + `<table style="width:100%;border-collapse:collapse;font-size:12px;">`
+                                + `<thead><tr style="background:#f1f5f9;">`
+                                + `<th style="padding:6px;text-align:left;">Employee</th>`
+                                + `<th style="padding:6px;">Type</th>`
+                                + `<th style="padding:6px;">Date(s)</th>`
+                                + `<th style="padding:6px;">Detail</th>`
+                                + `<th style="padding:6px;">Status</th></tr></thead>`
+                                + `<tbody>${rows}</tbody></table></div>`,
+                            width: 760,
+                            confirmButtonColor: "#008080",
+                        });
+                    } else {
+                        showAlert(
+                            data.message || data.error || "An error occurred while generating payroll.",
+                            "error",
+                            "Error"
+                        );
+                    }
                 })
                 .finally(function () {
                     $("#btnGenerate").prop("disabled", false).text("Generate");

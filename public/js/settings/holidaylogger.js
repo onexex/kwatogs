@@ -195,6 +195,7 @@ $(document).ready(function() {
                     $('#txtDate').val(item.date);
                     $('#txtDescription').val(item.description);
                     $('#selTypeHoliday').val(item.type);
+                    $('#selDepartmentHoliday').val(item.department_id == null ? '' : String(item.department_id));
                 });
                 $('#btnSaveHoliday').val(id);
 

@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\ContributionHelper;
+use App\Models\AttendanceSummary;
 use App\Models\empDetail;
 use App\Models\EmployeeSchedule;
 use App\Models\holidayLoggerModel;
@@ -142,7 +143,7 @@ class PayrollController extends Controller
             $companyId    = $request->query('company_id', 'all') ?: 'all';
 
             //  Fetch Active Employees (optionally filtered by department)
-            $employees = User::with('empDetail')
+            $employees = User::with(['empDetail', 'empDetail.department'])
                 ->whereHas('empDetail', function ($q) use ($departmentId, $companyId) {
                     $q->where('empStatus', '1');
                     if ($departmentId !== 'all') {
@@ -157,6 +158,73 @@ class PayrollController extends Controller
             // IDs being processed in this run. Used to scope cleanup so computing a
             // single department never deletes payroll belonging to other departments.
             $employeeIds = $employees->pluck('empID');
+
+            // ==============================
+            //  PRE-GENERATION VALIDATION (runs first; no records written on failure)
+            //  Cancel if any OT/Leave inside the cut-off is still pending approval
+            //  (FOR APPROVAL or APPROVED-awaiting-CFO).
+            // ==============================
+            $empDetailIds = $employees->map(fn($e) => optional($e->empDetail)->id)->filter()->values();
+            $pendingStatuses = ['FORAPPROVAL', 'APPROVED'];
+            $issues = [];
+            $statusLabel = fn($s) => $s === 'FORAPPROVAL' ? 'For Approval' : 'Approved (awaiting CFO)';
+
+            $pendingOt = DB::table('overtimes as o')
+                ->join('emp_details as ed', 'ed.id', '=', 'o.emp_detail_id')
+                ->join('users as u', 'u.empID', '=', 'ed.empID')
+                ->whereIn('o.emp_detail_id', $empDetailIds)
+                ->whereIn('o.status', $pendingStatuses)
+                ->where(function ($q) use ($startDate, $endDate) {
+                    $q->whereBetween('o.date_from', [$startDate, $endDate])
+                      ->orWhereBetween('o.date_to', [$startDate, $endDate]);
+                })
+                ->selectRaw("o.date_from, o.date_to, o.total_hrs, o.status, u.empID as employee_id, TRIM(CONCAT(COALESCE(u.lname,''),', ',COALESCE(u.fname,''))) as employee_name")
+                ->orderBy('employee_name')->get();
+            foreach ($pendingOt as $r) {
+                $issues[] = [
+                    'employee_id'   => $r->employee_id,
+                    'employee_name' => strtoupper(trim($r->employee_name)),
+                    'type'          => 'Overtime',
+                    'period'        => Carbon::parse($r->date_from)->format('M d') . ' - ' . Carbon::parse($r->date_to)->format('M d, Y'),
+                    'detail'        => number_format((float) $r->total_hrs, 2) . ' hr(s)',
+                    'status'        => $statusLabel($r->status),
+                ];
+            }
+
+            $pendingLeave = DB::table('leaves as l')
+                ->join('users as u', 'u.empID', '=', 'l.employee_id')
+                ->leftJoin('leavetypes as lt', 'lt.id', '=', 'l.leave_type')
+                ->whereIn('l.employee_id', $employeeIds)
+                ->whereIn('l.status', $pendingStatuses)
+                ->where(function ($q) use ($startDate, $endDate) {
+                    $q->whereBetween('l.start_date', [$startDate, $endDate])
+                      ->orWhereBetween('l.end_date', [$startDate, $endDate]);
+                })
+                ->selectRaw("l.start_date, l.end_date, l.status, lt.type_leave as leave_type, u.empID as employee_id, TRIM(CONCAT(COALESCE(u.lname,''),', ',COALESCE(u.fname,''))) as employee_name")
+                ->orderBy('employee_name')->get();
+            foreach ($pendingLeave as $r) {
+                $issues[] = [
+                    'employee_id'   => $r->employee_id,
+                    'employee_name' => strtoupper(trim($r->employee_name)),
+                    'type'          => 'Leave',
+                    'period'        => Carbon::parse($r->start_date)->format('M d') . ' - ' . Carbon::parse($r->end_date)->format('M d, Y'),
+                    'detail'        => $r->leave_type ?? 'Leave',
+                    'status'        => $statusLabel($r->status),
+                ];
+            }
+
+            if (count($issues) > 0) {
+                DB::rollBack(); // nothing written: no payroll, no payroll_logs
+                Log::channel('payroll')->warning('Payroll generation CANCELLED - pending approvals', [
+                    'pay_date' => $payDate, 'count' => count($issues),
+                ]);
+                return response()->json([
+                    'status'     => 'error',
+                    'validation' => 'pending_approvals',
+                    'message'    => 'Payroll generation was cancelled. Resolve the pending overtime / leave below first.',
+                    'issues'     => $issues,
+                ], 422);
+            }
 
             Log::channel('payroll')->info('=== Payroll run START ===', [
                 'pay_date'   => $payDate,
@@ -198,9 +266,17 @@ class PayrollController extends Controller
             //  LOAD HOLIDAYS
             // ==============================
             $holidays = holidayLoggerModel::whereBetween('date', [$startDate, $endDate])->get();
-            $holidayDates = $holidays->mapWithKeys(fn($holiday) => [
-                date('Y-m-d', strtotime($holiday->date)) => $holiday->type
-            ])->toArray();
+            // Holidays are now PER DEPARTMENT. Group by date but keep every row's
+            // department_id so each employee only gets the holidays for their dept.
+            // department_id = NULL  =>  applies to ALL departments.
+            $holidaysByDate = [];
+            foreach ($holidays as $holiday) {
+                $d = date('Y-m-d', strtotime($holiday->date));
+                $holidaysByDate[$d][] = [
+                    'type'          => $holiday->type,
+                    'department_id' => $holiday->department_id,
+                ];
+            }
 
             $allLeaves = LeaveDetail::where('status', 'APPROVEDBYCFO')
             ->whereBetween('date', [$startDate, $endDate])
@@ -223,6 +299,19 @@ class PayrollController extends Controller
                 ->get()
                 ->groupBy('emp_detail_id');
 
+            // PERFORMANCE: pre-load schedules + attendance summaries for ALL employees
+            //    in ONE query each (grouped by employee), instead of two queries per
+            //    employee inside the loop. Big speed-up on large runs.
+            $allSchedules = EmployeeSchedule::whereIn('employee_id', $employeeIds)
+                ->whereBetween('sched_start_date', [$startDate, $endDate])
+                ->get()
+                ->groupBy('employee_id');
+
+            $allSummaries = AttendanceSummary::whereIn('employee_id', $employeeIds)
+                ->with('manualDeductions')
+                ->whereBetween('attendance_date', [$startDate, $endDate])
+                ->get()
+                ->groupBy('employee_id');
 
             // ==============================
             //  PROCESS EACH EMPLOYEE
@@ -231,6 +320,26 @@ class PayrollController extends Controller
                 //  Salary Base Info
                 $salary = $emp->empDetail->getSalaryInfo();
                 $empBasic   = $salary['basic'];
+
+                //  This employee's department (for per-department holiday matching)
+                $empDeptId = optional($emp->empDetail)->empDepID;
+                // Resolve which holiday type applies to THIS employee on a given date.
+                // A holiday tied to the employee's department wins; a NULL-department
+                // holiday applies to everyone; otherwise no holiday for this employee.
+                $holidayTypeForDate = function ($dateStr) use (&$holidaysByDate, $empDeptId) {
+                    if (empty($holidaysByDate[$dateStr])) return null;
+                    $allDeptType = null;
+                    foreach ($holidaysByDate[$dateStr] as $h) {
+                        if ($h['department_id'] === null || $h['department_id'] === '') {
+                            if ($allDeptType === null) $allDeptType = $h['type'];
+                            continue;
+                        }
+                        if ((string) $h['department_id'] === (string) $empDeptId) {
+                            return $h['type']; // department-specific match wins
+                        }
+                    }
+                    return $allDeptType; // fall back to an all-departments holiday
+                };
                 $allowance  = 0; // computed daily after the attendance loop (days present + rest-day OT)
                 $scheduledDates = []; // distinct scheduled dates this cut-off (for rest-day OT detection)
                 $dailyRate  = $empBasic / 26;
@@ -254,19 +363,15 @@ class PayrollController extends Controller
                     $night_diff_mins = 0;
                     $custom_deduction_mins = 0;
                     $absentDeduction = 0; // 0 for daily/probationary (no-work-no-pay); set for RGLR below
+                    $appliedHolidays = []; // holidays that actually applied to THIS employee's dept
+                    $detailRows = [];      // per-day rows collected for ONE bulk insert (perf)
                 }
 
-                //  Get employee schedules + attendance summaries
-                $employeeSchedules = EmployeeSchedule::where('employee_id', $emp->empID)
-                    ->whereBetween('sched_start_date', [$startDate, $endDate])
-                    ->with('attendanceSummaries')
-                    ->get();
+                //  Get employee schedules + attendance summaries (from the bulk pre-load)
+                $employeeSchedules = $allSchedules->get($emp->empID, collect());
 
                 // Attendance summaries for the period
-                $attendanceSummaries = $emp->attendanceSummaries()
-                    ->with('manualDeductions') // ✨ ADD THIS PARA IWAS N+1 LAG ✨
-                    ->whereBetween('attendance_date', [$startDate, $endDate])
-                    ->get()
+                $attendanceSummaries = $allSummaries->get($emp->empID, collect())
                     ->keyBy(fn($s) => date('Y-m-d', strtotime($s->attendance_date)));
 
                 // OB / OT / Leave lookups
@@ -343,9 +448,10 @@ class PayrollController extends Controller
                         // ==============================
                         //  HOLIDAY HANDLING (OT on the date overrides; otherwise pay holiday)
                         // ==============================
-                        if (array_key_exists($dateStr, $holidayDates)) {
-                            $holidayType   = $holidayDates[$dateStr];
+                        $holidayType = $holidayTypeForDate($dateStr); // dept-aware (null = none for this employee)
+                        if ($holidayType !== null) {
                             $worked        = $summary && $summary->total_hours > 0;
+                            $appliedHolidays[] = ['date' => $dateStr, 'type' => $holidayType == '0' ? 'Regular' : 'Special'];
                             $prevDay       = $date->copy()->subDay()->format('Y-m-d');
                             $presentBefore = isset($attendanceSummaries[$prevDay]) && $attendanceSummaries[$prevDay]->total_hours > 0;
                             $hasOtToday    = $employeeOts->has($dateStr);
@@ -375,28 +481,33 @@ class PayrollController extends Controller
                             }
                         }
                           $logsType = $onLeave ? 'Leave' : ($onOB ? 'OB' : ($isAbsent ? 'Absent' : 'Present'));
-                        //  Save daily record
-                        PayrollDetail::updateOrCreate(
-                            [
-                                'employee_id' => $emp->empID,
-                                'payroll_date'=> $payDate,
-                                'date'        => $dateStr,
-                            ],
-                            [
-                                'payroll_id'  => null,
-                                'logsType'    =>  $logsType,
-                                'totalHours'  => $summary->total_hours ?? 0,
-                                'late_minutes' => $summary->mins_late ?? 0,
-                                'undertime_minutes' => $summary->mins_undertime ?? 0,
-                                'night_diff_hours' => ($summary->mins_night_diff ?? 0) / 60,
-                                'night_diff_pay' => ($summary->mins_night_diff ?? 0) / 60 * ($hourlyRate * 0.10),
-                                'late_deduction' => ($summary->mins_late ?? 0) / 60 * $hourlyRate,
-                                'undertime_deduction' => ($summary->mins_undertime ?? 0) / 60 * $hourlyRate,
-                                'penalty_amount' => 0, // Placeholder, compute if needed
-                                'adjustment_amount' => 0, // Placeholder, compute if needed
-                            ]
-                        );
+                        //  Collect daily record (one bulk insert per employee below — perf).
+                        //  Keyed by date so overlapping schedules don't duplicate a day.
+                        $detailRows[$dateStr] = [
+                            'employee_id'         => $emp->empID,
+                            'payroll_date'        => $payDate,
+                            'date'                => $dateStr,
+                            'payroll_id'          => null,
+                            'logsType'            => $logsType,
+                            'totalHours'          => $summary->total_hours ?? 0,
+                            'late_minutes'        => $summary->mins_late ?? 0,
+                            'undertime_minutes'   => $summary->mins_undertime ?? 0,
+                            'night_diff_hours'    => ($summary->mins_night_diff ?? 0) / 60,
+                            'night_diff_pay'      => ($summary->mins_night_diff ?? 0) / 60 * ($hourlyRate * 0.10),
+                            'late_deduction'      => ($summary->mins_late ?? 0) / 60 * $hourlyRate,
+                            'undertime_deduction' => ($summary->mins_undertime ?? 0) / 60 * $hourlyRate,
+                            'penalty_amount'      => 0, // Placeholder, compute if needed
+                            'adjustment_amount'   => 0, // Placeholder, compute if needed
+                            'created_at'          => now(),
+                            'updated_at'          => now(),
+                        ];
                     }
+                }
+
+                //  PERFORMANCE: one bulk insert for all of this employee's daily rows
+                //     (the period's old rows were already deleted in the cleanup above).
+                if (!empty($detailRows)) {
+                    PayrollDetail::insert(array_values($detailRows));
                 }
 
                 // ==============================
@@ -567,6 +678,11 @@ class PayrollController extends Controller
                     'outpass'          => ['minutes' => $outpass_minutes, 'deduction' => round($outPassDeduction, 2)],
                     'custom_deduction' => ['minutes' => $custom_deduction_mins, 'amount' => round($custom_deduction_pay, 2)],
                     'overtime'         => ['total_pay' => round($totalOT, 2), 'rest_day_ot_dates' => $restDayOtDateList->all()],
+                    'holiday'          => [
+                        'pay'     => round($holidayPay, 2),
+                        'count'   => count($appliedHolidays),
+                        'applied' => $appliedHolidays, // dates/types for THIS employee's department
+                    ],
                     'holiday_pay'      => round($holidayPay, 2),
                     'night_diff'       => ['minutes' => $night_diff_mins, 'pay' => round($night_diff_pay, 2)],
                     'allowance'        => [

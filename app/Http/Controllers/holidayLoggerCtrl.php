@@ -15,13 +15,14 @@ class holidayLoggerCtrl extends Controller
             'date'=>$request->date,
             'description'=>$request->description,
             'type'=>$request->type,
-            'department_id'=>$request->department_id,
+            // empty / "All Departments" => NULL (applies to every department)
+            'department_id'=> ($request->department_id === '' || $request->department_id === null) ? null : $request->department_id,
         ];
 
         $validator = Validator::make($request->all(),[
             'date'=>'required',
             'description'=>'required',
-            'department_id'=>'required',
+            'department_id'=>'nullable',
             'type'=>'required',
         ]);
 
