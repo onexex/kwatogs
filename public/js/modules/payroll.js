@@ -602,7 +602,7 @@ $(document).ready(function () {
                     return;
                 }
 
-                const sumFields = ['basic_salary','basicPay','abs_ut_deduction','holiday_pay','overtime_pay','night_diff_pay','gross_pay','sss_contribution','sss_loan','pagibig_contribution','pagibig_loan','philhealth_contribution','taxable_income','withholding_tax','allowances','adjustment','penalty_amount','company_loan','net_pay','pay_rec'];
+                const sumFields = ['basic_salary','basicPay','abs_ut_deduction','holiday_pay','overtime_pay','night_diff_pay','gross_pay','sss_contribution','sss_loan','pagibig_contribution','pagibig_loan','philhealth_contribution','taxable_income','withholding_tax','allowances','adjustment_amount','penalty_amount','company_loan','cash_advance','net_pay','pay_rec'];
                 const totals = {};
                 sumFields.forEach((fld) => { totals[fld] = 0; });
 
@@ -616,7 +616,7 @@ $(document).ready(function () {
                                 .replace(/\b\w/g, (char) => char.toUpperCase())}
                             <div class="no-print mt-1 d-flex flex-wrap gap-1">
                                 <a href="/payroll/payslip?pay_date=${encodeURIComponent(payDate)}&employee_id=${encodeURIComponent(payroll.employee_id || '')}" target="_blank" class="badge bg-secondary text-white text-decoration-none d-inline-block" style="font-size:10px;"><i class="fa fa-file-invoice me-1"></i>Payslip</a>
-                                ${window.canViewPayrollLogs ? `<a href="/payroll-logs/print?pay_date=${encodeURIComponent(payDate)}&employee_id=${encodeURIComponent(payroll.employee_id || '')}" target="_blank" class="badge text-white text-decoration-none d-inline-block" style="font-size:10px;background-color:#008080;"><i class="fa fa-list-ul me-1"></i>Payroll Log</a>` : ''}
+                                ${window.canViewPayrollLogs ? `<a href="/payroll-logs/print?pay_date=${encodeURIComponent(payDate)}&employee_id=${encodeURIComponent(payroll.employee_id || '')}" target="_blank" class="badge text-white text-decoration-none d-inline-block" style="font-size:10px;background-color:#008080;"><i class="fa fa-list-ul me-1"></i>Log</a>` : ''}
                             </div>
                         </td>
                             <td>${formatNumber(payroll.basic_salary)}</td>
@@ -639,10 +639,11 @@ $(document).ready(function () {
                             <td>${formatNumber(payroll.withholding_tax || 0)}</td>
 
                             <td>${formatNumber(payroll.allowances || 0)}</td>
-                            <td>${formatNumber(payroll.adjustment || 0)}</td>
+                            <td>${formatNumber(payroll.adjustment_amount || 0)}</td>
 
                             <td>${formatNumber(payroll.penalty_amount || 0)}</td>
                             <td>${formatNumber(payroll.company_loan || 0)}</td>
+                            <td>${formatNumber(payroll.cash_advance || 0)}</td>
                             <td class="bg-light fw-bold">${formatNumber(payroll.net_pay || 0)}</td>
                             <td class="pe-4 fw-bold">${formatNumber(payroll.pay_rec || 0)}</td>
                     </tr>
@@ -670,9 +671,10 @@ $(document).ready(function () {
                         <td>${formatNumber(totals.taxable_income)}</td>
                         <td>${formatNumber(totals.withholding_tax)}</td>
                         <td>${formatNumber(totals.allowances)}</td>
-                        <td>${formatNumber(totals.adjustment)}</td>
+                        <td>${formatNumber(totals.adjustment_amount)}</td>
                         <td>${formatNumber(totals.penalty_amount)}</td>
                         <td>${formatNumber(totals.company_loan)}</td>
+                        <td>${formatNumber(totals.cash_advance)}</td>
                         <td>${formatNumber(totals.net_pay)}</td>
                         <td class="pe-4">${formatNumber(totals.pay_rec)}</td>
                     </tr>
@@ -693,6 +695,29 @@ $(document).ready(function () {
     $("#selCompany, #selFilter, #selDepartment").on("change", fetchPayroll);
 
     // ✅ Bulk: open printable payslips for everyone in the current pay date (respects filters)
+
+    // ✅ Export: payroll disbursement files (respects current filters)
+    function payrollExportParams() {
+        const payDate = $("#pay_date").val();
+        if (!payDate) { showAlert("Select a pay date first.", "warning", "No Pay Date"); return null; }
+        return new URLSearchParams({
+            pay_date: payDate,
+            company_id: $("#selCompany").val() || "all",
+            classification_id: $("#selFilter").val() || "all",
+            department_id: $("#selDepartment").val() || "all",
+        });
+    }
+    $("#btnExportCash").on("click", function (e) {
+        e.preventDefault();
+        const params = payrollExportParams();
+        if (params) { window.location.href = `/payroll/export/cash?${params.toString()}`; }
+    });
+    $("#btnExportCard").on("click", function (e) {
+        e.preventDefault();
+        const params = payrollExportParams();
+        if (params) { window.location.href = `/payroll/export/card?${params.toString()}`; }
+    });
+
     $("#btnPrintPayslips").on("click", function () {
         const payDate = $("#pay_date").val();
         if (!payDate) { showAlert("Select a pay date first.", "warning", "No Pay Date"); return; }
@@ -878,4 +903,83 @@ $(document).ready(function () {
     }
 
     
+});
+
+
+// ── Payroll Approval / Lock ──────────────────────────────────────────────
+$(function () {
+    function refreshApprovalStatus() {
+        const payDate = $("#pay_date").val();
+        if (!payDate) { applyApproval(null); return; }
+        axios.get("/payroll/approval/status", { params: { pay_date: payDate } })
+            .then(res => applyApproval(res.data))
+            .catch(() => applyApproval(null));
+    }
+
+    function applyApproval(data) {
+        const canApprove = window.canApprovePayroll === true;
+        const canRegen   = window.canRegeneratePayroll === true;
+        const approved   = !!(data && data.approved);
+
+        const $badge = $("#approvalBadge");
+        const $approve = $("#btnApprovePayroll");
+        const $reopen = $("#btnReopenPayroll");
+        const $gen = $("#btnGenerate");
+
+        $badge.add($approve).add($reopen).addClass("d-none");
+
+        if (approved) {
+            $("#approvalBadgeText").text(`APPROVED · FINAL${data.approved_by_name ? " · " + data.approved_by_name : ""}${data.approved_at ? " · " + data.approved_at : ""}`);
+            $badge.removeClass("d-none");
+            if (canRegen) {
+                $reopen.removeClass("d-none");
+                $gen.prop("disabled", false);
+            } else {
+                $gen.prop("disabled", true);
+            }
+        } else {
+            $gen.prop("disabled", false);
+            if (canApprove) { $approve.removeClass("d-none"); }
+        }
+    }
+
+    $("#pay_date").on("change", refreshApprovalStatus);
+    refreshApprovalStatus();
+
+    $("#btnApprovePayroll").on("click", function () {
+        const payDate = $("#pay_date").val();
+        if (!payDate) { showAlert("Select a pay date first.", "warning", "No Pay Date"); return; }
+        Swal.fire({
+            icon: "warning",
+            title: "Approve & finalize payroll?",
+            html: `Pay date: <strong>${payDate}</strong><br>Once approved, this payroll cannot be regenerated or edited (except by an authorized override).`,
+            input: "text",
+            inputPlaceholder: "Remarks (optional)",
+            showCancelButton: true,
+            confirmButtonText: "Yes, approve",
+            confirmButtonColor: "#16a34a",
+        }).then(r => {
+            if (!r.isConfirmed) return;
+            axios.post("/payroll/approve", { pay_date: payDate, remarks: r.value || "" })
+                .then(res => Swal.fire({ icon: "success", title: "Approved", text: res.data.message, timer: 1500, showConfirmButton: false }).then(refreshApprovalStatus))
+                .catch(err => Swal.fire("Error", err.response?.data?.message || "Unable to approve.", "error"));
+        });
+    });
+
+    $("#btnReopenPayroll").on("click", function () {
+        const payDate = $("#pay_date").val();
+        Swal.fire({
+            icon: "warning",
+            title: "Reopen this payroll?",
+            html: `Pay date: <strong>${payDate}</strong><br>This lifts the lock so it can be regenerated and edited again.`,
+            showCancelButton: true,
+            confirmButtonText: "Yes, reopen",
+            confirmButtonColor: "#d97706",
+        }).then(r => {
+            if (!r.isConfirmed) return;
+            axios.post("/payroll/reopen", { pay_date: payDate })
+                .then(res => Swal.fire({ icon: "success", title: "Reopened", text: res.data.message, timer: 1500, showConfirmButton: false }).then(refreshApprovalStatus))
+                .catch(err => Swal.fire("Error", err.response?.data?.message || "Unable to reopen.", "error"));
+        });
+    });
 });

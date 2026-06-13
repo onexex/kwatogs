@@ -332,6 +332,9 @@
                             </td>
                             <td>
                                 <span class="badge-loan-type">{{ strtoupper(str_replace('_', ' ', $loan->loan_type)) }}</span>
+                                @if($loan->loan_type === 'other' && $loan->other_description)
+                                    <div class="small text-muted mt-1">{{ $loan->other_description }}</div>
+                                @endif
                             </td>
                             <td class="fw-semibold text-dark">₱{{ number_format($loan->loan_amount, 2) }}</td>
                             <td class="fw-bold" style="color: var(--danger);">₱{{ number_format($loan->balance, 2) }}</td>
@@ -352,6 +355,7 @@
                                         data-id="{{ $loan->id }}"
                                         data-employee="{{ $loan->employee_id }}"
                                         data-type="{{ $loan->loan_type }}"
+                                        data-other="{{ $loan->other_description }}"
                                         data-amount="{{ $loan->loan_amount }}"
                                         data-amort="{{ $loan->monthly_amortization }}"
                                         data-start="{{ $loan->start_date }}"
@@ -415,6 +419,11 @@
                             </select>
                         </div>
 
+                        <div class="col-md-6" id="otherSpecifyWrap" style="display:none;">
+                            <label class="field-label" for="other_description">Specify (Other) <span class="req">*</span></label>
+                            <input type="text" class="form-control" name="other_description" id="other_description" placeholder="Describe the charge / adjustment" maxlength="255">
+                        </div>
+
                         <div class="col-md-6">
                             <label class="field-label" for="loan_amount">Total Amount (Principal)</label>
                             <div class="input-group">
@@ -458,14 +467,26 @@ $(document).ready(function() {
         $('#loanForm')[0].reset();
         $('#loan_id').val('');
         $('#modalTitle').text('Add Adjustment Entry');
+        toggleOtherSpecify();
         $('#loanModal').modal('show');
     });
+
+    // Show the "Specify" field only when the type is "Other"
+    function toggleOtherSpecify() {
+        const isOther = $('#loan_type').val() === 'other';
+        $('#otherSpecifyWrap').toggle(isOther);
+        $('#other_description').prop('required', isOther);
+        if (!isOther) { $('#other_description').val(''); }
+    }
+    $('#loan_type').on('change', toggleOtherSpecify);
 
     $('.editLoanBtn').click(function () {
         $('#modalTitle').text('Update Adjustment');
         $('#loan_id').val($(this).data('id'));
         $('#employee_id').val($(this).data('employee'));
         $('#loan_type').val($(this).data('type'));
+        $('#other_description').val($(this).data('other'));
+        toggleOtherSpecify();
         $('#loan_amount').val($(this).data('amount'));
         $('#monthly_amortization').val($(this).data('amort'));
         $('#start_date').val($(this).data('start'));

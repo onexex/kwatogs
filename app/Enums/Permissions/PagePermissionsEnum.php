@@ -22,6 +22,9 @@ enum PagePermissionsEnum: string
     case pendingovertimerequests = 'Pending Overtime Requests';
     case payroll = 'Payroll System';
     case payrolllogs = 'Payroll Logs';
+    case payadjustments = 'Pay Adjustments';
+    case approvepayroll = 'Approve Payroll';
+    case regeneratepayroll = 'Regenerate / Override Payroll';
     // case debitadvise = 'Debit Advise';
     // case sendobt = 'Send to OBT';
     // case accessrights = 'Access Rights';

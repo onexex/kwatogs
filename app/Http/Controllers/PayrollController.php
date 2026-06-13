@@ -138,6 +138,17 @@ class PayrollController extends Controller
             $endDate = $validated['date_to'];
             $payDate = $validated['pay_date'];
 
+            // ── Approval lock: an approved pay date is final ──
+            if (\App\Models\PayrollApproval::isLocked($payDate)
+                && !optional($request->user())->can('regeneratepayroll')) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'locked'  => true,
+                    'message' => 'This payroll has been approved and is final. Regeneration is not allowed.',
+                ], 423);
+            }
+
             // 'all' = compute every active employee; otherwise limit to one department
             $departmentId = $request->query('department_id', 'all') ?: 'all';
             $companyId    = $request->query('company_id', 'all') ?: 'all';
@@ -580,6 +591,20 @@ class PayrollController extends Controller
                 }
 
                 // ==============================
+                //  HR PAY ADJUSTMENTS (one-time, this pay date)
+                // ==============================
+                $payAdjGross = 0; // +/- applied to gross (taxed)
+                $payAdjNet   = 0; // +/- applied to take-home (after tax)
+                $payAdjustments = \App\Models\PayAdjustment::where('employee_id', $emp->empID)
+                    ->whereDate('pay_date', $payDate)->get();
+                foreach ($payAdjustments as $pa) {
+                    $signed = ($pa->kind === 'deduction' ? -1 : 1) * (float) $pa->amount;
+                    if ($pa->apply_to === 'gross') { $payAdjGross += $signed; } else { $payAdjNet += $signed; }
+                }
+                // Gross adjustments are applied BEFORE tax/contributions so the engine recomputes naturally
+                $grossPay = max(0, $grossPay + $payAdjGross);
+
+                // ==============================
                 //  CONTRIBUTIONS & LOANS
                 // ==============================
                 $isEndOfMonth = Carbon::parse($payDate)->isSameDay(Carbon::parse($payDate)->endOfMonth());
@@ -606,7 +631,14 @@ class PayrollController extends Controller
                 // LoanPayment below, so they must also reduce take-home pay here.
                 $sssLoan = $contributions['loan_breakdown']['sss'] ?? 0;
                 $pagibigLoan = $contributions['loan_breakdown']['pagibig'] ?? 0;
-                $taxable_income = $contributions['taxable_income'] ?? 0;
+                // Taxable income shown every cutoff (display only; tax/contributions still
+                // deduct on the end-of-month run). Uses $monthlyGross so the end-of-month
+                // figure is the EXACT whole-month taxable income (current + previous cutoff);
+                // on the 1st cutoff $monthlyGross == current gross and contributions are 0.
+                $taxable_income = max(0, $monthlyGross
+                    - ($contributions['sss']['employee_share'] ?? 0)
+                    - ($contributions['philhealth']['employee_share'] ?? 0)
+                    - ($contributions['pagibig']['employee_share'] ?? 0));
 
                 //  Compute gov dues
                 $govDues = $contributions['sss']['employee_share']
@@ -616,13 +648,13 @@ class PayrollController extends Controller
 
                 //  Compute net & receivable
                 $netPay = max(0, ($grossPay - $govDues));
-                $payRec = $netPay - $salaryLoan - $charges - $cash_adv - $other - $sssLoan - $pagibigLoan + $allowance;
+                $payRec = $netPay - $salaryLoan - $charges - $cash_adv - $other - $sssLoan - $pagibigLoan + $allowance + $payAdjNet;
 
                 // ✨ ADD THIS SAFEGUARD ✨
                 $canAffordLoans = true;
                 if ($payRec < 0) {
                     // I-set sa 0 ang receivable para hindi negative ang ilalabas sa payslip
-                    $payRec = max(0, $netPay + $allowance);
+                    $payRec = max(0, $netPay + $allowance + max(0, $payAdjNet));
 
                     // I-flag na hindi natuloy ang kaltas ng loans
                     $canAffordLoans = false;
@@ -711,6 +743,19 @@ class PayrollController extends Controller
                         'other' => $other, 'sss_loan' => $sssLoan, 'pagibig_loan' => $pagibigLoan,
                         'can_afford' => $canAffordLoans,
                     ],
+                    'adjustments'      => [
+                        'gross_taxed'   => round($payAdjGross, 2),
+                        'net_after_tax' => round($payAdjNet, 2),
+                        'total'         => round($payAdjGross + $payAdjNet, 2),
+                        'entries'       => $payAdjustments->map(function ($pa) {
+                            return [
+                                'label'    => $pa->label,
+                                'kind'     => $pa->kind,
+                                'apply_to' => $pa->apply_to,
+                                'amount'   => (float) $pa->amount,
+                            ];
+                        })->all(),
+                    ],
                     'net_pay'          => round($netPay, 2),
                     'pay_receivable'   => round($payRec, 2),
                 ];
@@ -742,7 +787,10 @@ class PayrollController extends Controller
                         'net_pay'      => $netPay,
                         'pay_rec'      => $payRec,
                         'holiday_pay'=>$holidayPay,
+                        'adjustment_amount' => $payAdjGross + $payAdjNet,
                         'company_loan' => $contributions['loan_breakdown']['salary'] ?? 0,
+                        'cash_advance' => $cash_adv,
+                        'other_deduction' => $other,
                         'sss_employer' => $contributions['sss']['employer_share'],
                         'philhealth_employer' => $contributions['philhealth']['employer_share'],
                         'pagibig_employer'=> $contributions['pagibig']['employer_share'],

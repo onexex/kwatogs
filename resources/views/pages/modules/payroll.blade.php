@@ -337,11 +337,11 @@
                     </ol>
                 </nav>
             </div>
-            <div class="d-flex gap-2">
+            {{-- <div class="d-flex gap-2">
                 <button class="btn btn-teal rounded-pill px-4 shadow-sm fw-bold" id="btnRelease">
                     <i class="fas fa-check-double me-2"></i> Approve Payroll
                 </button>
-            </div>
+            </div> --}}
         </div>
 
         <div class="row g-3 mb-3">
@@ -446,13 +446,13 @@
                             <button class="btn btn-glass-light" id="btnSummary">
                                 <i class="fa fa-chart-pie me-1 small"></i> Summary
                             </button>
-                            <button class="btn btn-glass-light" id="btnSummary1">
+                            {{-- <button class="btn btn-glass-light" id="btnSummary1">
                                 <i class="fa fa-file-export"></i> Export
-                            </button>
-                            <button class="btn btn-white-primary" data-bs-toggle="modal"
+                            </button> --}}
+                            {{-- <button class="btn btn-white-primary" data-bs-toggle="modal"
                                 data-bs-target="#mdlAdjustment" id="btnAdjustment">
                                 <i class="fa fa-plus-circle me-2"></i>CREATE ADJUSTMENT
-                            </button>
+                            </button> --}}
                         </div>
 
                     </div>
@@ -466,13 +466,31 @@
                     <div class="sc-icon"><i class="fa fa-list-ol"></i></div>
                     <h5 class="sc-title">Payroll Register</h5>
                 </div>
-                <div class="d-flex align-items-center gap-2">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span id="approvalBadge" class="badge rounded-pill px-3 py-2 d-none" style="background:#dcfce7;color:#166534;font-size:.72rem;font-weight:700;">
+                        <i class="fa fa-lock me-1"></i><span id="approvalBadgeText">APPROVED · FINAL</span>
+                    </span>
+                    <button class="btn btn-success btn-sm rounded-pill px-3 fw-bold shadow-sm d-none" id="btnApprovePayroll">
+                        <i class="fa fa-circle-check me-2"></i> Approve Payroll
+                    </button>
+                    <button class="btn btn-warning btn-sm rounded-pill px-3 fw-bold shadow-sm d-none" id="btnReopenPayroll">
+                        <i class="fa fa-unlock me-2"></i> Reopen
+                    </button>
                     <button class="btn btn-light btn-sm rounded-pill px-3 fw-bold shadow-sm" id="btnPrint">
                         <i class="fa fa-print me-2 text-teal"></i> Print Report
                     </button>
                     <button class="btn btn-teal btn-sm rounded-pill px-3 fw-bold shadow-sm" id="btnPrintPayslips">
                         <i class="fa fa-file-invoice me-2"></i> Print Payslips
                     </button>
+                    <div class="dropdown">
+                        <button class="btn btn-light btn-sm rounded-pill px-3 fw-bold shadow-sm dropdown-toggle" type="button" id="btnExportMenu" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fa fa-file-excel me-2 text-success"></i> Export
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="btnExportMenu">
+                            <li><a class="dropdown-item" href="#" id="btnExportCash"><i class="fa fa-money-bill-wave me-2 text-secondary"></i>Cash list (name &amp; net pay)</a></li>
+                            <li><a class="dropdown-item" href="#" id="btnExportCard"><i class="fa fa-credit-card me-2 text-teal"></i>ATM / Card (bank upload)</a></li>
+                        </ul>
+                    </div>
                 </div>
             </div>
             <div class="sc-body p-0">
@@ -498,6 +516,7 @@
                                 <th rowspan="2">Allowances</th>
                                 <th rowspan="2">Adjustments</th>
                                 <th rowspan="2">Charges</th>
+                                <th rowspan="2">Company Loan</th>
                                 <th rowspan="2">Cash Adv</th>
                                 <th rowspan="2" class="bg-light fw-bold">Net Pay</th>
                                 <th rowspan="2" class="pe-4 fw-bold-total">Pay Receivable</th>
@@ -588,5 +607,9 @@
     <script>window.companyPayrollPeriods = @json($companyPeriods ?? []);</script>
     <script>window.canViewPayrollLogs = @can('payrolllogs') true @else false @endcan;</script>
     <script>window.payrollLogoUrl = "{{ asset('img/kwatogslogo.jpg') }}";</script>
+    <script>
+        window.canApprovePayroll = @can('approvepayroll') true @else false @endcan;
+        window.canRegeneratePayroll = @can('regeneratepayroll') true @else false @endcan;
+    </script>
     <script src="{{ asset('js/modules/payroll.js') }}"></script>
 @endsection

@@ -89,9 +89,10 @@
             $sssLoan = (float) $p->sss_loan;
             $pagLoan = (float) $p->pagibig_loan;
             $compLoan= (float) $p->company_loan;
+            $cashAdv = (float) $p->cash_advance;
             $charges = (float) $p->penalty_amount;
 
-            $listedDed = $absut + $ob + $op + $sss + $phil + $pag + $tax + $sssLoan + $pagLoan + $compLoan + $charges;
+            $listedDed = $absut + $ob + $op + $sss + $phil + $pag + $tax + $sssLoan + $pagLoan + $compLoan + $cashAdv + $charges;
             $takehome  = (float) $p->pay_rec;
             // Residual (manual/custom deductions or rounding) so the slip always foots to pay receivable
             $residual  = round($earnings - $listedDed - $takehome, 2);
@@ -148,7 +149,8 @@
                     <div class="ln"><span>Withholding Tax</span><span class="v">{{ $peso($tax) }}</span></div>
                     @if ($sssLoan > 0)<div class="ln"><span>SSS Loan</span><span class="v">{{ $peso($sssLoan) }}</span></div>@endif
                     @if ($pagLoan > 0)<div class="ln"><span>Pag-IBIG Loan</span><span class="v">{{ $peso($pagLoan) }}</span></div>@endif
-                    @if ($compLoan > 0)<div class="ln"><span>Company Loan / Cash Adv.</span><span class="v">{{ $peso($compLoan) }}</span></div>@endif
+                    @if ($compLoan > 0)<div class="ln"><span>Company Loan</span><span class="v">{{ $peso($compLoan) }}</span></div>@endif
+                    @if ($cashAdv > 0)<div class="ln"><span>Cash Advance</span><span class="v">{{ $peso($cashAdv) }}</span></div>@endif
                     @if ($charges > 0)<div class="ln"><span>Charges / Penalty</span><span class="v">{{ $peso($charges) }}</span></div>@endif
                     @if ($residual > 0.005)<div class="ln"><span>Other Deductions</span><span class="v">{{ $peso($residual) }}</span></div>@endif
                     <div class="sub-tot"><span>Total Deductions</span><span>{{ $peso($totalDed) }}</span></div>

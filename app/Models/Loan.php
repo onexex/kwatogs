@@ -12,6 +12,7 @@ class Loan extends Model
     protected $fillable = [
         'employee_id',
         'loan_type',
+        'other_description',
         'loan_amount',
         'balance',
         'monthly_amortization',

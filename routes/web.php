@@ -27,6 +27,7 @@ use App\Http\Controllers\leavetypeCtrl;
 use App\Http\Controllers\leavevalidationCtrl;
 use App\Http\Controllers\liloValidationsCtrl;
 use App\Http\Controllers\LoanController;
+use App\Http\Controllers\PayAdjustmentController;
 use App\Http\Controllers\loginCtrl;
 use App\Http\Controllers\obValidationsCtrl;
 use App\Http\Controllers\otfillingCtrl;
@@ -36,6 +37,8 @@ use App\Http\Controllers\pageCtrl;
 use App\Http\Controllers\pagibigCtrl;
 use App\Http\Controllers\parentalSettingsCtrl;
 use App\Http\Controllers\PayrollController;
+use App\Http\Controllers\PayrollApprovalController;
+use App\Http\Controllers\PayrollExportController;
 use App\Http\Controllers\PayrollLogController;
 use App\Http\Controllers\philhealthCtrl;
 use App\Http\Controllers\positionCtrl;
@@ -367,10 +370,15 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     Route::get('/attendance/viewer', [reportAttendanceCtrl::class, 'index'])->name('attendance.viewer');
     Route::post('/attendance/fetch', [reportAttendanceCtrl::class, 'fetchAttendance'])->name('attendance.fetch');
     Route::get('/payroll/compute', [PayrollController::class, 'computePayroll']);
+    Route::get('/payroll/approval/status', [PayrollApprovalController::class, 'status'])->name('payroll.approval.status');
+    Route::post('/payroll/approve', [PayrollApprovalController::class, 'approve'])->name('payroll.approve')->middleware('can:approvepayroll');
+    Route::post('/payroll/reopen', [PayrollApprovalController::class, 'reopen'])->name('payroll.reopen')->middleware('can:regeneratepayroll');
     Route::get('/payroll/fetch', [PayrollController::class, 'fetchPayroll']);
     Route::get('/payroll/details/by-payroll', [PayrollController::class, 'getDetailsByPayroll'])
     ->name('payroll.details.by-payroll');
     Route::get('/payroll/payslip', [PayrollController::class, 'payslip'])->name('payroll.payslip');
+    Route::get('/payroll/export/cash', [PayrollExportController::class, 'exportCash'])->name('payroll.export.cash');
+    Route::get('/payroll/export/card', [PayrollExportController::class, 'exportCard'])->name('payroll.export.card');
     Route::get('/payroll-logs', [PayrollLogController::class, 'index'])->name('payroll-logs.index')->middleware('can:payrolllogs');
     Route::get('/payroll-logs/fetch', [PayrollLogController::class, 'fetch'])->name('payroll-logs.fetch')->middleware('can:payrolllogs');
     Route::get('/payroll-logs/print', [PayrollLogController::class, 'print'])->name('payroll-logs.print')->middleware('can:payrolllogs');
@@ -381,6 +389,12 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     Route::post('/loans/store', [LoanController::class, 'store'])->name('loans.store');
     Route::post('/loans/update', [LoanController::class, 'update'])->name('loans.update');
     Route::delete('/loans/delete/{id}', [LoanController::class, 'destroy'])->name('loans.delete');
+
+    // Pay Adjustments (HR additions/deductions per pay date)
+    Route::get('pages/modules/payadjustments', [PayAdjustmentController::class, 'index'])->name('payadjustments.index')->middleware('can:payadjustments');
+    Route::post('/payadjustments/store', [PayAdjustmentController::class, 'store'])->name('payadjustments.store')->middleware('can:payadjustments');
+    Route::post('/payadjustments/update', [PayAdjustmentController::class, 'update'])->name('payadjustments.update')->middleware('can:payadjustments');
+    Route::delete('/payadjustments/delete/{id}', [PayAdjustmentController::class, 'destroy'])->name('payadjustments.delete')->middleware('can:payadjustments');
     
     Route::resource('/overtime', OvertimeController::class);
     Route::put('/overtime/{overtime}/updatestatus', [OvertimeController::class, 'updateStatus'])->name('overtime.status.update');

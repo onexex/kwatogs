@@ -2,12 +2,68 @@
 
 @section('content')
 <style>
-    :root { --hr-teal: #008080; --hr-bg: #f4f7f6; }
-    body { background-color: var(--hr-bg); overflow-x: hidden; }
+    /* ── Shared design tokens (same palette as Pending Leave Requests) ── */
+    :root {
+        --hr-teal:      #008080;
+        --hr-bg:        #f4f7f6;
+        --teal:         #008080;
+        --teal-dark:    #006666;
+        --teal-mid:     #4db6ac;
+        --teal-light:   #e0f2f1;
+        --slate:        #334155;
+        --slate-light:  #64748b;
+        --muted:        #94a3b8;
+        --bg:           #f1f5f9;
+        --surface:      #ffffff;
+        --border:       #e2e8f0;
+        --radius-card:  14px;
+        --radius-input: 8px;
+        --shadow-card:  0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+    }
+    body { background-color: var(--bg); overflow-x: hidden; }
+
+    /* ── Page shell + branded topbar (matches Pending Leave Requests) ── */
+    .e201-shell {
+        background: var(--bg);
+        min-height: 100vh;
+        padding: 24px 28px 40px;
+        margin: -1.5rem -1.5rem 0;
+    }
+    .e201-topbar {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-card);
+        padding: 16px 22px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .e201-topbar .page-title { font-size: 1.1rem; font-weight: 700; color: var(--slate); margin: 0; letter-spacing: -.2px; }
+    .e201-topbar .page-sub { font-size: .78rem; color: var(--muted); margin: 2px 0 0; }
+    .btn-back-mobile {
+        border: 1.5px solid var(--border); background: var(--surface); color: var(--slate-light);
+        border-radius: 999px; padding: 6px 16px; font-size: .8rem; font-weight: 700; transition: all .15s;
+    }
+    .btn-back-mobile:hover { background: var(--teal-light); border-color: var(--teal-mid); color: var(--teal); }
+
+    /* ── List panel header to match section-card style ── */
+    .list-head { display: flex; align-items: center; gap: 10px; }
+    .list-head .sc-icon {
+        width: 30px; height: 30px; border-radius: 8px; background: var(--teal-light); color: var(--teal);
+        display: flex; align-items: center; justify-content: center; font-size: .78rem; flex-shrink: 0;
+    }
+    .list-head .sc-title {
+        font-size: .78rem; font-weight: 700; color: var(--slate);
+        text-transform: uppercase; letter-spacing: .5px; margin: 0;
+    }
 
     /* Master-Detail Wrapper */
     .e201-wrapper { 
-        height: calc(100vh - 140px); 
+        height: calc(100vh - 200px); 
         display: flex; 
         gap: 20px; 
     }
@@ -28,6 +84,7 @@
     }
 
     /* 3. Hide module-specific elements (Yung binigay ko kanina) */
+    .e201-topbar,
     .employee-list-panel,
     nav[aria-label="breadcrumb"],
     .container-fluid > .d-flex.mb-4,
@@ -137,18 +194,13 @@
     .list-scroll::-webkit-scrollbar-thumb, .details-panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 </style>
 
-<div class="container-fluid py-3">
-    <div class="d-flex align-items-center justify-content-between mb-4">
+<div class="e201-shell">
+    <div class="e201-topbar">
         <div>
-            <h4 class="fw-bold text-dark m-0">E-201 Personnel Viewer</h4>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0">
-                    <li class="breadcrumb-item text-muted small">Management</li>
-                    <li class="breadcrumb-item active fw-semibold small" style="color: var(--hr-teal) !important;">Electronic 201 Files</li>
-                </ol>
-            </nav>
+            <p class="page-title">E-201 Personnel Viewer</p>
+            <p class="page-sub">Management &middot; Electronic 201 Files &mdash; browse and review employee records</p>
         </div>
-        <button id="btnBackToList" class="btn btn-sm btn-outline-secondary d-lg-none rounded-pill px-3" style="display:none;">
+        <button id="btnBackToList" class="btn-back-mobile d-lg-none" style="display:none;">
             <i class="fa-solid fa-arrow-left me-1"></i> Back to List
         </button>
     </div>
@@ -156,7 +208,10 @@
     <div class="e201-wrapper">
         <div class="employee-list-panel" id="sidePanel">
             <div class="search-area">
-                <h6 class="fw-bold text-teal mb-3">Personnel Records</h6>
+                <div class="list-head mb-3">
+                    <div class="sc-icon"><i class="fa fa-users"></i></div>
+                    <h6 class="sc-title">Personnel Records</h6>
+                </div>
                 <div class="input-group bg-light rounded-pill px-3 py-1 border">
                     <i class="fa-solid fa-magnifying-glass align-self-center text-muted"></i>
                     <input type="text" id="empSearchInput" class="form-control border-0 bg-transparent shadow-none" placeholder="Search name or ID...">
