@@ -583,5 +583,6 @@
         </div>
     </div>
 
+    <script>window.companyPayrollPeriods = @json($companyPeriods ?? []);</script>
     <script src="{{ asset('js/modules/payroll.js') }}"></script>
 @endsection

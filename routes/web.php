@@ -6,6 +6,7 @@ use App\Http\Controllers\archiveCtrl;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\classiticationCtrl;
 use App\Http\Controllers\companyCtrl;
+use App\Http\Controllers\PayrollPeriodController;
 use App\Http\Controllers\DatabaseBackupController;
 use App\Http\Controllers\departmentCtrl;
 use App\Http\Controllers\earlyoutCtrl;
@@ -35,6 +36,7 @@ use App\Http\Controllers\pageCtrl;
 use App\Http\Controllers\pagibigCtrl;
 use App\Http\Controllers\parentalSettingsCtrl;
 use App\Http\Controllers\PayrollController;
+use App\Http\Controllers\PayrollLogController;
 use App\Http\Controllers\philhealthCtrl;
 use App\Http\Controllers\positionCtrl;
 use App\Http\Controllers\Profile\ProfileController;
@@ -42,6 +44,8 @@ use App\Http\Controllers\registerCtrl;
 use App\Http\Controllers\relationshipCtrl;
 use App\Http\Controllers\reportAttendanceCtrl;
 use App\Http\Controllers\Reports\EmployeeInformationReportController;
+use App\Http\Controllers\Reports\OvertimeReportController;
+use App\Http\Controllers\Reports\LeaveReportController;
 use App\Http\Controllers\roleCtrl;
 use App\Http\Controllers\Roles\EmployeeRoleController;
 use App\Http\Controllers\Roles\RolesController;
@@ -86,6 +90,8 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     Route::get('/company/get_all',[companyCtrl::class, 'get_all']);
     Route::get('/company/get_edit',[companyCtrl::class, 'get_edit']);
     Route::get('/company/delete',[companyCtrl::class, 'delete']);
+    Route::get('/payroll-periods/{company}', [PayrollPeriodController::class, 'byCompany'])->name('payroll-periods.by-company')->middleware('can:companies');
+    Route::post('/payroll-periods/{company}', [PayrollPeriodController::class, 'save'])->name('payroll-periods.save')->middleware('can:companies');
 
     //classification
     Route::post('/classification/create_update',[classiticationCtrl::class, 'create_update']);
@@ -335,6 +341,12 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     Route::get('/task/search',[reportAttendanceCtrl::class,'searchTask']);
     Route::get('/reports/employee-information',[EmployeeInformationReportController::class, 'index'])->name('employee.report.index');
     Route::get('/reports/employee-information/export',[EmployeeInformationReportController::class, 'export'])->name('employee.report.export');
+    Route::get('/reports/overtime', [OvertimeReportController::class, 'index'])->name('reports.overtime.index')->middleware('can:overtimereport');
+    Route::get('/reports/overtime/fetch', [OvertimeReportController::class, 'fetch'])->name('reports.overtime.fetch')->middleware('can:overtimereport');
+    Route::get('/reports/overtime/print', [OvertimeReportController::class, 'print'])->name('reports.overtime.print')->middleware('can:overtimereport');
+    Route::get('/reports/leave', [LeaveReportController::class, 'index'])->name('reports.leave.index')->middleware('can:leavereport');
+    Route::get('/reports/leave/fetch', [LeaveReportController::class, 'fetch'])->name('reports.leave.fetch')->middleware('can:leavereport');
+    Route::get('/reports/leave/print', [LeaveReportController::class, 'print'])->name('reports.leave.print')->middleware('can:leavereport');
 
     //v2 scheduler
     Route::prefix('employee-schedules')->group(function() {
@@ -359,6 +371,9 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     Route::get('/payroll/details/by-payroll', [PayrollController::class, 'getDetailsByPayroll'])
     ->name('payroll.details.by-payroll');
     Route::get('/payroll/payslip', [PayrollController::class, 'payslip'])->name('payroll.payslip');
+    Route::get('/payroll-logs', [PayrollLogController::class, 'index'])->name('payroll-logs.index')->middleware('can:payrolllogs');
+    Route::get('/payroll-logs/fetch', [PayrollLogController::class, 'fetch'])->name('payroll-logs.fetch')->middleware('can:payrolllogs');
+    Route::get('/payroll-logs/print', [PayrollLogController::class, 'print'])->name('payroll-logs.print')->middleware('can:payrolllogs');
     
 
 

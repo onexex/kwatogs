@@ -13,6 +13,7 @@ use App\Models\OB;
 use App\Models\Overtime;
 use App\Models\Payroll;
 use App\Models\PayrollDetail;
+use App\Models\PayrollLog;
 use App\Models\SssContribution;
 use App\Models\User;
 use Carbon\Carbon;
@@ -129,6 +130,7 @@ class PayrollController extends Controller
                 'date_to' => 'required|date|after_or_equal:date_from',
                 'pay_date' => 'required|date',
                 'department_id' => 'nullable',
+                'company_id' => 'nullable',
             ]);
 
             $startDate = $validated['date_from'];
@@ -137,13 +139,17 @@ class PayrollController extends Controller
 
             // 'all' = compute every active employee; otherwise limit to one department
             $departmentId = $request->query('department_id', 'all') ?: 'all';
+            $companyId    = $request->query('company_id', 'all') ?: 'all';
 
             //  Fetch Active Employees (optionally filtered by department)
             $employees = User::with('empDetail')
-                ->whereHas('empDetail', function ($q) use ($departmentId) {
+                ->whereHas('empDetail', function ($q) use ($departmentId, $companyId) {
                     $q->where('empStatus', '1');
                     if ($departmentId !== 'all') {
                         $q->where('empDepID', $departmentId);
+                    }
+                    if ($companyId !== 'all') {
+                        $q->where('empCompID', $companyId);
                     }
                 })
                 ->get();
@@ -151,6 +157,13 @@ class PayrollController extends Controller
             // IDs being processed in this run. Used to scope cleanup so computing a
             // single department never deletes payroll belonging to other departments.
             $employeeIds = $employees->pluck('empID');
+
+            Log::channel('payroll')->info('=== Payroll run START ===', [
+                'pay_date'   => $payDate,
+                'cutoff'     => $startDate.' to '.$endDate,
+                'department' => $departmentId,
+                'employees'  => $employeeIds->count(),
+            ]);
 
             // ==============================
             //  CLEANUP OLD PAYROLL RECORDS
@@ -218,7 +231,8 @@ class PayrollController extends Controller
                 //  Salary Base Info
                 $salary = $emp->empDetail->getSalaryInfo();
                 $empBasic   = $salary['basic'];
-                $allowance  = $salary['allowance'] / 2;
+                $allowance  = 0; // computed daily after the attendance loop (days present + rest-day OT)
+                $scheduledDates = []; // distinct scheduled dates this cut-off (for rest-day OT detection)
                 $dailyRate  = $empBasic / 26;
                 $hourlyRate = $dailyRate / 8;
 
@@ -285,6 +299,7 @@ class PayrollController extends Controller
 
                     for ($date = $schedStart->copy(); $date->lte($schedEnd); $date->addDay()) {
                         $dateStr = $date->format('Y-m-d');
+                        $scheduledDates[$dateStr] = true;
                         $summary = $attendanceSummaries[$dateStr] ?? null;
 
                         // --- Quick lookups using collections ---
@@ -383,6 +398,25 @@ class PayrollController extends Controller
                         );
                     }
                 }
+
+                // ==============================
+                //  DAILY ALLOWANCE
+                //  monthly allowance / 26 = daily. Paid per day PRESENT, plus one extra
+                //  daily allowance for each distinct rest-day (non-scheduled) date with OT.
+                // ==============================
+                $dailyAllowance = ($salary['allowance'] ?? 0) / 26;
+                $restDayOtDateList = $employeeOtsAll
+                    ->map(fn($ot) => Carbon::parse($ot->date_from)->format('Y-m-d'))
+                    ->unique()
+                    ->reject(fn($d) => isset($scheduledDates[$d]))
+                    ->values();
+                $restDayOtDates = $restDayOtDateList->count();
+                // Base allowance (absences already excluded — base is days present).
+                $allowanceGross  = ($daysPresent + $restDayOtDates) * $dailyAllowance;
+                // Tardiness + undertime also reduce the allowance, valued at the allowance's hourly rate.
+                $allowanceHourly = $dailyAllowance / 8;
+                $allowanceLateUt = ($this->lateBracketHours($totalLate) + $this->lateBracketHours($totalUndertime)) * $allowanceHourly;
+                $allowance = max($allowanceGross - $allowanceLateUt, 0);
 
                 // ==============================
                 //  CLASSIFICATION: REGULAR vs DAILY
@@ -492,6 +526,81 @@ class PayrollController extends Controller
                 }
 
                 // ==============================
+                //  PAYROLL COMPUTATION LOG (per employee)
+                // ==============================
+                $breakdown = [
+                    'employee_id'      => $emp->empID,
+                    'name'             => trim(($emp->lname ?? '').', '.($emp->fname ?? '')),
+                    'classification'   => $employeeClass,
+                    'rates'            => [
+                        'basic_monthly'   => $empBasic,
+                        'daily_rate'      => round($dailyRate, 2),
+                        'hourly_rate'     => round($hourlyRate, 2),
+                        'daily_allowance' => round($dailyAllowance, 2),
+                        'allowance_hourly'=> round($allowanceHourly, 2),
+                    ],
+                    'attendance'       => [
+                        'scheduled_days'    => count($scheduledDates),
+                        'days_present'      => $daysPresent,
+                        'absent_days'       => $absentDays,
+                        'rest_day_ot_days'  => $restDayOtDates,
+                        'rest_day_ot_dates' => $restDayOtDateList->all(),
+                    ],
+                    'tardiness'        => [
+                        'total_minutes' => $totalLate,
+                        'bracket_hours' => $this->lateBracketHours($totalLate),
+                        'x_hourly_rate' => round($hourlyRate, 2),
+                        'deduction'     => round($lateDeduction, 2),
+                    ],
+                    'undertime'        => [
+                        'total_minutes' => $totalUndertime,
+                        'bracket_hours' => $this->lateBracketHours($totalUndertime),
+                        'x_hourly_rate' => round($hourlyRate, 2),
+                        'deduction'     => round($undertimeDeduction, 2),
+                    ],
+                    'absences'         => [
+                        'days'      => $absentDays,
+                        'x_daily'   => round($dailyRate, 2),
+                        'deduction' => round($absentDeduction, 2),
+                    ],
+                    'over_break'       => ['minutes' => $over_break_minutes, 'deduction' => round($overBreakDeduction, 2)],
+                    'outpass'          => ['minutes' => $outpass_minutes, 'deduction' => round($outPassDeduction, 2)],
+                    'custom_deduction' => ['minutes' => $custom_deduction_mins, 'amount' => round($custom_deduction_pay, 2)],
+                    'overtime'         => ['total_pay' => round($totalOT, 2), 'rest_day_ot_dates' => $restDayOtDateList->all()],
+                    'holiday_pay'      => round($holidayPay, 2),
+                    'night_diff'       => ['minutes' => $night_diff_mins, 'pay' => round($night_diff_pay, 2)],
+                    'allowance'        => [
+                        'daily_rate'        => round($dailyAllowance, 2),
+                        'days_paid'         => $daysPresent + $restDayOtDates,
+                        'gross'             => round($allowanceGross, 2),
+                        'late_ut_hours'     => $this->lateBracketHours($totalLate) + $this->lateBracketHours($totalUndertime),
+                        'late_ut_deduction' => round($allowanceLateUt, 2),
+                        'net'               => round($allowance, 2),
+                    ],
+                    'totals'           => [
+                        'total_deductions' => round($deductions, 2),
+                        'basic_pay'        => round($basicPay, 2),
+                        'gross_pay'        => round($grossPay, 2),
+                    ],
+                    'contributions'    => [
+                        'sss'        => $contributions['sss']['employee_share'] ?? 0,
+                        'philhealth' => $contributions['philhealth']['employee_share'] ?? 0,
+                        'pagibig'    => $contributions['pagibig']['employee_share'] ?? 0,
+                        'tax'        => $contributions['withholding_tax'] ?? 0,
+                        'gov_dues'   => round($govDues, 2),
+                        'taxable'    => round($taxable_income, 2),
+                    ],
+                    'loans'            => [
+                        'company' => $salaryLoan, 'charges' => $charges, 'cash_adv' => $cash_adv,
+                        'other' => $other, 'sss_loan' => $sssLoan, 'pagibig_loan' => $pagibigLoan,
+                        'can_afford' => $canAffordLoans,
+                    ],
+                    'net_pay'          => round($netPay, 2),
+                    'pay_receivable'   => round($payRec, 2),
+                ];
+                Log::channel('payroll')->info('Computed', $breakdown);
+
+                // ==============================
                 //  SAVE PAYROLL RECORD
                 // ==============================
                 $payroll = Payroll::updateOrCreate(
@@ -533,6 +642,24 @@ class PayrollController extends Controller
                     ]
                 );
 
+                //  Persist the per-employee computation breakdown (Payroll Logs module)
+                PayrollLog::updateOrCreate(
+                    ['employee_id' => $emp->empID, 'pay_date' => $payDate],
+                    [
+                        'payroll_id'         => $payroll->id,
+                        'employee_name'      => trim(($emp->lname ?? '').', '.($emp->fname ?? '')),
+                        'department_id'      => $emp->empDetail->empDepID ?? null,
+                        'department_name'    => optional(optional($emp->empDetail)->department)->dep_name,
+                        'classification'     => $employeeClass,
+                        'payroll_start_date' => $startDate,
+                        'payroll_end_date'   => $endDate,
+                        'gross_pay'          => $grossPay,
+                        'net_pay'            => $netPay,
+                        'pay_rec'            => $payRec,
+                        'breakdown'          => $breakdown,
+                    ]
+                );
+
 
                 if ($isEndOfMonth && $employeeClass !== 'TRN' && $canAffordLoans) { 
                     foreach ($contributions['loan_details'] as $loan) {
@@ -563,6 +690,7 @@ class PayrollController extends Controller
             //  COMMIT TRANSACTION
             // ==============================
             DB::commit();
+            Log::channel('payroll')->info('=== Payroll run DONE ===', ['pay_date' => $payDate, 'employees' => $employeeIds->count()]);
             $scope = $departmentId === 'all' ? 'all departments' : "department #$departmentId";
             return "Payroll computed successfully for $scope — pay date $payDate ($startDate to $endDate). Employees processed: " . $employeeIds->count();
 
@@ -735,4 +863,3 @@ class PayrollController extends Controller
     }
 
 }
-                    

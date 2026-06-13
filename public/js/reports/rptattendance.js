@@ -178,54 +178,103 @@ function renderTable(data) {
         return;
     }
 
+    const capitalizeName = (name) => name.toLowerCase().replace(/\b\w/g, s => s.toUpperCase());
+    const m = (n) => `${Number(n || 0)}m`;
+
+    // Group rows per employee so each employee gets its own TOTAL row
+    const groups = new Map();
+    data.forEach(item => {
+        const key = item.employee ? (item.employee.empID ?? `${item.employee.lname}, ${item.employee.fname}`) : 'N/A';
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(item);
+    });
+
     let rows = "";
-    data.forEach((item, i) => {
-        const empName = item.employee ? `${item.employee.lname}, ${item.employee.fname}` : "N/A";
+    let no = 0;
+    const grand = { gross:0, ded:0, net:0, late:0, ut:0, nd:0, pass:0, ob:0 };
 
-        //  Calculate Manual Deductions
-        let totalDeductedMins = 0;
-        if (item.manual_deductions && item.manual_deductions.length > 0) {
-            totalDeductedMins = item.manual_deductions.reduce((sum, d) => sum + parseInt(d.deduction_minutes || 0), 0);
-        }
+    groups.forEach(items => {
+        const sub = { gross:0, ded:0, net:0, late:0, ut:0, nd:0, pass:0, ob:0 };
+        let empName = 'N/A';
 
-        //  Calculate Net Hours (Gross - [Mins/60])
-        let grossHours = parseFloat(item.total_hours ?? 0);
-        let netHours = (grossHours - (totalDeductedMins / 60)).toFixed(2);
+        items.forEach(item => {
+            empName = item.employee ? `${item.employee.lname}, ${item.employee.fname}` : 'N/A';
 
-        // Build logs list
-        let logRows = "-";
-        if (item.logs && item.logs.length > 0) {
-            const logArray = item.logs.map(log => {
-                return `${formatTime(log.time_in)} - ${formatTime(log.time_out)}`;
-            });
-            logRows = logArray.join("<br>");
-        }
+            let totalDeductedMins = 0;
+            if (item.manual_deductions && item.manual_deductions.length > 0) {
+                totalDeductedMins = item.manual_deductions.reduce((sum, d) => sum + parseInt(d.deduction_minutes || 0), 0);
+            }
+            const grossHours = parseFloat(item.total_hours ?? 0);
+            const netHours = grossHours - (totalDeductedMins / 60);
 
-        function capitalizeName(name) {
-            return name.toLowerCase().replace(/\b\w/g, s => s.toUpperCase());
-        }
+            let logRows = "-";
+            if (item.logs && item.logs.length > 0) {
+                logRows = item.logs.map(log => `${formatTime(log.time_in)} - ${formatTime(log.time_out)}`).join("<br>");
+            }
 
-        // Gamitin ito sa pag-render ng table row:
-        let formattedName = capitalizeName(empName);
-        
+            const late = parseInt(item.mins_late ?? 0);
+            const ut   = parseInt(item.mins_undertime ?? 0);
+            const nd   = parseInt(item.mins_night_diff ?? 0);
+            const pass = parseInt(item.outpass_minutes ?? 0);
+            const ob   = parseInt(item.over_break_minutes ?? 0);
 
+            sub.gross += grossHours; sub.ded += totalDeductedMins; sub.net += netHours;
+            sub.late += late; sub.ut += ut; sub.nd += nd; sub.pass += pass; sub.ob += ob;
+
+            no++;
+            rows += `
+                <tr>
+                    <td>${no}</td>
+                    <td class="text-start text-capitalize">${capitalizeName(empName)}</td>
+                    <td>${item.formatted_date ?? '-'}</td>
+                    <td colspan="2">${logRows}</td>
+                    <td class="fw-bold">${grossHours.toFixed(2)}</td>
+                    <td class="text-danger fw-bold">${totalDeductedMins > 0 ? totalDeductedMins + 'm' : '-'}</td>
+                    <td class="text-primary fw-bold">${netHours.toFixed(2)}</td>
+                    <td>${m(late)}</td>
+                    <td>${m(ut)}</td>
+                    <td>${m(nd)}</td>
+                    <td>${m(pass)}</td>
+                    <td>${m(ob)}</td>
+                </tr>
+            `;
+        });
+
+        // Per-employee TOTAL row (totals start from the Duration column)
         rows += `
-            <tr>
-                <td>${i + 1}</td>
-                <td class="text-start text-capitalize">${formattedName}</td>
-                <td>${item.formatted_date ?? '-'}</td>
-                <td colspan="2">${logRows}</td>
-                <td class="fw-bold">${grossHours.toFixed(2)}</td>
-                <td class="text-danger fw-bold">${totalDeductedMins > 0 ? totalDeductedMins + 'm' : '-'}</td>
-                <td class="text-primary fw-bold">${netHours}</td>
-                <td>${item.mins_late ?? 0}m</td>
-                <td>${item.mins_undertime ?? 0}m</td>
-                <td>${item.mins_night_diff ?? 0}m</td>
-                <td>${item.outpass_minutes ?? 0}m</td>
-                <td>${item.over_break_minutes ?? 0}m</td>
+            <tr class="fw-bold" style="background:#eef6f6;">
+                <td colspan="5" class="text-end">TOTAL &mdash; ${capitalizeName(empName)} <span style="font-weight:normal;color:#6b7280;">(${items.length} day${items.length > 1 ? 's' : ''} attended)</span></td>
+                <td>${sub.gross.toFixed(2)}</td>
+                <td class="text-danger">${sub.ded}m</td>
+                <td class="text-primary">${sub.net.toFixed(2)}</td>
+                <td>${sub.late}m</td>
+                <td>${sub.ut}m</td>
+                <td>${sub.nd}m</td>
+                <td>${sub.pass}m</td>
+                <td>${sub.ob}m</td>
             </tr>
         `;
+
+        grand.gross += sub.gross; grand.ded += sub.ded; grand.net += sub.net;
+        grand.late += sub.late; grand.ut += sub.ut; grand.nd += sub.nd; grand.pass += sub.pass; grand.ob += sub.ob;
     });
+
+    // Grand total when the report shows more than one employee
+    if (groups.size > 1) {
+        rows += `
+            <tr class="fw-bold" style="background:#dfeeee;border-top:2px solid #008080;">
+                <td colspan="5" class="text-end">GRAND TOTAL <span style="font-weight:normal;color:#6b7280;">(${data.length} total attendance)</span></td>
+                <td>${grand.gross.toFixed(2)}</td>
+                <td class="text-danger">${grand.ded}m</td>
+                <td class="text-primary">${grand.net.toFixed(2)}</td>
+                <td>${grand.late}m</td>
+                <td>${grand.ut}m</td>
+                <td>${grand.nd}m</td>
+                <td>${grand.pass}m</td>
+                <td>${grand.ob}m</td>
+            </tr>
+        `;
+    }
 
     tableBody.html(rows);
 }

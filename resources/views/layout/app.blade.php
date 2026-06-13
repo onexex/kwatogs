@@ -200,6 +200,7 @@
                     'overtime'         => ['name' => 'Overtime', 'url' => '/pages/modules/overtime', 'icon' => 'fa-user-clock'],
                     'pendingovertimerequests' => ['name' => 'Pending Overtime Requests', 'url' => '/pages/modules/overtimerequests', 'icon' => 'fa-calendar-day'],
                     'payroll'          => ['name' => 'Payroll System', 'url' => '/pages/modules/payroll', 'icon' => 'fa-file-invoice-dollar'],
+                    'payrolllogs'      => ['name' => 'Payroll Logs', 'url' => '/payroll-logs', 'icon' => 'fa-clipboard-list'],
                     'debitadvise'      => ['name' => 'Debit Advise', 'url' => '/pages/modules/debitAdvise', 'icon' => 'fa-receipt'],
                     'sendobt'          => ['name' => 'Send to OBT', 'url' => '/pages/modules/sendOBT', 'icon' => 'fa-paper-plane'],
                     'manual_entry'          => ['name' => 'Adjustment Time', 'url' => '/pages/modules/adjustmentTime', 'icon' => 'fa-paper-plane'],
@@ -342,7 +343,9 @@
             @php
                 $moduleReports = [
                     'attendance' => ['name' => 'Attendance Viewer', 'url' => '/pages/reports/attendance', 'icon' => 'fa-chart-column'],
-                    'employeeinformation' => ['name' => 'Employee Information', 'url' => '/reports/employee-information', 'icon' => 'fa-chart-column']
+                    'employeeinformation' => ['name' => 'Employee Information', 'url' => '/reports/employee-information', 'icon' => 'fa-chart-column'],
+                    'overtimereport' => ['name' => 'Overtime Report', 'url' => '/reports/overtime', 'icon' => 'fa-user-clock'],
+                    'leavereport' => ['name' => 'Leave Report', 'url' => '/reports/leave', 'icon' => 'fa-calendar-day']
                 ];
                 $hasReportAccess = collect($moduleReports)->keys()->some(fn($key) => auth()->user()?->can($key));
 

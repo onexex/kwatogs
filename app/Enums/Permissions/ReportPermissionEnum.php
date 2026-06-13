@@ -10,4 +10,6 @@ enum ReportPermissionEnum: string
 
     case attendance = 'Attendace';
     case employeeinformation = 'Employee Information';
+    case overtimereport = 'Overtime Report';
+    case leavereport = 'Leave Report';
 }

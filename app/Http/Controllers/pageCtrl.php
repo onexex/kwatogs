@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\company;
+use App\Models\PayrollPeriod;
 use App\Models\agencies;
 use App\Models\HMOModel;
 use App\Models\joblevel;
@@ -89,7 +90,14 @@ class pageCtrl extends Controller
         // Get the current classification filter from the URL parameter (defaults to 'all')
         $selectedClassification = $request->query('classification', 'all');
 
-        return view('pages.modules.payroll', compact('companies', 'classifications', 'departments', 'selectedClassification'));
+        // Payroll schedule (pay date + cut-off) per company, keyed by comp_id for the UI selector.
+        $periodsByCompanyId = PayrollPeriod::orderBy('sort')->orderBy('id')->get()->groupBy('company_id');
+        $companyPeriods = [];
+        foreach ($companies as $c) {
+            $companyPeriods[$c->comp_id] = $periodsByCompanyId->get($c->id, collect())->values();
+        }
+
+        return view('pages.modules.payroll', compact('companies', 'classifications', 'departments', 'selectedClassification', 'companyPeriods'));
     }
 
     // JMC

@@ -39,6 +39,10 @@ $(document).ready(function() {
                                 "<button type='button' value='" + row.id + "' class='btn btn-light btn-sm rounded-circle shadow-sm p-2' id='btnUpdateCompany' data-bs-toggle='modal' data-bs-target='#mdlCompany' title='Edit Company'>" +
                                     "<i class='fa-solid fa-pencil text-primary'></i>" +
                                 "</button>" +
+                                // Payroll Schedule Button
+                                "<button type='button' value='" + row.id + "' class='btn btn-light btn-sm rounded-circle shadow-sm p-2 btnSchedCompany' title='Payroll Schedule'>" +
+                                    "<i class='fa-solid fa-calendar-days text-success'></i>" +
+                                "</button>" +
                                 
                                 // Delete Button
                                 "<button type='button' value='" + row.id + "' class='btn btn-light btn-sm rounded-circle shadow-sm p-2' id='btnUpdatedDelete' title='Delete Company'>" +

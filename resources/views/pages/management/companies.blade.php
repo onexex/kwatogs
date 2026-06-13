@@ -399,4 +399,112 @@
 </div>
 
 <script src="{{ asset('js/settings/company.js') }}" defer></script>
+
+{{-- Payroll Schedule Modal --}}
+<div class="modal fade" id="mdlPayrollSched" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#008080;color:#fff;">
+                <h5 class="modal-title"><i class="fa-solid fa-calendar-days me-2"></i>Payroll Schedule</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="schedCompanyId">
+                <p class="text-muted small mb-2">Define each cut-off: its pay date and the date range it covers. <b>EOM</b> = pay date is the last day of the month. <b>Prev</b> = the "from" day is in the previous month.</p>
+                <div id="schedPeriods"></div>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnAddPeriod"><i class="fa fa-plus me-1"></i>Add Cut-off</button>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn text-white" style="background:#008080;" id="btnSaveSched">Save Schedule</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(function () {
+    const periodRow = (p = {}) => `
+      <div class="card mb-2 sched-period"><div class="card-body py-2">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-3">
+            <label class="form-label small mb-0">Label</label>
+            <input type="text" class="form-control form-control-sm p-label" value="${p.label ?? ''}" placeholder="e.g. 1st Cut-off">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small mb-0">Pay Day</label>
+            <div class="input-group input-group-sm">
+              <input type="number" min="1" max="31" class="form-control p-payday" value="${p.pay_end_of_month ? '' : (p.pay_day ?? '')}" ${p.pay_end_of_month ? 'disabled' : ''}>
+              <span class="input-group-text"><input type="checkbox" class="form-check-input mt-0 me-1 p-eom" ${p.pay_end_of_month ? 'checked' : ''}>EOM</span>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small mb-0">Cut-off From</label>
+            <div class="input-group input-group-sm">
+              <input type="number" min="1" max="31" class="form-control p-from" value="${p.cutoff_from_day ?? ''}">
+              <span class="input-group-text"><input type="checkbox" class="form-check-input mt-0 me-1 p-prev" ${p.cutoff_from_prev_month ? 'checked' : ''}>Prev</span>
+            </div>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small mb-0">Cut-off To</label>
+            <input type="number" min="1" max="31" class="form-control form-control-sm p-to" value="${p.cutoff_to_day ?? ''}">
+          </div>
+          <div class="col-md-1 text-end">
+            <button type="button" class="btn btn-sm btn-outline-danger p-del" title="Remove"><i class="fa fa-trash"></i></button>
+          </div>
+        </div>
+      </div></div>`;
+
+    $(document).on('click', '.btnSchedCompany', function () {
+        const id = $(this).val();
+        $('#schedCompanyId').val(id);
+        $('#schedPeriods').html('<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-secondary"></div></div>');
+        new bootstrap.Modal(document.getElementById('mdlPayrollSched')).show();
+        axios.get('/payroll-periods/' + id).then(res => {
+            let periods = (res.data && res.data.data) ? res.data.data : [];
+            if (!periods.length) {
+                periods = [
+                    { label:'1st Cut-off', pay_day:15, pay_end_of_month:false, cutoff_from_day:26, cutoff_from_prev_month:true, cutoff_to_day:10 },
+                    { label:'2nd Cut-off', pay_day:null, pay_end_of_month:true, cutoff_from_day:11, cutoff_from_prev_month:false, cutoff_to_day:25 },
+                ];
+            }
+            $('#schedPeriods').html(periods.map(periodRow).join(''));
+        }).catch(() => $('#schedPeriods').html('<div class="text-danger small">Failed to load schedule.</div>'));
+    });
+
+    $(document).on('change', '.p-eom', function () {
+        const payday = $(this).closest('.sched-period').find('.p-payday');
+        if ($(this).is(':checked')) { payday.val('').prop('disabled', true); } else { payday.prop('disabled', false); }
+    });
+
+    $('#btnAddPeriod').on('click', () => $('#schedPeriods').append(periodRow()));
+    $(document).on('click', '.p-del', function () { $(this).closest('.sched-period').remove(); });
+
+    $('#btnSaveSched').on('click', function () {
+        const id = $('#schedCompanyId').val();
+        const periods = [];
+        $('#schedPeriods .sched-period').each(function () {
+            const eom = $(this).find('.p-eom').is(':checked');
+            periods.push({
+                label: $(this).find('.p-label').val(),
+                pay_end_of_month: eom,
+                pay_day: eom ? null : (parseInt($(this).find('.p-payday').val()) || null),
+                cutoff_from_day: parseInt($(this).find('.p-from').val()) || null,
+                cutoff_from_prev_month: $(this).find('.p-prev').is(':checked'),
+                cutoff_to_day: parseInt($(this).find('.p-to').val()) || null,
+            });
+        });
+        axios.post('/payroll-periods/' + id, { periods })
+            .then(res => {
+                Swal.fire({ icon:'success', title:'Saved', text: res.data.msg || 'Schedule saved.', timer:1500, showConfirmButton:false });
+                bootstrap.Modal.getInstance(document.getElementById('mdlPayrollSched')).hide();
+            })
+            .catch(err => {
+                const m = (err.response && err.response.data && err.response.data.message) ? err.response.data.message : 'Please check the values.';
+                Swal.fire({ icon:'error', title:'Error', text: m });
+            });
+    });
+});
+</script>
+
 @endsection

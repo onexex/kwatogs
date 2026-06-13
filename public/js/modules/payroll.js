@@ -577,6 +577,7 @@ $(document).ready(function () {
 
         // ✨ Department scope: "all" = compute everyone, else a specific department ✨
         const departmentId = $("#selDepartment").val() || "all";
+        const companyId = $("#selCompany").val() || "all";
         const departmentName = departmentId !== "all"
             ? ($("#selDepartment option:selected").text() || "selected department")
             : "ALL departments";
@@ -604,6 +605,7 @@ $(document).ready(function () {
                         date_to: dateTo,
                         pay_date: payDate,
                         department_id: departmentId, // ✨ pass selected department (or "all") ✨
+                        company_id: companyId,       // pay schedule / scope by company
                     },
                 })
                 .then(function (response) {
@@ -640,56 +642,62 @@ $(document).ready(function () {
         return `${d.getFullYear()}-${mm}-${dd}`;
     };
 
-    // Helper: Check if selected date is valid pay date (15th or last day)
-    const isValidPayDate = (dateStr) => {
-        const date = new Date(dateStr);
-        if (isNaN(date)) return false;
+    // ── Per-company payroll schedule (pay date + cut-off) ─────
+    const companyPeriods = window.companyPayrollPeriods || {};
+    const defaultPeriods = [
+        { pay_day: 15, pay_end_of_month: false, cutoff_from_day: 26, cutoff_from_prev_month: true, cutoff_to_day: 10 },
+        { pay_day: null, pay_end_of_month: true, cutoff_from_day: 11, cutoff_from_prev_month: false, cutoff_to_day: 25 },
+    ];
+
+    function activePeriods() {
+        const comp = $("#selCompany").val();
+        return (comp && comp !== "all" && companyPeriods[comp] && companyPeriods[comp].length)
+            ? companyPeriods[comp] : defaultPeriods;
+    }
+
+    // Match the selected date to a period's pay rule (specific pay day or end-of-month)
+    function matchPeriod(date) {
+        if (isNaN(date)) return null;
         const day = date.getDate();
-        const lastDay = new Date(
-            date.getFullYear(),
-            date.getMonth() + 1,
-            0,
-        ).getDate();
-        return day === 15 || day === lastDay;
-    };
+        const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+        return activePeriods().find(p =>
+            (p.pay_end_of_month && day === lastDay) ||
+            (!p.pay_end_of_month && Number(p.pay_day) === day)
+        ) || null;
+    }
 
-    // ✅ When pay date changes
+    // When pay date changes -> validate + auto-fill the cut-off from the company's schedule
     payDateInput.on("change", function () {
-        const selectedDate = $(this).val();
+        const date = new Date($(this).val());
+        const period = matchPeriod(date);
 
-        if (!isValidPayDate(selectedDate)) {
+        if (!period) {
             Swal.fire({
                 icon: "warning",
                 title: "Invalid Pay Date",
-                text: "Only the 15th and the end of the month are valid pay dates.",
+                text: "This date is not a valid pay date for the selected company's schedule.",
                 confirmButtonColor: "#008080",
             }).then(() => {
-                $(this).val(""); // Clear invalid date
+                $(this).val("");
                 dateFromInput.val("");
                 dateToInput.val("");
             });
             return;
         }
 
-        const payDate = new Date(selectedDate);
-        const year = payDate.getFullYear();
-        const month = payDate.getMonth();
-        const day = payDate.getDate();
-        let dateFrom, dateTo;
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const fromMonth = period.cutoff_from_prev_month ? month - 1 : month;
+        const dateFrom = new Date(year, fromMonth, Number(period.cutoff_from_day));
+        const dateTo = new Date(year, month, Number(period.cutoff_to_day));
 
-        if (day === 15) {
-            // ✅ 26 of previous month → 10 of current month
-            dateFrom = new Date(year, month - 1, 26);
-            dateTo = new Date(year, month, 10);
-        } else {
-            // ✅ 11 → 25 of current month
-            dateFrom = new Date(year, month, 11);
-            dateTo = new Date(year, month, 25);
-        }
-
-        // ✅ Auto-fill cut-off dates
         dateFromInput.val(formatDate(dateFrom));
         dateToInput.val(formatDate(dateTo));
+    });
+
+    // Re-evaluate the cut-off when the company changes (its schedule may differ)
+    $("#selCompany").on("change", function () {
+        if (payDateInput.val()) payDateInput.trigger("change");
     });
 
     // ✅ Auto-trigger if pay_date already filled
