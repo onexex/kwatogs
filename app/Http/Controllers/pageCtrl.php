@@ -269,7 +269,8 @@ class pageCtrl extends Controller
 
     public function holidaylogger()
     {
-        return view('pages.management.holidaylogger');
+        $departments = department::orderBy('dep_name')->get();
+        return view('pages.management.holidaylogger')->with('departments', $departments);
     }
 
     public function lilovalidations()

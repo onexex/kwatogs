@@ -33,7 +33,7 @@ class OvertimeController extends Controller
                     'time_in' => $from->format('M d, Y h:i A'),
                     'time_out' => $to->format('M d, Y h:i A'),
                     'purpose' => $ot->purpose,
-                    'duration' => sprintf('%d hr %d min', $hours, $minutes),
+                    'duration' => $ot->total_hrs . ' hr(s)', // or "{$hours} hr(s) {$minutes} min(s)"
                     'status' => strtoupper($ot->status ?? 'PENDING'),
                     'status_value' => OvertimeStatusEnum::fromName($ot->status),
                 ];
@@ -226,19 +226,19 @@ class OvertimeController extends Controller
             // Regular & rest day: two-tier (first 8 hrs x1.30, beyond 8 x1.25),
             //   with a 1-hour meal break deducted when the span is >= 9 hours.
             // Holidays & combo day types: unchanged (flat $overtimeRate).
-            if (in_array($day_type, ['regular', 'rest_day'])) {
-                $payableHours = $totalHours >= 9 ? $totalHours - 1 : $totalHours;
+             if ($totalHours >= 8) {
+                $payableHours = $totalHours >= 8 ? $totalHours - 1 : $totalHours;
                 $premiumHours = min($payableHours, 8);
                 $excessHours  = max($payableHours - 8, 0);
 
-                $overtimeHourlyPay = ($hourlyRate * 1.30 * $premiumHours)
-                                   + ($hourlyRate * 1.25 * $excessHours);
+                $overtimeHourlyPay = ($hourlyRate * $overtimeRate * $premiumHours)
+                                + ($hourlyRate * 1.25 * $excessHours);
 
                 $totalHours = $payableHours; // store payable hours (after meal break)
             } else {
                 $overtimeHourlyPay = $hourlyRate * $overtimeRate * $totalHours;
             }
-            
+
             $overtime = Overtime::create([
                 'emp_detail_id' => $user->empDetail->id,
                 'status' => OvertimeStatusEnum::FORAPPROVAL->name,
@@ -249,6 +249,9 @@ class OvertimeController extends Controller
                 'purpose' => $request->purpose,  
                 'total_hrs' => $totalHours,
                 'total_pay' => $overtimeHourlyPay,
+                'day_type' => $day_type,
+                'day_type_computation' => $overtimeRate,
+                'hourly_rate' => $hourlyRate,
             ]);
 
             return back()->with('success', 'Overtime filed successfully!');

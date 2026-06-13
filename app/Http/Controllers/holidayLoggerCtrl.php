@@ -14,12 +14,14 @@ class holidayLoggerCtrl extends Controller
         $values = [
             'date'=>$request->date,
             'description'=>$request->description,
-            'type'=>$request->type
+            'type'=>$request->type,
+            'department_id'=>$request->department_id,
         ];
 
         $validator = Validator::make($request->all(),[
             'date'=>'required',
             'description'=>'required',
+            'department_id'=>'required',
             'type'=>'required',
         ]);
 
@@ -58,25 +60,26 @@ class holidayLoggerCtrl extends Controller
     }
 
    public function getall(Request $request)
-{
-    // Get the current year
-    $currentYear = date('Y');
+    {
+        // Get the current year
+        $currentYear = date('Y');
 
-    // Filter by the 'date' column (or whichever column stores your holiday date)
-    $getAll = holidayLoggerModel::whereYear('date', $currentYear)
-                ->orderBy('date', 'asc') // Usually better to sort by the actual holiday date
-                ->get();
+        // Filter by the 'date' column (or whichever column stores your holiday date)
+        $getAll = holidayLoggerModel::whereYear('date', $currentYear)
+                    ->with('department') // Eager load the related department data
+                    ->orderBy('date', 'asc') // Usually better to sort by the actual holiday date
+                    ->get();
 
-    if ($getAll) {
-        return response()->json([
-            'status' => 200, 
-            'data' => $getAll,
-            'year' => $currentYear // Optional: helpful for the frontend to know the year
-        ]);
+        if ($getAll) {
+            return response()->json([
+                'status' => 200, 
+                'data' => $getAll,
+                'year' => $currentYear // Optional: helpful for the frontend to know the year
+            ]);
+        }
+
+        return response()->json(['status' => 404, 'message' => 'No data found']);
     }
-
-    return response()->json(['status' => 404, 'message' => 'No data found']);
-}
 
     public function edit(Request $request){
         $getEOVal = holidayLoggerModel::where('id',$request->updateID)->get();
