@@ -23,6 +23,9 @@ class Overtime extends Model
         'total_hrs',
         'total_pay',
         'disapproved_remarks',   
+        'day_type',
+        'day_type_computation',
+        'hourly_rate',
     ];
 
     public function employee(): BelongsTo
