@@ -53,7 +53,7 @@ class LeaveImportService
         $typeRaw = trim($this->cell($row, 'leave_type'));
         if ($typeRaw === '') { throw new \Exception('Leave Type is required.'); }
         $type = is_numeric($typeRaw)
-            ? leavetype::find((int) $typeRaw)
+            ? leavetype::where('id', (int) $typeRaw)->first()
             : leavetype::whereRaw('LOWER(type_leave) = ?', [strtolower($typeRaw)])->first();
         if (!$type) { throw new \Exception("Leave Type '{$typeRaw}' not found."); }
         $leaveTypeId = $type->id;

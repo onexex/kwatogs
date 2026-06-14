@@ -45,11 +45,7 @@ class AttendanceImportService
 
     private function processRow(array $row): bool
     {
-        $empID = trim($this->cell($row, 'employee_id'));
-        if ($empID === '') { throw new \Exception('Employee ID is required.'); }
-        if (!User::where('empID', $empID)->exists()) {
-            throw new \Exception("Employee ID '{$empID}' not found.");
-        }
+        $empID = $this->resolveEmpID(trim($this->cell($row, 'employee_id')));
 
         $dateStr = $this->parseDate($this->cell($row, 'date'));
         if (!$dateStr) { throw new \Exception('Invalid or missing Date (use YYYY-MM-DD).'); }
@@ -154,10 +150,13 @@ class AttendanceImportService
             if ($be > $bs) { $breakMins = $be - $bs; }
         }
 
-        $worked = max(0, ($aOut - $aIn) - $breakMins);
+        // Clamp worked time to the schedule (don't credit early-in / late-out — that's OT)
+        $inC = max($aIn, $sIn);
+        $outC = min($aOut, $sOut);
+        $worked = max(0, ($outC - $inC) - $breakMins);
         $late = max(0, $aIn - $sIn);
         $undertime = max(0, $sOut - $aOut);
-        $night = $this->overlap($aIn, $aOut, 0, 360) + $this->overlap($aIn, $aOut, 1320, 1800);
+        $night = $this->overlap($inC, $outC, 0, 360) + $this->overlap($inC, $outC, 1320, 1800);
 
         return [
             'total_hours' => round($worked / 60, 2),
@@ -170,6 +169,68 @@ class AttendanceImportService
     private function overlap(int $aStart, int $aEnd, int $bStart, int $bEnd): int
     {
         return max(0, min($aEnd, $bEnd) - max($aStart, $bStart));
+    }
+
+    // ── employee resolution (empID, or by "LASTNAME, FIRSTNAME") ──────────
+    private ?array $userIndex = null;
+
+    private function resolveEmpID(string $value): string
+    {
+        if ($value === '') { throw new \Exception('Employee ID / name is required.'); }
+
+        // exact empID match first
+        if (User::where('empID', $value)->exists()) { return $value; }
+
+        // fall back to name match
+        $this->buildUserIndex();
+        $parts = explode(',', $value, 2);
+        if (count($parts) === 2) {
+            $last = $this->nrm($parts[0]);
+            $first = $this->nrm($parts[1]);
+        } else {
+            // "FIRST ... LAST" — assume last token is the surname
+            $tok = preg_split('/\\s+/', $this->nrm($value));
+            $last = array_pop($tok) ?: '';
+            $first = implode(' ', $tok);
+        }
+        $firstTok = $first === '' ? '' : explode(' ', $first)[0];
+
+        $full = $last . '||' . $first;
+        if (!empty($this->userIndex[$full]) && count($this->userIndex[$full]) === 1) {
+            return $this->userIndex[$full][0];
+        }
+        $key = $last . '|' . $firstTok;
+        if (!empty($this->userIndex[$key])) {
+            $ids = array_values(array_unique($this->userIndex[$key]));
+            if (count($ids) === 1) { return $ids[0]; }
+            throw new \Exception("Name '{$value}' matches multiple employees; use the Employee ID.");
+        }
+        throw new \Exception("Employee '{$value}' not found (no empID or name match).");
+    }
+
+    private function buildUserIndex(): void
+    {
+        if ($this->userIndex !== null) { return; }
+        $this->userIndex = [];
+        foreach (User::select('empID', 'fname', 'lname')->get() as $u) {
+            if (!$u->empID) { continue; }
+            $last = $this->nrm($u->lname);
+            $first = $this->nrm($u->fname);
+            $firstTok = $first === '' ? '' : explode(' ', $first)[0];
+            $this->userIndex[$last . '|' . $firstTok][] = $u->empID;
+            $this->userIndex[$last . '||' . $first][] = $u->empID;
+        }
+    }
+
+    /** Uppercase, strip accents, drop punctuation, collapse spaces. */
+    private function nrm($v): string
+    {
+        $v = (string) $v;
+        $t = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $v);
+        if ($t !== false && $t !== '') { $v = $t; }
+        $v = strtoupper($v);
+        $v = preg_replace('/[^A-Z0-9 ]/', ' ', $v);
+        return trim(preg_replace('/\\s+/', ' ', $v));
     }
 
     // ── helpers ─────────────────────────────────────────────────────────
