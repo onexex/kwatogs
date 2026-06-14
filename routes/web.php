@@ -43,6 +43,8 @@ use App\Http\Controllers\AttendanceImportController;
 use App\Http\Controllers\OvertimeImportController;
 use App\Http\Controllers\LeaveImportController;
 use App\Http\Controllers\ScheduleRequestController;
+use App\Http\Controllers\HrDashboardController;
+use App\Http\Controllers\AuditController;
 use App\Http\Controllers\PayrollLogController;
 use App\Http\Controllers\philhealthCtrl;
 use App\Http\Controllers\positionCtrl;
@@ -53,6 +55,7 @@ use App\Http\Controllers\reportAttendanceCtrl;
 use App\Http\Controllers\Reports\EmployeeInformationReportController;
 use App\Http\Controllers\Reports\OvertimeReportController;
 use App\Http\Controllers\Reports\LeaveReportController;
+use App\Http\Controllers\Reports\ThirteenthMonthController;
 use App\Http\Controllers\roleCtrl;
 use App\Http\Controllers\Roles\EmployeeRoleController;
 use App\Http\Controllers\Roles\RolesController;
@@ -354,6 +357,10 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     Route::get('/reports/leave', [LeaveReportController::class, 'index'])->name('reports.leave.index')->middleware('can:leavereport');
     Route::get('/reports/leave/fetch', [LeaveReportController::class, 'fetch'])->name('reports.leave.fetch')->middleware('can:leavereport');
     Route::get('/reports/leave/print', [LeaveReportController::class, 'print'])->name('reports.leave.print')->middleware('can:leavereport');
+    Route::get('/reports/thirteenth-month', [ThirteenthMonthController::class, 'index'])->name('reports.thirteenth.index')->middleware('can:thirteenthmonth');
+    Route::get('/reports/thirteenth-month/fetch', [ThirteenthMonthController::class, 'fetch'])->name('reports.thirteenth.fetch')->middleware('can:thirteenthmonth');
+    Route::get('/reports/thirteenth-month/export', [ThirteenthMonthController::class, 'export'])->name('reports.thirteenth.export')->middleware('can:thirteenthmonth');
+    Route::get('/reports/thirteenth-month/print', [ThirteenthMonthController::class, 'print'])->name('reports.thirteenth.print')->middleware('can:thirteenthmonth');
 
     //v2 scheduler
     Route::prefix('employee-schedules')->group(function() {
@@ -396,6 +403,13 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     Route::post('/schedulerequest/store', [ScheduleRequestController::class, 'store'])->name('schedule-request.store')->middleware('can:createschedulechange');
     Route::get('/pages/modules/schedulerequests', [ScheduleRequestController::class, 'pending'])->name('schedule-request.pending')->middleware('can:approveschedulechange');
     Route::post('/schedulerequest/updateStatus', [ScheduleRequestController::class, 'updateStatus'])->name('schedule-request.update')->middleware('can:approveschedulechange');
+
+    // HR Control Center
+    Route::get('/pages/management/hr-dashboard', [HrDashboardController::class, 'index'])->name('hr-dashboard.index')->middleware('can:hrdashboard');
+    Route::get('/pages/management/audit-trail', [AuditController::class, 'index'])->name('audit-trail.index')->middleware('can:auditlog');
+    Route::get('/pages/management/hr-dashboard/live', [HrDashboardController::class, 'live'])->name('hr-dashboard.live')->middleware('can:hrdashboard');
+    Route::get('/pages/management/hr-dashboard/whoin', [HrDashboardController::class, 'whoIn'])->name('hr-dashboard.whoin')->middleware('can:hrdashboard');
+    Route::get('/pages/management/hr-dashboard/dept', [HrDashboardController::class, 'deptEmployees'])->name('hr-dashboard.dept')->middleware('can:hrdashboard');
     Route::get('/payroll/approval/status', [PayrollApprovalController::class, 'status'])->name('payroll.approval.status');
     Route::post('/payroll/approve', [PayrollApprovalController::class, 'approve'])->name('payroll.approve')->middleware('can:approvepayroll');
     Route::post('/payroll/reopen', [PayrollApprovalController::class, 'reopen'])->name('payroll.reopen')->middleware('can:regeneratepayroll');

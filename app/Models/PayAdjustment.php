@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\Auditable;
 
 class PayAdjustment extends Model
 {
+    use Auditable;
     protected $table = 'pay_adjustments';
 
     protected $fillable = [

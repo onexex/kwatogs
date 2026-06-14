@@ -190,6 +190,7 @@
 
             @php
                 $modulePages = [
+                    'hrdashboard'      => ['name' => 'HR Dashboard', 'url' => '/pages/management/hr-dashboard', 'icon' => 'fa-gauge-high'],
                     'e201'             => ['name' => 'E-201', 'url' => '/pages/modules/E201', 'icon' => 'fa-id-badge'],
                     'earlyout'         => ['name' => 'Earlyout', 'url' => '/pages/modules/earlyout', 'icon' => 'fa-door-open'],
                     'enrollemployee'   => ['name' => 'Enroll Employee', 'url' => '/pages/modules/registration', 'icon' => 'fa-user-gear'],
@@ -275,6 +276,7 @@
             @php
                 $managementModules = [
                     'accessrights'        => ['name' => 'Employee Role', 'url' => '/pages/management/accessrights', 'icon' => 'fa-users-gear'],
+                    'auditlog'            => ['name' => 'Audit Trail', 'url' => '/pages/management/audit-trail', 'icon' => 'fa-clipboard-list'],
                     'agencies'            => ['name' => 'Agencies', 'url' => '/pages/management/agencies', 'icon' => 'fa-building-shield'],
                     'archive'             => ['name' => 'Archive', 'url' => '/pages/management/archive', 'icon' => 'fa-box-archive'],
                     'classification'      => ['name' => 'Classification', 'url' => '/pages/management/classification', 'icon' => 'fa-tags'],
@@ -350,7 +352,8 @@
                     'attendance' => ['name' => 'Attendance Viewer', 'url' => '/pages/reports/attendance', 'icon' => 'fa-chart-column'],
                     'employeeinformation' => ['name' => 'Employee Information', 'url' => '/reports/employee-information', 'icon' => 'fa-chart-column'],
                     'overtimereport' => ['name' => 'Overtime Report', 'url' => '/reports/overtime', 'icon' => 'fa-user-clock'],
-                    'leavereport' => ['name' => 'Leave Report', 'url' => '/reports/leave', 'icon' => 'fa-calendar-day']
+                    'leavereport' => ['name' => 'Leave Report', 'url' => '/reports/leave', 'icon' => 'fa-calendar-day'],
+                    'thirteenthmonth' => ['name' => '13th Month Pay', 'url' => '/reports/thirteenth-month', 'icon' => 'fa-gift']
                 ];
                 $hasReportAccess = collect($moduleReports)->keys()->some(fn($key) => auth()->user()?->can($key));
 

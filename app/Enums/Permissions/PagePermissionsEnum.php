@@ -21,6 +21,8 @@ enum PagePermissionsEnum: string
     case overtime = 'Overtime';
     case pendingovertimerequests = 'Pending Overtime Requests';
     case payroll = 'Payroll System';
+    case hrdashboard = 'HR Dashboard';
+    case auditlog = 'Audit Trail';
     case payrolllogs = 'Payroll Logs';
     case payadjustments = 'Pay Adjustments';
     case approvepayroll = 'Approve Payroll';

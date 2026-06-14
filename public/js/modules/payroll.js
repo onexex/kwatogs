@@ -139,17 +139,39 @@ document.addEventListener("DOMContentLoaded", function () {
                                 background-color: #e0f2f1;
                             }
                             .footer {
-                                margin-top: 25px;
-                                font-size: 0.8rem;
+                                margin-top: 14px;
+                                font-size: 0.72rem;
                                 text-align: right;
                                 font-style: italic;
-                                color: #555;
+                                color: #999;
+                            }
+                            .sign {
+                                margin-top: 46px;
+                                display: flex;
+                                justify-content: space-between;
+                                font-size: 0.8rem;
+                                page-break-inside: avoid;
+                            }
+                            .sign div { width: 30%; text-align: center; }
+                            .sign .ln {
+                                border-top: 1px solid #475569;
+                                margin-bottom: 4px;
+                                padding-top: 4px;
+                            }
+                            .endmark {
+                                margin-top: 18px;
+                                text-align: center;
+                                font-size: 0.7rem;
+                                color: #94a3b8;
+                                text-transform: uppercase;
+                                letter-spacing: 1px;
                             }
                             .no-print { display: none !important; }
                             @media print {
                                 body { padding: 0; }
                                 table { page-break-inside: auto; }
                                 tr { page-break-inside: avoid; page-break-after: auto; }
+                                .sign { page-break-inside: avoid; }
                                 .no-print { display: none !important; }
                             }
                         </style>
@@ -173,9 +195,18 @@ document.addEventListener("DOMContentLoaded", function () {
                             </div>
                         </div>
                         ${table}
-                        <div class="footer">
-                            <i>Generated from Payroll System</i>
+
+                        <div class="sign">
+                            <div><div class="ln"></div>Prepared by</div>
+                            <div><div class="ln"></div>Checked &amp; Verified by</div>
+                            <div><div class="ln"></div>Approved by</div>
                         </div>
+
+                        <div class="footer">
+                            <i>Generated from KWATOGS Payroll System &mdash; ${generatedAt}</i>
+                        </div>
+
+                        <div class="endmark">*** End of Report ***</div>
                     </body>
                 </html>
             `);
@@ -485,17 +516,39 @@ document.addEventListener("DOMContentLoaded", function () {
 
                             /* ── Footer ── */
                             .footer {
-                                margin-top: 30px;
-                                font-size: 0.78rem;
+                                margin-top: 14px;
+                                font-size: 0.72rem;
                                 text-align: right;
                                 font-style: italic;
-                                color: #777;
+                                color: #999;
+                            }
+                            .sign {
+                                margin-top: 46px;
+                                display: flex;
+                                justify-content: space-between;
+                                font-size: 0.8rem;
+                                page-break-inside: avoid;
+                            }
+                            .sign div { width: 30%; text-align: center; }
+                            .sign .ln {
+                                border-top: 1px solid #475569;
+                                margin-bottom: 4px;
+                                padding-top: 4px;
+                            }
+                            .endmark {
+                                margin-top: 18px;
+                                text-align: center;
+                                font-size: 0.7rem;
+                                color: #94a3b8;
+                                text-transform: uppercase;
+                                letter-spacing: 1px;
                             }
 
                             @media print {
                                 body { padding: 0; }
                                 .employee-block { page-break-inside: avoid; }
                                 tr { page-break-inside: avoid; page-break-after: auto; }
+                                .sign { page-break-inside: avoid; }
                             }
                         </style>
                     </head>
@@ -520,9 +573,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
                         ${employeeBlocks}
 
-                        <div class="footer">
-                            <i>Generated from Payroll System</i>
+                        <div class="sign">
+                            <div><div class="ln"></div>Prepared by</div>
+                            <div><div class="ln"></div>Checked &amp; Verified by</div>
+                            <div><div class="ln"></div>Approved by</div>
                         </div>
+
+                        <div class="footer">
+                            <i>Generated from KWATOGS Payroll System &mdash; ${generatedAt}</i>
+                        </div>
+
+                        <div class="endmark">*** End of Report ***</div>
                     </body>
                 </html>
             `);

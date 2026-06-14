@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\Auditable;
 
 class ScheduleRequest extends Model
 {
+    use Auditable;
     protected $table = 'schedule_requests';
 
     protected $fillable = [

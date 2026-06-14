@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace App\Enums\Permissions;
 
@@ -12,4 +12,5 @@ enum ReportPermissionEnum: string
     case employeeinformation = 'Employee Information';
     case overtimereport = 'Overtime Report';
     case leavereport = 'Leave Report';
+    case thirteenthmonth = '13th Month Pay';
 }
