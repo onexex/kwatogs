@@ -374,6 +374,26 @@ class homeAttendance extends Model
             }
         }
 
+        // ── Emergency override ──────────────────────────────────────────
+        // If the employee has an APPLIED schedule-change request for today
+        // (filed via the Kuya Kwatogs assistant), open the window so they can
+        // punch at the requested time even outside the strict shift window.
+        if (!$matchedSchedule) {
+            $hasEmergency = false;
+            try {
+                $hasEmergency = \App\Models\ScheduleRequest::where('employee_id', $employeeId)
+                    ->whereDate('request_date', $today)
+                    ->where('applied', true)
+                    ->exists();
+            } catch (\Throwable $e) { /* schedule_requests not migrated yet */ }
+            if ($hasEmergency) {
+                $matchedSchedule = EmployeeSchedule::where('employee_id', $employeeId)
+                    ->whereDate('sched_start_date', $today)
+                    ->orderBy('sched_start_date', 'desc')
+                    ->first();
+            }
+        }
+
         if (!$matchedSchedule) {
             throw new \Exception('No active schedule found for your time-in window.');
         }

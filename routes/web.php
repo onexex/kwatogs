@@ -42,6 +42,7 @@ use App\Http\Controllers\PayrollExportController;
 use App\Http\Controllers\AttendanceImportController;
 use App\Http\Controllers\OvertimeImportController;
 use App\Http\Controllers\LeaveImportController;
+use App\Http\Controllers\ScheduleRequestController;
 use App\Http\Controllers\PayrollLogController;
 use App\Http\Controllers\philhealthCtrl;
 use App\Http\Controllers\positionCtrl;
@@ -388,6 +389,13 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     Route::get('/leave-import', [LeaveImportController::class, 'index'])->name('leave-import.index')->middleware('can:leaveimport');
     Route::get('/leave-import/template', [LeaveImportController::class, 'template'])->name('leave-import.template')->middleware('can:leaveimport');
     Route::post('/leave-import/upload', [LeaveImportController::class, 'import'])->name('leave-import.upload')->middleware('can:leaveimport');
+
+    // Schedule change requests
+    Route::get('/schedulerequest/mine', [ScheduleRequestController::class, 'mine'])->name('schedule-request.mine')->middleware('can:createschedulechange');
+    Route::get('/schedulerequest/current-schedule', [ScheduleRequestController::class, 'currentSchedule'])->name('schedule-request.current')->middleware('can:createschedulechange');
+    Route::post('/schedulerequest/store', [ScheduleRequestController::class, 'store'])->name('schedule-request.store')->middleware('can:createschedulechange');
+    Route::get('/pages/modules/schedulerequests', [ScheduleRequestController::class, 'pending'])->name('schedule-request.pending')->middleware('can:approveschedulechange');
+    Route::post('/schedulerequest/updateStatus', [ScheduleRequestController::class, 'updateStatus'])->name('schedule-request.update')->middleware('can:approveschedulechange');
     Route::get('/payroll/approval/status', [PayrollApprovalController::class, 'status'])->name('payroll.approval.status');
     Route::post('/payroll/approve', [PayrollApprovalController::class, 'approve'])->name('payroll.approve')->middleware('can:approvepayroll');
     Route::post('/payroll/reopen', [PayrollApprovalController::class, 'reopen'])->name('payroll.reopen')->middleware('can:regeneratepayroll');

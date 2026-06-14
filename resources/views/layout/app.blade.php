@@ -198,6 +198,7 @@
                     'attendanceimport' => ['name' => 'Attendance Import', 'url' => '/attendance-import', 'icon' => 'fa-file-import'],
                     'overtimeimport'   => ['name' => 'Overtime Import', 'url' => '/overtime-import', 'icon' => 'fa-clock'],
                     'leaveimport'      => ['name' => 'Leave Import', 'url' => '/leave-import', 'icon' => 'fa-calendar-check'],
+                    'approveschedulechange' => ['name' => 'Pending Schedule Requests', 'url' => '/pages/modules/schedulerequests', 'icon' => 'fa-calendar-check'],
                     'leaveapplication' => ['name' => 'Leave Application', 'url' => '/pages/modules/leaveApplication', 'icon' => 'fa-calendar-day'],
                     'pendingleaverequests' => ['name' => 'Pending Leave Requests', 'url' => '/pages/modules/leaverequests', 'icon' => 'fa-calendar-day'],
                     'obttracker'       => ['name' => 'OB Tracker', 'url' => '/pages/modules/obtTracker', 'icon' => 'fa-map-location-dot'],

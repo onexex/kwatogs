@@ -238,7 +238,44 @@
             background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%);
             border: none;
         }
-    </style>
+
+        /* ── Floating schedule-change assistant (chat bubble) ── */
+        #saFab { position:fixed; right:24px; bottom:24px; z-index:1050; background:var(--teal,#008080); color:#fff;
+            border-radius:999px; padding:12px 18px; box-shadow:0 10px 26px rgba(0,128,128,.4); cursor:pointer;
+            display:flex; align-items:center; gap:8px; font-weight:700; font-size:.85rem; transition:transform .15s, box-shadow .15s; }
+        #saFab:hover { transform:translateY(-2px); box-shadow:0 14px 32px rgba(0,128,128,.5); }
+        #saFab .saFab-dot { width:8px; height:8px; border-radius:50%; background:#86efac; box-shadow:0 0 0 3px rgba(134,239,172,.35); }
+        .sa-pop { position:fixed; right:24px; bottom:84px; z-index:1051; width:370px; max-width:calc(100vw - 32px);
+            background:#fff; border:1px solid var(--border,#e2e8f0); border-radius:16px; box-shadow:0 20px 55px rgba(0,0,0,.2);
+            overflow:hidden; display:none; }
+        .sa-pop.open { display:block; animation:saPop .18s ease; }
+        @keyframes saPop { from { opacity:0; transform:translateY(10px) scale(.98); } to { opacity:1; transform:none; } }
+        .sa-pop-head { background:linear-gradient(135deg,var(--teal,#008080),var(--teal-dark,#006666)); color:#fff;
+            padding:12px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+        .sa-pop-avatar { width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,.22); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+        .sa-pop-title { font-weight:800; font-size:.9rem; line-height:1.1; }
+        .sa-pop-sub { font-size:.66rem; opacity:.9; }
+        .sa-pop-close { background:none; border:none; color:#fff; font-size:1.4rem; line-height:1; cursor:pointer; opacity:.85; }
+        .sa-pop-close:hover { opacity:1; }
+        .sa-pop-body { padding:16px; max-height:62vh; overflow:auto; }
+        .sa-toggle { display:flex; align-items:center; gap:6px; cursor:pointer; }
+        .sa-switch { position:relative; display:inline-block; width:36px; height:18px; }
+        .sa-switch input { opacity:0; width:0; height:0; }
+        .sa-slider { position:absolute; inset:0; background:rgba(255,255,255,.35); border-radius:20px; transition:.3s; cursor:pointer; }
+        .sa-slider:before { content:""; position:absolute; height:12px; width:12px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:.3s; }
+        .sa-switch input:checked + .sa-slider { background:#fff; }
+        .sa-switch input:checked + .sa-slider:before { transform:translateX(18px); background:var(--teal,#008080); }
+        .field-label { font-size:.66rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:.4px; margin-bottom:4px; display:block; }
+        .sa-bubble { background:var(--teal-light,#e0f2f1); color:#04685f; border-radius:12px 12px 12px 4px; padding:10px 12px;
+            font-size:.84rem; margin-bottom:14px; display:flex; align-items:flex-start; gap:8px; }
+        .sa-bubble i { color:var(--teal,#008080); margin-top:2px; }
+        .sa-dots { display:flex; gap:6px; }
+        .sa-dots span { width:8px; height:8px; border-radius:50%; background:#cbd5e1; transition:.2s; }
+        .sa-dots span.on { background:var(--teal,#008080); }
+        .sa-review { background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; font-size:.84rem; line-height:1.7; }
+        .sa-list-item { border:1px solid #e2e8f0; border-radius:8px; padding:6px 10px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+        .sa-badge { font-size:.58rem; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+        </style>
 
     <div class="home-shell">
 
@@ -298,6 +335,74 @@
                 </div>
             </div>
         </div>
+
+        @can('createschedulechange')
+        {{-- ── Floating schedule-change assistant ── --}}
+        <div id="saFab" title="Kuya Kwatogs — adjust today's schedule">
+            <span class="saFab-dot"></span><i class="fa fa-wand-magic-sparkles"></i> Kuya Kwatogs
+        </div>
+        <div id="schedAssistCard" class="sa-pop">
+            <div class="sa-pop-head">
+                <div class="d-flex align-items-center gap-2" style="min-width:0;">
+                    <div class="sa-pop-avatar"><i class="fa fa-robot"></i></div>
+                    <div style="min-width:0;">
+                        <div class="sa-pop-title">Kuya Kwatogs</div>
+                        <div class="sa-pop-sub text-truncate" id="saCurrent">Checking your schedule…</div>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <label class="sa-toggle" title="Guided / quick form">
+                        <span class="sa-switch"><input type="checkbox" id="saToggle" checked><span class="sa-slider"></span></span>
+                    </label>
+                    <button id="saClose" class="sa-pop-close" type="button">&times;</button>
+                </div>
+            </div>
+            <div class="sa-pop-body">
+                {{-- Guided assistant --}}
+                <div id="saAssistant">
+                    <div class="sa-bubble"><i class="fa fa-robot"></i><span id="saBubble">Hi, I'm Kuya Kwatogs! How can I help today? First, which day do you need to adjust?</span></div>
+                    <div class="sa-step" data-step="1">
+                        <label class="field-label">Which day?</label>
+                        <input type="date" id="saDate" class="form-control form-control-sm" value="{{ date('Y-m-d') }}" min="{{ date('Y-m-d') }}">
+                    </div>
+                    <div class="sa-step d-none" data-step="2">
+                        <div class="row g-2">
+                            <div class="col-6"><label class="field-label">New Time In</label><input type="time" id="saIn" class="form-control form-control-sm"></div>
+                            <div class="col-6"><label class="field-label">New Time Out</label><input type="time" id="saOut" class="form-control form-control-sm"></div>
+                        </div>
+                    </div>
+                    <div class="sa-step d-none" data-step="3">
+                        <label class="field-label">Reason</label>
+                        <input type="text" id="saReason" class="form-control form-control-sm" placeholder="e.g. Opening the store early" maxlength="255">
+                    </div>
+                    <div class="sa-step d-none" data-step="4">
+                        <div class="sa-review" id="saReview"></div>
+                    </div>
+                    <div class="sa-dots mt-3" id="saDots"></div>
+                    <div class="d-flex mt-2">
+                        <button class="btn btn-light btn-sm" id="saBack" type="button" style="display:none;">Back</button>
+                        <div class="ms-auto d-flex gap-2">
+                            <button class="btn btn-teal btn-sm" id="saNext" type="button">Next</button>
+                            <button class="btn btn-success btn-sm" id="saSubmit" type="button" style="display:none;"><i class="fa fa-paper-plane me-1"></i> Submit</button>
+                        </div>
+                    </div>
+                </div>
+                {{-- Quick form --}}
+                <div id="saQuick" class="d-none">
+                    <div class="row g-2">
+                        <div class="col-6"><label class="field-label">Day</label><input type="date" id="qDate" class="form-control form-control-sm" value="{{ date('Y-m-d') }}" min="{{ date('Y-m-d') }}"></div>
+                        <div class="col-6"><label class="field-label">Reason</label><input type="text" id="qReason" class="form-control form-control-sm" maxlength="255"></div>
+                        <div class="col-6"><label class="field-label">Time In</label><input type="time" id="qIn" class="form-control form-control-sm"></div>
+                        <div class="col-6"><label class="field-label">Time Out</label><input type="time" id="qOut" class="form-control form-control-sm"></div>
+                        <div class="col-12"><button class="btn btn-teal btn-sm w-100" id="qSubmit" type="button">Submit request</button></div>
+                    </div>
+                </div>
+                <hr class="my-3" style="opacity:.4;">
+                <div class="field-label">My recent requests</div>
+                <div id="saList" class="small text-muted">—</div>
+            </div>
+        </div>
+        @endcan
 
         {{-- ── Attendance log ── --}}
         <div class="sc">
@@ -684,4 +789,99 @@
             loadAttendance($('#txtDateFrom').val(), $('#txtDateTo').val());
         });
     </script>
+<script>
+$(function () {
+    const $card = $('#schedAssistCard');
+    if (!$card.length) return;
+    $('#saFab').on('click', () => $card.toggleClass('open'));
+    $('#saClose').on('click', () => $card.removeClass('open'));
+    let step = 1; const maxStep = 4;
+    const sw = (cond, msg, title) => { if (!cond) { (window.Swal ? Swal.fire(title || 'Notice', msg, 'warning') : alert(msg)); return false; } return true; };
+
+    $('#saToggle').on('change', function () {
+        if (this.checked) { $('#saAssistant').removeClass('d-none'); $('#saQuick').addClass('d-none'); }
+        else { $('#saAssistant').addClass('d-none'); $('#saQuick').removeClass('d-none'); }
+    });
+
+    const bubbles = {
+        1: "Hi, I'm Kuya Kwatogs! How can I help today? First, which day do you need to adjust?",
+        2: "What time should you start and end that day?",
+        3: "Tell me why — your approver will see this.",
+        4: "Here's your request. Looks good? Hit Submit."
+    };
+
+    function renderDots() { let h = ''; for (let i = 1; i <= maxStep; i++) h += `<span class="${i <= step ? 'on' : ''}"></span>`; $('#saDots').html(h); }
+
+    function showStep(n) {
+        step = n;
+        $('.sa-step').addClass('d-none');
+        $(`.sa-step[data-step="${n}"]`).removeClass('d-none');
+        $('#saBack').toggle(n > 1);
+        $('#saNext').toggle(n < maxStep);
+        $('#saSubmit').toggle(n === maxStep);
+        $('#saBubble').text(bubbles[n]);
+        renderDots();
+        if (n === 2) fetchCurrent($('#saDate').val());
+        if (n === 4) buildReview();
+    }
+
+    function fetchCurrent(date) {
+        if (!date) return;
+        axios.get('/schedulerequest/current-schedule', { params: { date } }).then(r => {
+            const d = r.data;
+            if (d.has_schedule) {
+                $('#saCurrent').html('Your schedule for ' + date + ': <b>' + (d.sched_in || '').substring(0, 5) + ' – ' + (d.sched_out || '').substring(0, 5) + '</b>');
+                if (!$('#saIn').val()) $('#saIn').val((d.sched_in || '').substring(0, 5));
+                if (!$('#saOut').val()) $('#saOut').val((d.sched_out || '').substring(0, 5));
+            } else { $('#saCurrent').html('No schedule set for ' + date + ' yet.'); }
+        }).catch(() => {});
+    }
+
+    function buildReview() {
+        $('#saReview').html('<b>Date:</b> ' + $('#saDate').val() +
+            '<br><b>New time:</b> ' + $('#saIn').val() + ' – ' + $('#saOut').val() +
+            '<br><b>Reason:</b> ' + ($('#saReason').val() || '—'));
+    }
+
+    $('#saNext').on('click', function () {
+        if (step === 1 && !sw($('#saDate').val(), 'Choose which day to adjust.', 'Pick a day')) return;
+        if (step === 2 && !sw($('#saIn').val() && $('#saOut').val(), 'Enter both time in and out.', 'Times needed')) return;
+        showStep(Math.min(step + 1, maxStep));
+    });
+    $('#saBack').on('click', () => showStep(Math.max(step - 1, 1)));
+    $('#saDate').on('change', function () { if (step >= 2) fetchCurrent($(this).val()); });
+
+    function submit(payload, done) {
+        if (window.Swal) Swal.fire({ title: 'Submitting…', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        axios.post('/schedulerequest/store', payload).then(r => {
+            if (window.Swal) Swal.fire({ icon: 'success', title: 'Sent', text: r.data.message, timer: 2200, showConfirmButton: false });
+            if (done) done();
+            fetchMine();
+            fetchCurrent(payload.request_date); // refresh the header to the new schedule
+        }).catch(e => { const m = e.response?.data?.message || 'Could not submit.'; window.Swal ? Swal.fire('Error', m, 'error') : alert(m); });
+    }
+
+    $('#saSubmit').on('click', () => submit(
+        { request_date: $('#saDate').val(), new_sched_in: $('#saIn').val(), new_sched_out: $('#saOut').val(), reason: $('#saReason').val() },
+        () => { $('#saReason').val(''); showStep(1); }
+    ));
+    $('#qSubmit').on('click', () => {
+        if (!sw($('#qDate').val() && $('#qIn').val() && $('#qOut').val(), 'Fill day, time in and out.', 'Missing')) return;
+        submit({ request_date: $('#qDate').val(), new_sched_in: $('#qIn').val(), new_sched_out: $('#qOut').val(), reason: $('#qReason').val() });
+    });
+
+    function fetchMine() {
+        axios.get('/schedulerequest/mine').then(r => {
+            const rows = r.data || [];
+            if (!rows.length) { $('#saList').html('No requests yet.'); return; }
+            const style = s => ({ APPROVED: 'background:#dcfce7;color:#166534;', DISAPPROVED: 'background:#fee2e2;color:#991b1b;', FORAPPROVAL: 'background:#fef3c7;color:#92400e;' }[s] || 'background:#e2e8f0;color:#334155;');
+            $('#saList').html(rows.map(r => `<div class="sa-list-item"><span>${r.request_date} · <b>${r.new_sched_in}–${r.new_sched_out}</b></span><span class="sa-badge" style="${style(r.status)}">${r.status}</span></div>`).join(''));
+        }).catch(() => {});
+    }
+
+    fetchCurrent($('#saDate').val());
+    showStep(1);
+    fetchMine();
+});
+</script>
 @endsection
