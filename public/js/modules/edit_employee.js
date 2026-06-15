@@ -183,6 +183,26 @@ $(document).ready(function () {
     });
 
     // ─────────────────────────────────────────────────────────
+    // 4b. RESIGN DATE ↔ EMPLOYMENT STATUS
+    //     Employed  → auto-clear & lock the Date Resigned (must be blank)
+    //     Resigned  → field editable & required
+    //     End of Contract → field editable (optional)
+    // ─────────────────────────────────────────────────────────
+    function syncResignDate() {
+        const status  = $('#selStatus').val();
+        const $resign = $('#txtDateResigned');
+
+        if (status === '1') {               // Employed → blank & locked
+            $resign.val('').prop('readonly', true).removeClass('is-invalid');
+            $('.date_resigned_error').text('').removeClass('text-danger');
+        } else {                            // Resigned / End of Contract → editable
+            $resign.prop('readonly', false);
+        }
+    }
+    $(document).on('change', '#selStatus', syncResignDate);
+    syncResignDate(); // apply on load
+
+    // ─────────────────────────────────────────────────────────
     // 5. LIVE ERROR CLEARING — as user fixes fields
     // ─────────────────────────────────────────────────────────
     $(document).on('input', '.form-control', function () {

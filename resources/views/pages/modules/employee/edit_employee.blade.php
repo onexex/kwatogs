@@ -922,8 +922,9 @@
                                     </div>
                                     <div class="mb-0">
                                         <label for="txtDateResigned" class="field-label">Date Resigned</label>
-                                        <input type="date" class="form-control" id="txtDateResigned" name="date_resingned"
+                                        <input type="date" class="form-control" id="txtDateResigned" name="date_resigned"
                                             value="{{ substr($user->empDetail->empDateResigned, 0, 10) }}">
+                                        <span class="text-danger error-text date_resigned_error"></span>
                                     </div>
                                 </div>
                                 <div class="col-lg-4">
@@ -1131,5 +1132,5 @@
     }
 </script>
 
-<script src="{{ asset('js/modules/edit_employee.js') }}" defer></script>
+<script src="{{ asset('js/modules/edit_employee.js') }}?v={{ @filemtime(public_path('js/modules/edit_employee.js')) ?: time() }}" defer></script>
 @endsection

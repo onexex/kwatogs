@@ -554,7 +554,9 @@ class PayrollController extends Controller
                     $undertimeDeduction = $this->lateBracketHours($totalUndertime) * $hourlyRate;
                     $overBreakDeduction = ($over_break_minutes / 60) * $hourlyRate;
                     $outPassDeduction   = ($outpass_minutes / 60) * $hourlyRate;
-                    $night_diff_pay =   ($night_diff_mins / 60) * $hourlyRate;
+                    // DOLE / Labor Code Art. 86: night shift differential = 10% of the
+                    // hourly rate for each hour worked between 10 PM and 6 AM.
+                    $night_diff_pay =   ($night_diff_mins / 60) * ($hourlyRate * 0.10);
                   
                     
                     // $deductions = $absentDeduction + $lateDeduction + $undertimeDeduction + $outPassDeduction + $overBreakDeduction; 

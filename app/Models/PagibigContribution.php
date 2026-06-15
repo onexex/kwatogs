@@ -50,7 +50,7 @@ class PagibigContribution extends Model
 
         // If not found, fallback to standard rule
         if (!$record) {
-            $max_salary = 5000;    // Government-mandated max salary credit
+            $max_salary = 10000;   // Pag-IBIG Maximum Fund Salary (₱10,000 → ₱200 max share)
             $employee_rate = 0.02; // 2%
             $employer_rate = 0.02; // 2%
 

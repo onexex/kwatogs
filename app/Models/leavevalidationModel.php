@@ -9,7 +9,7 @@ class leavevalidationModel extends Model
 {
     use HasFactory;
     protected $table = 'leavevalidation_models';
-    protected $primaryKey = 'id ';
+    protected $primaryKey = 'id';
 
     protected $fillable = [
         'compID',

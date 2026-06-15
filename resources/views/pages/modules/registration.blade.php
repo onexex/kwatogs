@@ -924,7 +924,7 @@
                                     </div>
                                     <div class="mb-0">
                                         <label for="txtDateResigned" class="field-label">Date Resigned</label>
-                                        <input type="date" class="form-control" id="txtDateResigned" name="date_resingned">
+                                        <input type="date" class="form-control" id="txtDateResigned" name="date_resigned">
                                     </div>
                                 </div>
                                 <div class="col-lg-4">

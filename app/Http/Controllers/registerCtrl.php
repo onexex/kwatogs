@@ -264,7 +264,7 @@ class registerCtrl extends Controller
                 'empHMONo' => $request->hmo_number,
                 'empPicPath' => $request->path->getClientOriginalName(),
                 'empDateHired' => $request->date_hired,
-                'empDateResigned' => $request->date_resigned,
+                'empDateResigned' => $request->emp_status == 1 ? null : $request->date_resigned,
                 'empDateRegular' => $request->date_regularization,
                 'empPrevPos' => $request->previous_position,
                 'empPrevDep' => $request->previous_department,
@@ -361,8 +361,10 @@ class registerCtrl extends Controller
             'date_hired' => 'required',
             'basic'=>'required|numeric',
             'allowance'=>'required|numeric',
-            
-            
+            // Resignation date is mandatory when the employee is marked Resigned.
+            'date_resigned' => 'nullable|required_if:emp_status,0',
+        ], [
+            'date_resigned.required_if' => 'Date Resigned is required when the status is Resigned.',
         ]);
 
         if (!$validator->passes()) {
@@ -475,7 +477,7 @@ class registerCtrl extends Controller
                 // 'empHMOID' => $request->hmo,
                 // 'empHMONo' => $request->hmo_number,
                 'empDateHired' => $request->date_hired,
-                'empDateResigned' => $request->date_resigned,
+                'empDateResigned' => $request->emp_status == 1 ? null : $request->date_resigned,
                 'empDateRegular' => $request->date_regularization,
                 'empPrevPos' => $request->previous_position,
                 'empPrevDep' => $request->previous_department,

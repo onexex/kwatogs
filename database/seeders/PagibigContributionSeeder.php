@@ -21,8 +21,8 @@ class PagibigContributionSeeder extends Seeder
             'employee_share' => 0,
             'employer_share' => 0,
             'total_contribution' => 0,
-            'max_salary_credit' => 5000,
-            'effective_year' => 2025,
+            'max_salary_credit' => 10000,
+            'effective_year' => 2026,
         ]);
 
         // 2️⃣ Tier 2: Over ₱1,500
@@ -34,8 +34,8 @@ class PagibigContributionSeeder extends Seeder
             'employee_share' => 0,
             'employer_share' => 0,
             'total_contribution' => 0,
-            'max_salary_credit' => 5000,
-            'effective_year' => 2025,
+            'max_salary_credit' => 10000,
+            'effective_year' => 2026,
         ]);
     }
 }
