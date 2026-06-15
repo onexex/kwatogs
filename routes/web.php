@@ -80,7 +80,7 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     Route::get('/login/testmoto',[pageCtrl::class, 'test']);
 
 
-    Route::get('/', function () {return view('home');});
+    Route::get('/', [\App\Http\Controllers\LandingController::class, 'index']);
     Route::get('/users/manage',[pageCtrl::class, 'indexUsers']);
     Route::get('/pages/test',[pageCtrl::class, 'alas']);
     //pages
