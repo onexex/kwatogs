@@ -340,6 +340,17 @@ $(function () {
 
     const peso = (n) => Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+    // Keys in the computation breakdown that represent money (comma + 2 decimals).
+    // Counts, minutes, hours and dates are deliberately left as-is.
+    const MONEY_KEYS = new Set([
+        'basic_monthly','daily_rate','hourly_rate','daily_allowance','allowance_hourly',
+        'x_hourly_rate','x_daily','deduction','amount','total_pay','pay','gross','net',
+        'late_ut_deduction','total_deductions','basic_pay','gross_pay','holiday_pay',
+        'sss','philhealth','pagibig','tax','gov_dues','taxable',
+        'company','charges','cash_adv','other','sss_loan','pagibig_loan',
+        'gross_taxed','net_after_tax','total','net_pay','pay_receivable'
+    ]);
+
     function loadLogs(page = 1) {
         const params = {
             pay_date: $('#fltPayDate').val(),
@@ -407,7 +418,10 @@ $(function () {
             if (v !== null && typeof v === 'object') {
                 h += `<tr><td class="fw-bold text-capitalize align-top" style="width:200px;">${label}</td><td>${renderBreakdown(v)}</td></tr>`;
             } else {
-                h += `<tr><td class="text-capitalize" style="width:200px;">${label}</td><td>${v ?? '—'}</td></tr>`;
+                const isMoney = MONEY_KEYS.has(String(k).toLowerCase())
+                    && v !== null && v !== '' && !isNaN(Number(v));
+                const display = isMoney ? peso(v) : (v ?? '—');
+                h += `<tr><td class="text-capitalize" style="width:200px;">${label}</td><td>${display}</td></tr>`;
             }
         });
         h += '</tbody></table>';

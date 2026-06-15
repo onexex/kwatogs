@@ -42,6 +42,11 @@ class pageCtrl extends Controller
         return view('pages.management.companies');
     }
 
+    public function documentation()
+    {
+        return view('pages.management.documentation');
+    }
+
     public function classification()
     {
         return view('pages.management.classification');

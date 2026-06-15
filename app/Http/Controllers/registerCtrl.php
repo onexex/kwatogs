@@ -249,7 +249,9 @@ class registerCtrl extends Controller
                 'empClassification' => $request->classification,
                 'empPos' => $request->position,
                 'empBasic' => $request->basic,
-                'empStatus' => $request->status,
+                // New hires default to Employed (1). The enroll form has no emp_status field,
+                // so fall back to 1 rather than the Civil Status value ($request->status).
+                'empStatus' => $request->input('emp_status', 1),
                 'empAllowance' => $request->allowance,
                 'empPayrollType' => $request->payroll_type ?: 'CASH',
                 'empCardNo' => ($request->payroll_type === 'CARD') ? $request->card_number : null,
@@ -455,7 +457,10 @@ class registerCtrl extends Controller
                 'empClassification' => $request->classification,
                 'empPos' => $request->position,
                 'empBasic' => $request->basic,
-                'empStatus' => $request->status,
+                // Employment status comes from the "emp_status" dropdown (1 = Employed, 0 = Resigned).
+                // Previously this read $request->status, which is the Civil Status field — so changing
+                // employment status to Resigned never saved. Fixed to read emp_status.
+                'empStatus' => $request->emp_status,
                 'empAllowance' => $request->allowance,
                 'empPayrollType' => $request->payroll_type ?: 'CASH',
                 'empCardNo' => ($request->payroll_type === 'CARD') ? $request->card_number : null,

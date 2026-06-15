@@ -153,6 +153,7 @@ Route::group(['middleware'=>['AuthCheck']], function(){
 
     // SHAIRA
     //MANAGEMENT
+    Route::get('/pages/management/documentation',[pageCtrl::class, 'documentation'])->name('documentation');
     Route::get('/pages/management/accessrights',[EmployeeRoleController::class, 'index']);
     Route::get('/pages/management/databasebackup',[DatabaseBackupController::class, 'index'])->name('database-backup.index');
     Route::post('/pages/management/databasebackup',[DatabaseBackupController::class, 'store'])->name('database-backup.store');

@@ -42,7 +42,19 @@
     </div>
 
     @php
-        $render = function ($data) use (&$render) {
+        // Keys in the computation breakdown that represent money (comma + 2 decimals).
+        // Counts, minutes, hours and dates are deliberately left as-is.
+        $moneyKeys = [
+            'basic_monthly','daily_rate','hourly_rate','daily_allowance','allowance_hourly',
+            'x_hourly_rate','x_daily','deduction','amount','total_pay','pay','gross','net',
+            'late_ut_deduction','total_deductions','basic_pay','gross_pay','holiday_pay',
+            'sss','philhealth','pagibig','tax','gov_dues','taxable',
+            'company','charges','cash_adv','other','sss_loan','pagibig_loan',
+            'gross_taxed','net_after_tax','total','net_pay','pay_receivable',
+        ];
+        $isMoneyKey = fn ($k) => in_array(strtolower((string) $k), $moneyKeys, true);
+
+        $render = function ($data) use (&$render, $isMoneyKey) {
             $h = '<table class="kv"><tbody>';
             foreach ((array) $data as $k => $v) {
                 $label = ucwords(str_replace('_', ' ', (string) $k));
@@ -50,7 +62,13 @@
                     $h .= '<tr><td class="k" colspan="2" style="font-weight:700;background:#fafafa;">' . e($label) . '</td></tr>';
                     $h .= '<tr><td colspan="2" style="padding:0;">' . $render($v) . '</td></tr>';
                 } else {
-                    $val = is_bool($v) ? ($v ? 'yes' : 'no') : $v;
+                    if (is_bool($v)) {
+                        $val = $v ? 'yes' : 'no';
+                    } elseif ($isMoneyKey($k) && is_numeric($v)) {
+                        $val = number_format((float) $v, 2);
+                    } else {
+                        $val = $v;
+                    }
                     $h .= '<tr><td class="k">' . e($label) . '</td><td class="v">' . e($val) . '</td></tr>';
                 }
             }
@@ -79,7 +97,7 @@
                             @if (is_array($val))
                                 {!! $render($val) !!}
                             @else
-                                <table class="kv"><tbody><tr><td class="v">{{ $val }}</td></tr></tbody></table>
+                                <table class="kv"><tbody><tr><td class="v">{{ $isMoneyKey($section) && is_numeric($val) ? number_format((float) $val, 2) : $val }}</td></tr></tbody></table>
                             @endif
                         </div>
                     @endforeach

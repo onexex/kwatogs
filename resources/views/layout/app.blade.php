@@ -212,8 +212,8 @@
                     'manual_entry'          => ['name' => 'Adjustment Time', 'url' => '/pages/modules/adjustmentTime', 'icon' => 'fa-paper-plane'],
                 ];
                 
-                // 1. Sort the main array first
-                $modulePages = collect($modulePages)->sort()->toArray();
+                // 1. Sort the main array alphabetically (A→Z) by display name
+                $modulePages = collect($modulePages)->sortBy(fn($p) => strtolower($p['name']))->toArray();
 
                 // 2. Use the sorted array for your check
                 $hasPagesAccess = collect($modulePages)->keys()->some(fn($key) => auth()->user()?->can($key));
@@ -304,8 +304,8 @@
                     'admine201'           => ['name' => 'Admin E-201', 'url' => '/pages/management/e201', 'icon' => 'fa-id-card-alt'],
                     'leavecreditallocation'          => ['name' => 'Leave Credit Allocation', 'url' => '/pages/management/leavecreditallocations', 'icon' => 'fa-list-check'],
                 ];
-                // 1. Sort the modules by their values (labels) A-Z
-                $managementModules = collect($managementModules)->sort()->toArray();
+                // 1. Sort the modules alphabetically (A→Z) by display name
+                $managementModules = collect($managementModules)->sortBy(fn($m) => strtolower($m['name']))->toArray();
 
                 // 2. Perform your access check
                 $hasManagementAccess = collect($managementModules)->some(function ($module, $key) {
@@ -342,6 +342,10 @@
                                     </a>
                                 @endif
                             @endforeach
+                            {{-- Documentation: always available to anyone who can see Settings --}}
+                            <a class="collapse-item {{ request()->is('pages/management/documentation*') ? 'active' : '' }}" href="/pages/management/documentation">
+                                <i class="fa-solid fa-book me-1"></i> Documentation
+                            </a>
                         </div>
                     </div>
                 </li>
@@ -355,6 +359,9 @@
                     'leavereport' => ['name' => 'Leave Report', 'url' => '/reports/leave', 'icon' => 'fa-calendar-day'],
                     'thirteenthmonth' => ['name' => '13th Month Pay', 'url' => '/reports/thirteenth-month', 'icon' => 'fa-gift']
                 ];
+                // Sort the reports alphabetically (A→Z) by display name
+                $moduleReports = collect($moduleReports)->sortBy(fn($r) => strtolower($r['name']))->toArray();
+
                 $hasReportAccess = collect($moduleReports)->keys()->some(fn($key) => auth()->user()?->can($key));
 
                 // Determine the active item so the menu stays open and highlighted
