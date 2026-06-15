@@ -409,10 +409,14 @@ class PayrollController extends Controller
                 // ==============================
                 foreach ($employeeSchedules as $schedule) {
                     $schedStart = Carbon::parse($schedule->sched_start_date);
-                    $schedEnd   = Carbon::parse($schedule->sched_end_date);
 
-                    for ($date = $schedStart->copy(); $date->lte($schedEnd); $date->addDay()) {
+                    // Each schedule row is ONE shift = ONE work day, attributed to its START date.
+                    // For overnight shifts sched_end_date is the NEXT MORNING (still the same shift),
+                    // so iterating up to sched_end_date created a bogus 2nd "scheduled day" and marked
+                    // the employee ABSENT on what is actually a rest day. Process the start date only.
+                    for ($date = $schedStart->copy(); $date->lte($schedStart); $date->addDay()) {
                         $dateStr = $date->format('Y-m-d');
+                        if (isset($scheduledDates[$dateStr])) { continue; } // day already counted by another shift row
                         $scheduledDates[$dateStr] = true;
                         $summary = $attendanceSummaries[$dateStr] ?? null;
 
