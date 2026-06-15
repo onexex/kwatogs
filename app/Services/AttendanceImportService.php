@@ -156,7 +156,21 @@ class AttendanceImportService
         $worked = max(0, ($outC - $inC) - $breakMins);
         $late = max(0, $aIn - $sIn);
         $undertime = max(0, $sOut - $aOut);
+
+        // Night differential window = 10 PM – 6 AM (00:00–06:00 plus 22:00–next 06:00).
         $night = $this->overlap($inC, $outC, 0, 360) + $this->overlap($inC, $outC, 1320, 1800);
+
+        // Company rule: a break that falls inside the night window is NOT paid as ND,
+        // so subtract the portion of the break that overlaps 10 PM – 6 AM.
+        // e.g. 6pm–6am with a 3-hr night break = 8 − 3 = 5 hrs ND; a 1-hr break at 11pm = −1 hr.
+        if ($breakStart && $breakEnd) {
+            $bs = $this->minutes($breakStart);
+            $be = $this->minutes($breakEnd);
+            if ($be > $bs) {
+                $night -= $this->overlap($bs, $be, 0, 360) + $this->overlap($bs, $be, 1320, 1800);
+            }
+        }
+        $night = max(0, $night);
 
         return [
             'total_hours' => round($worked / 60, 2),

@@ -144,14 +144,16 @@ class homeAttendance extends Model
             $summary->mins_undertime = 0;
         }
 
-        // 5️⃣ --- NEW: Over-break & Outpass detection ---
-        $overBreak = 0;
+        // 5️⃣ --- Over-break & Outpass detection ---
+        // Company rule: total break of up to 3 hours (180 min) is allowed;
+        // anything beyond that is Over-break. Gaps outside the break period are Outpass.
+        $maxBreakMinutes = 180; // 3-hour break cap
+        $breakMinutes = 0;
         $outPass = 0;
 
         if ($schedule && $schedule->break_start && $schedule->break_end) {
             $breakStart = Carbon::parse($schedule->sched_start_date . ' ' . $schedule->break_start);
             $breakEnd = Carbon::parse($schedule->sched_start_date . ' ' . $schedule->break_end);
-            $expectedBreak = $breakEnd->diffInMinutes($breakStart);
 
             // Sort logs by time_in
             $sortedLogs = $logs->sortBy('time_in')->values();
@@ -161,21 +163,18 @@ class homeAttendance extends Model
                 $nextIn = Carbon::parse($sortedLogs[$i + 1]->time_in);
                 $gap = $timeOut->diffInMinutes($nextIn);
 
-                // Gap occurs during break period
+                // Gap occurs during the break period -> counts as break time
                 if ($timeOut->between($breakStart, $breakEnd) || $nextIn->between($breakStart, $breakEnd)) {
-                    if ($gap > $expectedBreak) {
-                        $overBreak += ($gap - $expectedBreak);
-                    }
+                    $breakMinutes += $gap;
                 } else {
-                    // Accidental outpass (gap not within break)
-                    // if ($gap >= 5) { // optional threshold to ignore very small gaps
-                        $outPass += $gap;
-                    // }
+                    // Gap outside the break period -> Outpass
+                    $outPass += $gap;
                 }
             }
         }
 
-        $summary->over_break_minutes = $overBreak;
+        // Over-break is only the portion of total break beyond the 3-hour cap.
+        $summary->over_break_minutes = max(0, $breakMinutes - $maxBreakMinutes);
         $summary->outpass_minutes = $outPass;
 
         // 6️⃣ Determine attendance status

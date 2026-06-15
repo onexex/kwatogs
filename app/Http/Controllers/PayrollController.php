@@ -107,17 +107,15 @@ class PayrollController extends Controller
     }
 
     /**
-     * Late/undertime bracket rounding on the PERIOD TOTAL (company policy):
-     *   1..30 min  => 0.5 hr ; 31..59 min => 1.0 hr (per hour block).
+     * Late/undertime hours on the PERIOD TOTAL (company policy):
+     *   Exact minutes — no bracket rounding. 1 minute late = 1 minute deducted.
+     *   (Method name kept for compatibility; it now returns the precise hours.)
      */
     private function lateBracketHours($mins): float
     {
         $mins = (int) $mins;
         if ($mins <= 0) return 0.0;
-        $full = intdiv($mins, 60);
-        $rem  = $mins % 60;
-        if ($rem === 0) return (float) $full;
-        return $full + ($rem <= 30 ? 0.5 : 1.0);
+        return round($mins / 60, 4);
     }
 
     public function computePayroll(Request $request)
