@@ -4,20 +4,36 @@
     <meta charset="utf-8">
     <title>Leave Report</title>
     <style>
-        :root { --teal:#008080; --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb; }
-        * { box-sizing: border-box; }
-        body { font-family:'Segoe UI',Arial,sans-serif; color:var(--ink); margin:0; padding:22px; font-size:12px; }
+        @page { size: landscape; margin: 12mm; }
+        * { box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+        body { font-family:'Segoe UI', Arial, sans-serif; color:#1e293b; margin:0; font-size:11px; }
         .toolbar { display:flex; gap:8px; justify-content:flex-end; margin-bottom:14px; }
         .btn { border:0; border-radius:6px; padding:7px 14px; font-weight:700; cursor:pointer; font-size:12px; }
-        .btn-print { background:var(--teal); color:#fff; } .btn-close { background:#e5e7eb; color:#374151; }
-        h2 { margin:0 0 2px; color:var(--teal); font-size:18px; text-align:center; }
-        .meta { text-align:center; color:var(--muted); font-size:11px; margin-bottom:12px; }
-        table { width:100%; border-collapse:collapse; }
-        th, td { border:1px solid var(--line); padding:5px 7px; text-align:left; }
-        th { background:#f8fafc; text-transform:uppercase; font-size:10px; letter-spacing:.4px; color:#475569; }
-        td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
-        tfoot td { font-weight:700; background:#f8fafc; }
+        .btn-print { background:#008080; color:#fff; } .btn-close { background:#e5e7eb; color:#374151; }
         @media print { .toolbar { display:none; } body { padding:0; } }
+
+        .head { display:flex; align-items:center; gap:14px; border-bottom:3px solid #008080; padding-bottom:12px; margin-bottom:6px; }
+        .head img { height:54px; width:auto; }
+        .head .org { font-size:18px; font-weight:800; color:#006666; letter-spacing:.3px; }
+        .head .sub { font-size:12px; color:#475569; margin-top:1px; }
+        .meta { font-size:11px; color:#64748b; margin:10px 0 14px; }
+        .meta b { color:#334155; }
+
+        table { width:100%; border-collapse:collapse; }
+        thead th { background:#008080 !important; color:#fff !important; font-size:10px; text-transform:uppercase;
+            letter-spacing:.3px; padding:7px 6px; text-align:center; border:none; }
+        thead th:nth-child(1) { text-align:left; }
+        tbody td { padding:5px 6px; border-bottom:1px solid #e2e8f0; font-size:10.5px; text-align:center; vertical-align:middle; }
+        tbody td:nth-child(1) { text-align:left; }
+        tbody tr:nth-child(even) td { background:#f8fafc; }
+        tfoot td { background:#e0f2f1; font-weight:700; color:#006666; padding:7px 6px; border-top:2px solid #008080; font-size:10.5px; }
+        td.num { text-align:right; font-variant-numeric:tabular-nums; font-weight:600; }
+
+        .note { margin-top:14px; font-size:9.5px; color:#94a3b8; font-style:italic; }
+        .sign { margin-top:42px; display:flex; justify-content:space-between; font-size:11px; }
+        .sign div { width:30%; text-align:center; }
+        .sign .ln { border-top:1px solid #475569; margin-bottom:4px; padding-top:4px; }
+        .endmark { margin-top:18px; text-align:center; font-size:10px; color:#94a3b8; text-transform:uppercase; letter-spacing:1px; }
     </style>
 </head>
 <body>
@@ -26,17 +42,23 @@
         <button class="btn btn-close" onclick="window.close()">Close</button>
     </div>
 
-    <div style="text-align:center;margin-bottom:4px;"><img src="{{ asset('img/kwatogslogo.jpg') }}" alt="logo" style="height:48px;"></div>
-    <h2>Leave Report</h2>
+    <div class="head">
+        <img src="{{ asset('img/kwatogslogo.jpg') }}" onerror="this.style.display='none'" alt="">
+        <div>
+            <div class="org">KWATOGS LOMI HOUSE</div>
+            <div class="sub">Leave Report</div>
+        </div>
+    </div>
+
     <div class="meta">
         @php
             $f = $filters ?? [];
             $range = trim(($f['date_from'] ?? '') . ' to ' . ($f['date_to'] ?? ''), ' to');
         @endphp
-        {{ $range ? 'Period: '.$range.'  |  ' : '' }}
-        Status: {{ ($f['status'] ?? 'all') === 'all' ? 'All' : $f['status'] }}
-        &nbsp;|&nbsp; Records: {{ $rows->count() }}
-        &nbsp;|&nbsp; Generated: {{ now()->format('M d, Y h:i A') }}
+        <b>Date Range:</b> {{ $range ?: 'All' }}
+        &nbsp;&bull;&nbsp; <b>Status:</b> {{ ($f['status'] ?? 'all') === 'all' ? 'All' : $f['status'] }}
+        &nbsp;&bull;&nbsp; <b>Records:</b> {{ $rows->count() }}
+        &nbsp;&bull;&nbsp; <b>Generated:</b> {{ now()->format('M d, Y h:i A') }}
     </div>
 
     <table>
@@ -66,11 +88,30 @@
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="6" style="text-align:right;">TOTAL DAYS</td>
+                <td colspan="6" style="text-align:right;text-transform:uppercase;letter-spacing:.4px;">Total Days</td>
                 <td class="num">{{ number_format($totalDays, 2) }}</td>
                 <td colspan="3"></td>
             </tr>
         </tfoot>
     </table>
+
+    <div class="note">
+        Leave days are computed from the start and end dates. Leave kind indicates whether the leave is paid or unpaid.
+        Status reflects the current approval stage of each leave application.
+    </div>
+
+    <div class="sign">
+        <div><div class="ln"></div>Prepared by</div>
+        <div><div class="ln"></div>Checked & Verified by</div>
+        <div><div class="ln"></div>Approved by</div>
+    </div>
+
+    <div class="endmark">*** End of Report ***</div>
+
+    <script>
+        window.onload = function () {
+            setTimeout(function () { window.focus(); window.print(); window.close(); }, 400);
+        };
+    <\/script>
 </body>
 </html>

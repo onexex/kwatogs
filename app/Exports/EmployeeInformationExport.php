@@ -33,16 +33,16 @@ class EmployeeInformationExport implements FromCollection, WithHeadings
                 $q->whereDate('empDateHired', '<=', $this->request->date_to)
             )
             ->when($this->request->classification_id, fn($q) =>
-                $q->where('classification_id', $this->request->classification_id)
+                $q->where('empClassification', $this->request->classification_id)
             )
             ->when($this->request->company_id, fn($q) =>
-                $q->where('company_id', $this->request->company_id)
+                $q->where('empCompID', $this->request->company_id)
             )
             ->when($this->request->department_id, fn($q) =>
-                $q->where('department_id', $this->request->department_id)
+                $q->where('empDepID', $this->request->department_id)
             )
             ->when($this->request->position_id, fn($q) =>
-                $q->where('position_id', $this->request->position_id)
+                $q->where('empPos', $this->request->position_id)
             )
             ->get()
             ->map(function ($employee) {

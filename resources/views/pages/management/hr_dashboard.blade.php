@@ -139,6 +139,7 @@
         <a class="kpi" href="#absCard"><div class="ic" style="background:#fee2e2;color:var(--danger);"><i class="fa fa-user-xmark"></i></div><div><div class="val" data-kpi="absent">{{ number_format($d['absent']) }}</div><div class="lbl">Absent Today</div></div></a>
         <a class="kpi" href="/pages/modules/leaverequests"><div class="ic" style="background:#e0f2fe;color:var(--info);"><i class="fa fa-plane-departure"></i></div><div><div class="val" data-kpi="leaveob">{{ number_format($d['onLeave'] + $d['onOb']) }}</div><div class="lbl">On Leave / OB</div></div></a>
         <a class="kpi" href="#apprCard"><div class="ic" style="background:#fef3c7;color:var(--warning);"><i class="fa fa-bell"></i></div><div><div class="val" data-kpi="pendTotal">{{ number_format($d['pendTotal']) }}</div><div class="lbl">Pending Approvals</div></div></a>
+        <a class="kpi" href="#attRateCard"><div class="ic" style="background:#e0f2fe;color:var(--info);"><i class="fa fa-calendar-check"></i></div><div><div class="val" style="color:{{ $d['attendanceRate'] >= 90 ? 'var(--success)' : 'var(--warning)' }}">{{ $d['attendanceRate'] }}%</div><div class="lbl">Attendance (30d)</div></div></a>
         <a class="kpi" href="#trendCard"><div class="ic" style="background:var(--teal-light);color:var(--teal);"><i class="fa fa-clock"></i></div><div><div class="val" data-kpi="ontime">{{ $d['onTimeRate'] }}%</div><div class="lbl">On-time (30d)</div></div></a>
     </div>
 
@@ -291,6 +292,105 @@
             </div>
         </div>
 
+        {{-- Overtime Summary (current month) --}}
+        <div class="cc-card cc-4" id="otCard">
+            <div class="cc-h"><div class="i"><i class="fa fa-clock"></i></div><h6>Overtime ({{ now()->format('M') }})</h6></div>
+            <div class="cc-b">
+                <div class="att-grid">
+                    <div class="att"><div class="v" style="color:var(--teal);" id="otHours">{{ $d['otHours'] }}</div><div class="l">Total Hours</div></div>
+                    <div class="att"><div class="v" style="color:var(--info);" id="otCount">{{ $d['otCount'] }}</div><div class="l">Requests</div></div>
+                </div>
+                <div class="mt-3 text-center" style="font-size:.78rem;">
+                    <span style="color:var(--slate-light);">Estimated cost</span><br>
+                    <b style="color:var(--teal);font-size:1.1rem;" id="otCost">&#8369;{{ number_format($d['otCost'], 2) }}</b>
+                </div>
+            </div>
+        </div>
+
+        {{-- Gender Diversity --}}
+        <div class="cc-card cc-4">
+            <div class="cc-h"><div class="i"><i class="fa fa-venus-mars"></i></div><h6>Gender Diversity</h6></div>
+            <div class="cc-b">
+                <div class="d-flex align-items-center gap-3">
+                    @php $totalG = max(1, $d['male'] + $d['female']); $malePct = round($d['male']/$totalG*100); @endphp
+                    <div class="donut" style="background:conic-gradient(var(--info) 0% {{ $malePct }}%, #ec4899 {{ $malePct }}% 100%);"><div class="hole"><b>{{ $d['total'] }}</b><span>Total</span></div></div>
+                    <div class="flex-fill">
+                        <div class="lgnd"><span class="dot" style="background:var(--info);"></span> Male <b class="ms-auto">{{ $d['male'] }}</b></div>
+                        <div class="lgnd"><span class="dot" style="background:#ec4899;"></span> Female <b class="ms-auto">{{ $d['female'] }}</b></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Employee Turnover (6-month chart as table) --}}
+        <div class="cc-card cc-4">
+            <div class="cc-h"><div class="i"><i class="fa fa-arrow-right-arrow-left"></i></div><h6>Turnover (6 mo)</h6></div>
+            <div class="cc-b">
+                @foreach($d['turnover'] as $t)
+                    <div class="bar-row" style="flex-wrap:wrap;gap:2px;">
+                        <span style="font-size:.7rem;font-weight:700;color:var(--slate-light);width:32px;">{{ $t['month'] }}</span>
+                        <span style="font-size:.7rem;color:var(--success);width:38px;text-align:right;">+{{ $t['hired'] }}</span>
+                        <span style="font-size:.7rem;color:var(--danger);width:38px;text-align:right;">-{{ $t['resigned'] }}</span>
+                        @php $netCol = $t['net'] >= 0 ? 'var(--success)' : 'var(--danger)'; $netSymbol = $t['net'] >= 0 ? '+' : ''; @endphp
+                        <span style="font-size:.75rem;font-weight:700;color:{{ $netCol }};width:38px;text-align:right;">{{ $netSymbol }}{{ $t['net'] }}</span>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+        {{-- Recent New Hires --}}
+        <div class="cc-card cc-4">
+            <div class="cc-h"><div class="i"><i class="fa fa-user-plus"></i></div><h6>New Hires (30d)</h6></div>
+            <div class="cc-b" style="max-height:200px;overflow:auto;">
+                @forelse($d['newHires'] as $r)
+                    <div class="alert-row">
+                        <span class="nm text-capitalize">{{ $r->name }}</span>
+                        <span class="meta" style="font-size:.68rem;">{{ \Carbon\Carbon::parse($r->hired)->format('M d') }} &middot; {{ $r->dept }}</span>
+                    </div>
+                @empty<div class="empty">No new hires in the last 30 days.</div>@endforelse
+            </div>
+        </div>
+
+        {{-- Leave Utilization --}}
+        <div class="cc-card cc-4">
+            <div class="cc-h"><div class="i"><i class="fa fa-calendar-alt"></i></div><h6>Leave ({{ now()->format('M') }})</h6></div>
+            <div class="cc-b">
+                <div class="text-center mb-2" style="font-size:.9rem;">
+                    <b style="color:var(--info);font-size:1.2rem;">{{ $d['leaveTotalDays'] }}</b>
+                    <span style="color:var(--slate-light);font-size:.7rem;text-transform:uppercase;"> total days</span>
+                </div>
+                @forelse($d['leaveThisMonth'] as $r)
+                    <div class="bar-row">
+                        <div class="nm">{{ $r->type }}</div>
+                        <div class="bar-track"><div class="bar-fill" style="width:{{ max(5, round($r->cnt/max(1,$d['leaveThisMonth']->max('cnt'))*100)) }}%;background:linear-gradient(90deg,#a5b4fc,#6366f1);"></div></div>
+                        <div class="bar-val">{{ $r->cnt }}</div>
+                    </div>
+                @empty<div class="empty">No leave taken this month.</div>@endforelse
+            </div>
+        </div>
+
+        {{-- Document Compliance Alerts --}}
+        <div class="cc-card cc-4">
+            <div class="cc-h"><div class="i"><i class="fa fa-file-shield"></i></div><h6>Compliance Alerts</h6></div>
+            <div class="cc-b" style="max-height:200px;overflow:auto;">
+                @if($d['expiringPassport']->isNotEmpty())
+                    <div class="lgnd mb-2"><i class="fa fa-passport text-danger"></i> <b>Expiring Passports (60d)</b></div>
+                    @foreach($d['expiringPassport'] as $r)
+                        <div class="alert-row"><span class="nm text-capitalize">{{ $r->name }}</span><span class="meta text-danger">{{ \Carbon\Carbon::parse($r->exp)->format('M d, Y') }}</span></div>
+                    @endforeach
+                @endif
+                @if($d['missingDocs']->isNotEmpty())
+                    <div class="lgnd mt-2 mb-2"><i class="fa fa-triangle-exclamation text-warning"></i> <b>Missing Gov't IDs</b></div>
+                    @foreach($d['missingDocs'] as $r)
+                        <div class="alert-row"><span class="nm text-capitalize">{{ $r->name }}</span><span class="meta text-warning">{{ $r->missing }}</span></div>
+                    @endforeach
+                @endif
+                @if($d['expiringPassport']->isEmpty() && $d['missingDocs']->isEmpty())
+                    <div class="empty">All documents in order.</div>
+                @endif
+            </div>
+        </div>
+
         {{-- Quick actions --}}
         <div class="cc-card cc-12">
             <div class="cc-h"><div class="i"><i class="fa fa-bolt"></i></div><h6>Quick Actions</h6></div>
@@ -339,6 +439,12 @@
         function refreshLive() {
             axios.get('/pages/management/hr-dashboard/live').then(({ data }) => {
                 setStat('kpi', data.kpi); setStat('today', data.today); setStat('pend', data.pending);
+                // Refresh OT card
+                if (data.ot) {
+                    const otCard = document.getElementById('otHours'); if (otCard) otCard.textContent = data.ot.hours;
+                    const otCost = document.getElementById('otCost'); if (otCost) otCost.innerHTML = '&#8369;' + data.ot.cost;
+                    const otCount = document.getElementById('otCount'); if (otCount) otCount.textContent = data.ot.count;
+                }
                 document.getElementById('whoInBadge').textContent = data.whoIn.count + ' in';
                 const box = document.getElementById('whoInList');
                 box.innerHTML = data.whoIn.list.length

@@ -17,19 +17,24 @@ class EmployeeRoleController extends Controller
     {
     }
 
-    public function index() 
+    public function index()
     {
 
-        $employees = User::orderBy('lname')->get();
-        $roles = Role::all();
-        $users = User::with('roles')->orderBy('lname')->get();
+        $employees = User::with('empDetail.department')->orderBy('lname')->get();
+        $roles = Role::orderBy('name')->get();
+        $users = User::with(['roles', 'empDetail.department'])->orderBy('lname')->get();
 
         return view('pages.management.accessrights', compact('employees', 'roles', 'users'));
     }
 
     public function create_update(Request $request)
-    {   
-        $response = $this->roleServices->assignRoleToEmployee($request->role_id, $request->employee_id);
+    {
+        // Accept both single values and arrays so the new multi-select UI
+        // and any legacy single-assign callers keep working.
+        $roleIds     = (array) $request->input('role_id', []);
+        $employeeIds = (array) $request->input('employee_id', []);
+
+        $response = $this->roleServices->assignRolesToEmployees($roleIds, $employeeIds);
 
         return redirect()->back()->with($response['status'], $response['message']);
     }

@@ -70,4 +70,62 @@ class RoleServices
             'message' => 'Role assigned successfully.'
         ];
     }
+
+    /**
+     * Assign one or more roles to one or more employees in a single action.
+     *
+     * @param  array<int>  $roleIds
+     * @param  array<int>  $employeeIds
+     */
+    public function assignRolesToEmployees(
+        array $roleIds,
+        array $employeeIds
+    ): array
+    {
+        $roleIds     = array_values(array_unique(array_filter($roleIds)));
+        $employeeIds = array_values(array_unique(array_filter($employeeIds)));
+
+        if (empty($roleIds) || empty($employeeIds)) {
+            return [
+                'status'  => 'error',
+                'message' => 'Please select at least one employee and one role.',
+            ];
+        }
+
+        $roleNames = Role::whereIn('id', $roleIds)->pluck('name')->all();
+        if (empty($roleNames)) {
+            return [
+                'status'  => 'error',
+                'message' => 'Selected role(s) not found.',
+            ];
+        }
+
+        $employees = User::whereIn('id', $employeeIds)->get();
+        if ($employees->isEmpty()) {
+            return [
+                'status'  => 'error',
+                'message' => 'Selected employee(s) not found.',
+            ];
+        }
+
+        $assignments = 0;
+        foreach ($employees as $employee) {
+            foreach ($roleNames as $roleName) {
+                if (! $employee->hasRole($roleName)) {
+                    $employee->assignRole($roleName);
+                    $assignments++;
+                }
+            }
+        }
+
+        $empCount  = $employees->count();
+        $roleCount = count($roleNames);
+
+        return [
+            'status'  => 'success',
+            'message' => $assignments > 0
+                ? "Assigned {$roleCount} role(s) to {$empCount} employee(s)."
+                : 'No changes — selected employee(s) already had those role(s).',
+        ];
+    }
 }

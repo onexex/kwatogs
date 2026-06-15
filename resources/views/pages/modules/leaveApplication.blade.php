@@ -4,7 +4,7 @@
 @section('content')
 
 <style>
-    /* ── Design tokens (shared with Edit Employee) ──────────────── */
+    /* ── Design tokens (shared with Edit Employee / Attendance Viewer) ── */
     :root {
         --teal:         #008080;
         --teal-dark:    #006666;
@@ -24,60 +24,47 @@
         --shadow-card:  0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
     }
 
-    /* ── Page shell ──────────────────────────────────────────── */
-    .leave-shell {
+    /* ── Page shell (matches Attendance Viewer) ──────────────────── */
+    .home-shell {
         background: var(--bg);
         min-height: 100vh;
+        margin: -1rem -1.5rem;
         padding: 24px 28px 60px;
-        margin: -1.5rem -1.5rem 0;
     }
 
-    /* ── Top header bar ──────────────────────────────────────── */
-    .leave-topbar {
+    /* ── Top header bar (matches Attendance Viewer) ──────────────── */
+    .home-topbar {
         background: var(--surface);
-        border: 1px solid var(--border);
         border-radius: var(--radius-card);
         box-shadow: var(--shadow-card);
-        padding: 16px 22px;
-        margin-bottom: 20px;
+        padding: 16px 24px;
         display: flex;
         align-items: center;
         justify-content: space-between;
         flex-wrap: wrap;
         gap: 12px;
+        margin-bottom: 20px;
     }
-    .leave-topbar .page-title {
+    .home-topbar .page-title {
         font-size: 1.1rem;
         font-weight: 700;
         color: var(--slate);
         margin: 0;
         letter-spacing: -.2px;
+        text-transform: uppercase;
     }
-    .leave-topbar .page-sub {
-        font-size: .78rem;
-        color: var(--muted);
+    .home-topbar .breadcrumb {
+        font-size: 0.75rem;
         margin: 2px 0 0;
+        padding: 0;
+        background: none;
+    }
+    .home-topbar .breadcrumb-item.active {
+        color: var(--teal);
+        font-weight: 600;
     }
 
-    .btn-add-leave {
-        background: var(--teal);
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        padding: 10px 20px;
-        font-size: 0.82rem;
-        font-weight: 700;
-        letter-spacing: .3px;
-        cursor: pointer;
-        box-shadow: 0 4px 14px rgba(0,128,128,.25);
-        transition: all .2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .btn-add-leave:hover { background: var(--teal-dark); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,128,128,.35); }
-
-    /* ── Section card ────────────────────────────────────────── */
+    /* ── Section card ───────────────────────────────────────────── */
     .sc {
         background: var(--surface);
         border-radius: var(--radius-card);
@@ -89,7 +76,6 @@
     .sc-head {
         display: flex;
         align-items: center;
-        justify-content: space-between;
         gap: 10px;
         padding: 14px 22px;
         border-bottom: 1px solid var(--border);
@@ -130,20 +116,33 @@
         justify-content: center;
         cursor: pointer;
         transition: all .15s;
+        margin-left: auto;
     }
     .btn-refresh:hover { background: var(--teal-light); border-color: var(--teal-mid); }
 
-    /* ── Filter bar ──────────────────────────────────────────── */
-    .filter-bar {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
+    /* ── Standard button styles (matches Attendance Viewer) ─────── */
+    .btn-teal {
+        background: var(--teal);
+        border-color: var(--teal);
+        color: #fff;
     }
-    .filter-bar .field-label { margin-bottom: 0; white-space: nowrap; }
-    .filter-bar .form-control { width: auto; }
+    .btn-teal:hover {
+        background: var(--teal-dark);
+        border-color: var(--teal-dark);
+        color: #fff;
+    }
+    .btn-outline-teal {
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        color: var(--slate);
+    }
+    .btn-outline-teal:hover {
+        border-color: var(--teal);
+        color: var(--teal);
+        background: var(--teal-light);
+    }
 
-    /* ── Field helpers ───────────────────────────────────────── */
+    /* ── Field helpers ──────────────────────────────────────────── */
     .field-label {
         font-size: 0.7rem;
         font-weight: 700;
@@ -190,7 +189,7 @@
         margin-top: 3px;
     }
 
-    /* ── Sub-section divider ─────────────────────────────────── */
+    /* ── Sub-section divider ────────────────────────────────────── */
     .sub-divider {
         display: flex;
         align-items: center;
@@ -212,7 +211,7 @@
         background: var(--border);
     }
 
-    /* ── Leave Credits highlight box ─────────────────────────── */
+    /* ── Leave Credits highlight box ────────────────────────────── */
     .credit-box {
         border: 1px solid var(--teal);
         background: var(--teal-light);
@@ -227,24 +226,55 @@
         border-color: var(--teal-mid);
     }
 
-    /* ── Table styling ───────────────────────────────────────── */
-    .leave-table thead th {
+    /* ── Table styling (matches Attendance Viewer) ──────────────── */
+    .table-sticky-header thead th {
+        position: sticky !important;
+        top: 0;
+        background-color: #fafbfc;
+        z-index: 10;
         font-size: 0.7rem;
-        font-weight: 700;
-        color: var(--slate-light);
         text-transform: uppercase;
-        letter-spacing: .4px;
+        letter-spacing: 0.5px;
+        color: var(--slate-light);
         border-bottom: 2px solid var(--border);
-        white-space: nowrap;
     }
-    .leave-table tbody td {
-        font-size: 0.83rem;
-        color: var(--slate);
+    .table tbody td {
+        font-size: 0.8rem;
         vertical-align: middle;
     }
-    .leave-table tbody tr:hover { background: var(--teal-light); }
+    .table-hover tbody tr:hover {
+        background-color: var(--teal-light);
+        transition: background-color 0.2s ease;
+    }
 
-    /* ── Modal styling ───────────────────────────────────────── */
+    /* ── Soft badge (matches Attendance Viewer) ─────────────────── */
+    .badge-soft-primary {
+        background-color: rgba(0, 128, 128, 0.1);
+        color: var(--teal);
+        border: 1px solid rgba(0, 128, 128, 0.2);
+    }
+    .badge-soft-success {
+        background-color: rgba(16, 185, 129, 0.1);
+        color: var(--success);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+    .badge-soft-danger {
+        background-color: rgba(239, 68, 68, 0.1);
+        color: var(--danger);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+    .badge-soft-warning {
+        background-color: rgba(245, 158, 11, 0.1);
+        color: #92400e;
+        border: 1px solid rgba(245, 158, 11, 0.25);
+    }
+    .badge-soft-info {
+        background-color: rgba(6, 182, 212, 0.1);
+        color: #0e7490;
+        border: 1px solid rgba(6, 182, 212, 0.2);
+    }
+
+    /* ── Modal styling ──────────────────────────────────────────── */
     #mdlLeaveApp .modal-content {
         border-radius: var(--radius-card);
         border: none;
@@ -263,47 +293,55 @@
         border-top: 1px solid var(--border);
     }
 
-    .btn-submit-leave {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        color: #fff;
-        border: none;
-        border-radius: 10px;
-        padding: 10px 26px;
-        font-size: 0.82rem;
-        font-weight: 700;
-        letter-spacing: .4px;
-        text-transform: uppercase;
-        cursor: pointer;
-        box-shadow: 0 4px 14px rgba(245,158,11,.3);
-        transition: all .2s;
+    /* ── Input group (matches Attendance Viewer) ────────────────── */
+    .input-group-text {
+        background: #fafbfc;
+        border: 1.5px solid var(--border);
+        color: var(--muted);
+        font-size: 0.75rem;
     }
-    .btn-submit-leave:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(245,158,11,.4); }
 </style>
 
-<div class="leave-shell">
+<div class="home-shell">
 
-    {{-- ── Top header ── --}}
-    <div class="leave-topbar">
+    {{-- ── Top header with breadcrumb (matches Attendance Viewer) ── --}}
+    <div class="home-topbar">
         <div>
-            <p class="page-title">Automated Leave Application</p>
-            <p class="page-sub">File and track your leave requests</p>
+            <h4 class="page-title">Leave Application</h4>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item text-muted">Modules</li>
+                    <li class="breadcrumb-item active fw-semibold" aria-current="page">Leave Application</li>
+                </ol>
+            </nav>
         </div>
-        <button class="btn-add-leave" name="btnCreateLeaveModal" id="btnCreateLeaveModal" data-bs-toggle="modal" data-bs-target="#mdlLeaveApp">
-            <i class="fa fa-plus"></i> Leave Application Form
+        <button class="btn btn-teal rounded-pill px-4 fw-bold shadow-sm" name="btnCreateLeaveModal" id="btnCreateLeaveModal" data-bs-toggle="modal" data-bs-target="#mdlLeaveApp">
+            <i class="fa fa-plus me-2"></i> Leave Application Form
         </button>
     </div>
 
-    {{-- ── Filters ── --}}
+    {{-- ── Search / filter card (matches Attendance Viewer) ── --}}
     <div class="sc">
-        <div class="sc-body" style="padding: 16px 22px;">
-            <div class="filter-bar">
-                <div>
+        <div class="sc-head">
+            <div class="sc-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+            <h5 class="sc-title">Search Filters</h5>
+        </div>
+        <div class="sc-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-lg-4 col-md-6">
                     <label class="field-label">From</label>
-                    <input type="date" class="form-control">
+                    <input type="date" class="form-control" id="filterDateFrom">
                 </div>
-                <div>
+                <div class="col-lg-4 col-md-6">
                     <label class="field-label">To</label>
-                    <input type="date" class="form-control">
+                    <input type="date" class="form-control" id="filterDateTo">
+                </div>
+                <div class="col-lg-4 col-md-12 text-end">
+                    <div class="d-flex gap-2 justify-content-lg-end">
+                        <button type="button" id="btnRefreshFilter" class="btn btn-outline-teal rounded-pill px-4 fw-bold flex-fill flex-lg-grow-0">
+                            <i class="fa-solid fa-arrows-rotate me-2"></i>Refresh
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -320,12 +358,12 @@
                 <i class="fa fa-refresh fa-sm"></i>
             </button>
         </div>
-        <div class="sc-body">
-            <div class="table-responsive">
-                <table class="table table-hover leave-table">
+        <div class="sc-body" style="padding:0;">
+            <div class="table-responsive" style="max-height: 65vh; overflow-y: auto;">
+                <table class="table table-hover align-middle mb-0 table-sticky-header" id="leaveTable">
                     <thead>
                         <tr>
-                            <th scope="col">Leave Type</th>
+                            <th scope="col" class="ps-4">Leave Type</th>
                             <th scope="col">Filing Date</th>
                             <th scope="col">Date From</th>
                             <th scope="col">Date To</th>
@@ -333,7 +371,7 @@
                             <th scope="col">Purpose</th>
                             <th scope="col">Leave Kind</th>
                             <th scope="col">Status</th>
-                            <th scope="col">Delete</th>
+                            <th scope="col" class="pe-4">Delete</th>
                         </tr>
                     </thead>
                     <tbody id="tblLeaveApp">
@@ -438,7 +476,7 @@
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button id="btnSaveLeave" type="button" class="btn-submit-leave">Submit</button>
+                    <button id="btnSaveLeave" type="button" class="btn btn-teal rounded-pill px-4 fw-bold shadow-sm">Submit</button>
                 </div>
             </div>
         </div>
@@ -593,22 +631,22 @@
                     let status = '';
 
                     if (leave.status === 'APPROVED') {
-                        status = `<span class="badge bg-success">APPROVED</span>`;
+                        status = `<span class="badge badge-soft-success rounded-pill px-3 py-2 fw-semibold">APPROVED</span>`;
                     } else if (leave.status === 'DISAPPROVED') {
-                        status = `<span class="badge bg-danger">DISAPPROVED</span>`;
+                        status = `<span class="badge badge-soft-danger rounded-pill px-3 py-2 fw-semibold">DISAPPROVED</span>`;
                     } else if (leave.status === 'FORAPPROVAL') {
-                        status = `<span class="badge bg-warning text-dark p-2">FOR APPROVAL</span>`;
+                        status = `<span class="badge badge-soft-warning rounded-pill px-3 py-2 fw-semibold">FOR APPROVAL</span>`;
                     }  else if (leave.status === 'APPROVEDBYCFO') {
-                        status = `<span class="badge bg-info p-2">APPROVED BY CFO</span>`;
+                        status = `<span class="badge badge-soft-info rounded-pill px-3 py-2 fw-semibold">APPROVED BY CFO</span>`;
                     }
 
                     if (leave.status === 'FORAPPROVAL') {
-                        buttonAction = `<button class="btn btn-danger btn-sm bg-danger text-white delete-leave" data-leave-id="${leave.id}">Delete</button>`;
+                        buttonAction = `<button class="btn btn-outline-danger btn-sm rounded-pill px-3 delete-leave" data-leave-id="${leave.id}">Delete</button>`;
                     }
 
                     const row = `
                         <tr>
-                            <td>${leave.leave_type.type_leave}</td>
+                            <td class="ps-4">${leave.leave_type.type_leave}</td>
                             <td>${new Date(leave.created_at).toLocaleDateString()}</td>
                             <td>${new Date(leave.start_date).toLocaleDateString()}</td>
                             <td>${new Date(leave.end_date).toLocaleDateString()}</td>
@@ -618,7 +656,7 @@
                             <td>
                                 ${status}
                             </td>
-                            <td>
+                            <td class="pe-4">
                                 ${buttonAction}
                             </td>
                         </tr>

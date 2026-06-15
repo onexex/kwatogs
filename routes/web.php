@@ -351,6 +351,7 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     Route::get('/task/search',[reportAttendanceCtrl::class,'searchTask']);
     Route::get('/reports/employee-information',[EmployeeInformationReportController::class, 'index'])->name('employee.report.index');
     Route::get('/reports/employee-information/export',[EmployeeInformationReportController::class, 'export'])->name('employee.report.export');
+    Route::get('/reports/employee-information/print',[EmployeeInformationReportController::class, 'print'])->name('employee.report.print');
     Route::get('/reports/overtime', [OvertimeReportController::class, 'index'])->name('reports.overtime.index')->middleware('can:overtimereport');
     Route::get('/reports/overtime/fetch', [OvertimeReportController::class, 'fetch'])->name('reports.overtime.fetch')->middleware('can:overtimereport');
     Route::get('/reports/overtime/print', [OvertimeReportController::class, 'print'])->name('reports.overtime.print')->middleware('can:overtimereport');

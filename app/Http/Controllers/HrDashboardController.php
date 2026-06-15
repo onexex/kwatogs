@@ -58,6 +58,76 @@ class HrDashboardController extends Controller
         $d['scheduled'] = $scheduledToday;
         $d['absent']    = max(0, $scheduledToday - $d['present'] - $d['onLeave'] - $d['onOb']);
 
+        // ── Attendance Rate ────────────────────────────────────────────
+        $start30 = Carbon::today()->subDays(29)->toDateString();
+        $sch30 = DB::table('employee_schedules')->whereDate('sched_start_date','>=',$start30)->whereDate('sched_start_date','<=',$today)->count();
+        $pres30 = DB::table('attendance_summaries')->whereDate('attendance_date','>=',$start30)->where('total_hours','>',0)->distinct('employee_id','attendance_date')->count('employee_id');
+        $d['attendanceRate'] = $sch30 > 0 ? round($pres30 / $sch30 * 100) : 0;
+
+        // ── Overtime Summary (current month) ────────────────────────────
+        $monthStart = Carbon::today()->startOfMonth()->toDateString();
+        $d['otHours']  = round((float) Overtime::whereDate('date_from','>=',$monthStart)->sum('total_hrs'), 1);
+        $d['otCost']   = round((float) Overtime::whereDate('date_from','>=',$monthStart)->sum('total_pay'), 2);
+        $d['otCount']  = Overtime::whereDate('date_from','>=',$monthStart)->count();
+
+        // ── Gender diversity ────────────────────────────────────────────
+        $d['male']   = DB::table('emp_infos')->where('gender','Male')->count();
+        $d['female'] = DB::table('emp_infos')->where('gender','Female')->count();
+        $d['otherG'] = max(0, DB::table('emp_infos')->count() - $d['male'] - $d['female']);
+        $d['malePct'] = $d['total'] > 0 ? round($d['male'] / $d['total'] * 100) : 0;
+
+        // ── Employee turnover (last 6 months) ───────────────────────────
+        $turnover = [];
+        for ($m = 5; $m >= 0; $m--) {
+            $month = Carbon::today()->subMonths($m);
+            $moStart = $month->copy()->startOfMonth()->toDateString();
+            $moEnd   = $month->copy()->endOfMonth()->toDateString();
+            $hired   = empDetail::whereBetween('empDateHired', [$moStart, $moEnd])->count();
+            $resigned = empDetail::whereBetween('empDateResigned', [$moStart, $moEnd])->count();
+            $net = $hired - $resigned;
+            $turnover[] = ['month' => $month->format('M'), 'hired' => $hired, 'resigned' => $resigned, 'net' => $net];
+        }
+        $d['turnover'] = $turnover;
+
+        // ── Recent new hires (last 30 days) ─────────────────────────────
+        $d['newHires'] = DB::table('emp_details as e')
+            ->join('users as u', 'u.empID', '=', 'e.empID')
+            ->whereDate('e.empDateHired', '>=', $start30)->whereDate('e.empDateHired', '<=', $today)
+            ->selectRaw("TRIM(CONCAT(u.lname,', ',u.fname)) as name, e.empDateHired as hired, COALESCE((SELECT dep_name FROM departments WHERE id=e.empDepID),'—') as dept")
+            ->orderByDesc('e.empDateHired')->limit(8)->get();
+
+        // ── Document / compliance alerts ────────────────────────────────
+        $d['expiringPassport'] = DB::table('emp_details as e')
+            ->join('users as u', 'u.empID', '=', 'e.empID')
+            ->whereNotNull('e.empPassportExpDate')->whereDate('e.empPassportExpDate', '>=', $today)
+            ->whereDate('e.empPassportExpDate', '<=', Carbon::today()->addDays(60)->toDateString())
+            ->selectRaw("TRIM(CONCAT(u.lname,', ',u.fname)) as name, e.empPassportExpDate as exp")
+            ->orderBy('e.empPassportExpDate')->limit(6)->get();
+
+        $d['missingDocs'] = DB::table('emp_details as e')
+            ->join('users as u', 'u.empID', '=', 'e.empID')
+            ->where('e.empStatus', '1')
+            ->where(function ($q) {
+                $q->whereNull('e.empSSS')->orWhere('e.empSSS','')
+                  ->orWhereNull('e.empPhilhealth')->orWhere('e.empPhilhealth','')
+                  ->orWhereNull('e.empPagibig')->orWhere('e.empPagibig','')
+                  ->orWhereNull('e.empTIN')->orWhere('e.empTIN','');
+            })
+            ->selectRaw("TRIM(CONCAT(u.lname,', ',u.fname)) as name, 
+                CASE WHEN e.empSSS IS NULL OR e.empSSS='' THEN 'SSS' 
+                     WHEN e.empPhilhealth IS NULL OR e.empPhilhealth='' THEN 'PhilHealth'
+                     WHEN e.empPagibig IS NULL OR e.empPagibig='' THEN 'Pag-IBIG'
+                     ELSE 'TIN' END as missing")
+            ->limit(10)->get();
+
+        // ── Leave utilization (current month) ───────────────────────────
+        $d['leaveThisMonth'] = DB::table('leaves as l')
+            ->join('leavetypes as lt', 'lt.id', '=', 'l.leave_type')
+            ->whereDate('l.start_date', '>=', $monthStart)
+            ->selectRaw("lt.type_leave as type, COUNT(*) as cnt, SUM(l.total_hrs) as hrs")
+            ->groupBy('lt.type_leave')->orderByDesc('cnt')->limit(6)->get();
+        $d['leaveTotalDays'] = round(Leave::whereDate('start_date', '>=', $monthStart)->sum('total_hrs') / 8, 1);
+
         // ── Payroll snapshot ───────────────────────────────────────────
         $latest = Payroll::orderByDesc('pay_date')->first();
         $d['payDate']     = $latest->pay_date ?? null;
@@ -176,13 +246,26 @@ class HrDashboardController extends Controller
         $tot       = DB::table('attendance_summaries')->whereDate('attendance_date', '>=', $start30)->count();
         $lateD     = DB::table('attendance_summaries')->whereDate('attendance_date', '>=', $start30)->where('mins_late', '>', 0)->count();
         $onTime    = $tot > 0 ? round(($tot - $lateD) / $tot * 100) : 0;
-        $who       = $this->whoIn()->getData(true);
+
+        // Live: attendance rate
+        $sch30 = DB::table('employee_schedules')->whereDate('sched_start_date','>=',$start30)->whereDate('sched_start_date','<=',$today)->count();
+        $pres30 = DB::table('attendance_summaries')->whereDate('attendance_date','>=',$start30)->where('total_hours','>',0)->distinct('employee_id','attendance_date')->count('employee_id');
+        $attRate = $sch30 > 0 ? round($pres30 / $sch30 * 100) : 0;
+
+        // Live: OT summary
+        $monthStart = Carbon::today()->startOfMonth()->toDateString();
+        $otHours = round((float) Overtime::whereDate('date_from','>=',$monthStart)->sum('total_hrs'), 1);
+        $otCost  = round((float) Overtime::whereDate('date_from','>=',$monthStart)->sum('total_pay'), 2);
+        $otCount = Overtime::whereDate('date_from','>=',$monthStart)->count();
+
+        $who = $this->whoIn()->getData(true);
 
         return response()->json([
-            'kpi'     => ['active' => $active, 'present' => $present, 'absent' => $absent, 'leaveob' => $onLeave + $onOb, 'pendTotal' => $pendLeave + $pendOt + $pendSched, 'ontime' => $onTime . '%'],
-            'today'   => ['present' => $present, 'absent' => $absent, 'onLeave' => $onLeave, 'onOb' => $onOb, 'late' => $late, 'scheduled' => $scheduled],
-            'pending' => ['pendLeave' => $pendLeave, 'pendOt' => $pendOt, 'pendSched' => $pendSched],
-            'whoIn'   => $who,
+            'kpi'      => ['active' => $active, 'present' => $present, 'absent' => $absent, 'leaveob' => $onLeave + $onOb, 'pendTotal' => $pendLeave + $pendOt + $pendSched, 'ontime' => $onTime . '%', 'attendanceRate' => $attRate . '%'],
+            'today'    => ['present' => $present, 'absent' => $absent, 'onLeave' => $onLeave, 'onOb' => $onOb, 'late' => $late, 'scheduled' => $scheduled],
+            'pending'  => ['pendLeave' => $pendLeave, 'pendOt' => $pendOt, 'pendSched' => $pendSched],
+            'ot'       => ['hours' => $otHours, 'cost' => number_format($otCost, 2), 'count' => $otCount],
+            'whoIn'    => $who,
         ]);
     }
 
