@@ -22,9 +22,10 @@ class HrDashboardController extends Controller
         $d = [];
 
         // ── Workforce ──────────────────────────────────────────────────
-        $d['total']    = empDetail::count();
-        $d['active']   = empDetail::where('empStatus', '1')->count();
-        $d['resigned'] = max(0, $d['total'] - $d['active']);
+        $d['total']         = empDetail::count();
+        $d['active']        = empDetail::where('empStatus', '1')->count();   // Employed
+        $d['resigned']      = empDetail::where('empStatus', '0')->count();   // Resigned
+        $d['endOfContract'] = empDetail::where('empStatus', '2')->count();   // End of Contract
         $d['cash']     = empDetail::where('empPayrollType', 'CASH')->count();
         $d['card']     = empDetail::where('empPayrollType', 'CARD')->count();
 
@@ -147,6 +148,7 @@ class HrDashboardController extends Controller
 
         $d['regularize'] = DB::table('emp_details as e')
             ->join('users as u', 'u.empID', '=', 'e.empID')
+            ->where('e.empStatus', '1') // only active (Employed) staff can be regularized
             ->whereNotNull('e.empDateRegular')
             ->whereDate('e.empDateRegular', '>=', $today)
             ->whereDate('e.empDateRegular', '<=', Carbon::today()->addDays(14)->toDateString())

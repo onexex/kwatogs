@@ -110,11 +110,21 @@ class RoleServices
 
         $assignments = 0;
         foreach ($employees as $employee) {
+            $newlyAssigned = [];
             foreach ($roleNames as $roleName) {
                 if (! $employee->hasRole($roleName)) {
                     $employee->assignRole($roleName);
+                    $newlyAssigned[] = $roleName;
                     $assignments++;
                 }
+            }
+
+            // Audit each employee that actually received new role(s). Role assignment
+            // writes to a pivot table and does not trigger model events, so we log it manually.
+            if (! empty($newlyAssigned)) {
+                \App\Models\AuditLog::record('role-assigned', 'User', $employee->id, [
+                    'roles' => ['from' => '—', 'to' => implode(', ', $newlyAssigned)],
+                ]);
             }
         }
 

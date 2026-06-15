@@ -44,6 +44,10 @@ class EmployeeRoleController extends Controller
         $role = Role::where('name', $roleName)->firstOrFail();
         $user->removeRole($role);
 
+        \App\Models\AuditLog::record('role-removed', 'User', $user->id, [
+            'roles' => ['from' => $role->name, 'to' => '—'],
+        ]);
+
         return redirect()->back()->with('success', 'Role removed successfully.');
     }
 }

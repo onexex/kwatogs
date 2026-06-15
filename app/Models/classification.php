@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class classification extends Model
 {
     use HasFactory;
+    use \App\Traits\Auditable;
     protected $table = 'classifications';
     protected $primaryKey = 'id ';
     public $timestamps = true;   

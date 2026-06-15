@@ -100,7 +100,7 @@
                     <td>{{ $employee->department?->dep_name ?? '—' }}</td>
                     <td>{{ $employee->position?->pos_desc ?? '—' }}</td>
                     <td>{{ trim(($employee->immediateSupervisor?->fname ?? '') . ' ' . ($employee->immediateSupervisor?->lname ?? '')) }}</td>
-                    <td>{{ $employee->empStatus == '1' ? 'Employed' : 'Resigned' }}</td>
+                    <td>{{ ['1' => 'Employed', '0' => 'Resigned', '2' => 'End Of Contract'][(string) $employee->empStatus] ?? 'Resigned' }}</td>
                     <td>{{ $employee->empDateHired ? $employee->empDateHired->format('M d, Y') : '' }}</td>
                     <td>{{ $employee->empDateRegular ? $employee->empDateRegular->format('M d, Y') : '' }}</td>
                     <td>{{ number_format($employee->empBasic ?? 0, 2) }}</td>

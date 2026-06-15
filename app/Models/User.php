@@ -14,6 +14,7 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
     use HasRoles;
+    use \App\Traits\Auditable;
 
     /**
      * The attributes that are mass assignable.

@@ -875,8 +875,9 @@
                                         <label for="selStatus" class="field-label">Status <span class="req">*</span></label>
                                         <select class="form-select" name="emp_status" id="selStatus">
                                             <option value="">— Select Status —</option>
-                                            <option {{ $user->empDetail->empStatus == 1 ? 'selected' : '' }} value="1">Employed</option>
-                                            <option {{ $user->empDetail->empStatus == 0 ? 'selected' : '' }} value="0">Resigned</option>
+                                            <option {{ (string) $user->empDetail->empStatus === '1' ? 'selected' : '' }} value="1">Employed</option>
+                                            <option {{ (string) $user->empDetail->empStatus === '0' ? 'selected' : '' }} value="0">Resigned</option>
+                                            <option {{ (string) $user->empDetail->empStatus === '2' ? 'selected' : '' }} value="2">End Of Contract</option>
                                         </select>
                                         <span class="text-danger error-text emp_status_error"></span>
                                     </div>

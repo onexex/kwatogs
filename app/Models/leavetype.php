@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class leavetype extends Model
 {
     use HasFactory;
+    use \App\Traits\Auditable;
     protected $table = 'leavetypes';
     protected $primaryKey = 'id';
     public $timestamps = true;

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class joblevel extends Model
 {
     use HasFactory;
+    use \App\Traits\Auditable;
     protected $table = 'joblevels';
     protected $primaryKey = 'id ';
     public $timestamps = true;

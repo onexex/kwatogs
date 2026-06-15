@@ -245,7 +245,7 @@
                             <img id="view_img" src="" class="profile-pic-large" alt="Profile">
                         </div>
                         <div class="col">
-                            <span class="badge text-teal mb-2" id="view_status" style="background: white;">STATUS</span>
+                            <span class="badge bg-secondary text-white mb-2" id="view_status">STATUS</span>
                             <h1 class="fw-bold mb-1 text-capitalize" id="view_name">---</h1>
                             <p class="mb-0 opacity-75 fs-5" id="view_job_title">Position | Department</p>
                         </div>
@@ -374,6 +374,6 @@
     </div>
 </div>
 
-<script src="{{ asset('js/modules/e201_admin.js') }}" defer></script>
+<script src="{{ asset('js/modules/e201_admin.js') }}?v={{ @filemtime(public_path('js/modules/e201_admin.js')) ?: time() }}" defer></script>
  
 @endsection

@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Models\AuditLog;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -27,7 +30,15 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        // Audit authentication events. Failed logins are recorded directly in
+        // loginCtrl because this app validates credentials manually (no Auth::attempt).
+        Event::listen(Login::class, function (Login $event) {
+            AuditLog::record('login', 'User', optional($event->user)->getAuthIdentifier());
+        });
+
+        Event::listen(Logout::class, function (Logout $event) {
+            AuditLog::record('logout', 'User', optional($event->user)->getAuthIdentifier());
+        });
     }
 
     /**

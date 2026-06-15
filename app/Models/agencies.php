@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class agencies extends Model
 {
     use HasFactory;
+    use \App\Traits\Auditable;
     protected $table = "agencies";
     protected $primaryKey = "id";
     public $timestamps = true;

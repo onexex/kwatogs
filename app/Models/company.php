@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Company extends Model // Capitalized class name to match Laravel PSR standards
 {
     use HasFactory;
+    use \App\Traits\Auditable;
     
     protected $table = 'companies';
     protected $primaryKey = 'id'; // Fixed the trailing space here

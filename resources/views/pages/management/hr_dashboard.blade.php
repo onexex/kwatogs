@@ -234,6 +234,7 @@
                         <hr class="my-2" style="opacity:.3;">
                         <div class="lgnd"><span class="dot" style="background:var(--success);"></span> Active <b class="ms-auto">{{ $d['active'] }}</b></div>
                         <div class="lgnd"><span class="dot" style="background:var(--danger);"></span> Resigned <b class="ms-auto">{{ $d['resigned'] }}</b></div>
+                        <div class="lgnd"><span class="dot" style="background:#f59e0b;"></span> End of Contract <b class="ms-auto">{{ $d['endOfContract'] }}</b></div>
                     </div>
                 </div>
             </div>

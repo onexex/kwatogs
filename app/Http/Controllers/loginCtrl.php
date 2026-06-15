@@ -58,6 +58,9 @@ class loginCtrl extends Controller
         if(!$userinfo || !Hash::check($request->password, $userinfo->password)){
             // Same response & message whether the email exists or not.
             RateLimiter::hit($throttleKey, 60); // 1 minute decay per failed attempt
+            \App\Models\AuditLog::record('login-failed', 'User', null, [
+                'email' => ['from' => '', 'to' => $request->username],
+            ]);
             return response()->json(['status'=>202,'msg'=>self::INVALID_CREDENTIALS_MSG]);
         }
 

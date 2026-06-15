@@ -24,6 +24,7 @@
     .au-table tbody td { font-size:.82rem; color:var(--slate); vertical-align:top; padding:11px 16px; border-bottom:1px solid #f1f5f9; }
     .act { font-size:.62rem; font-weight:800; padding:3px 9px; border-radius:999px; text-transform:uppercase; }
     .act-created { background:#dcfce7; color:#166534; } .act-updated { background:#dbeafe; color:#1e40af; } .act-deleted { background:#fee2e2; color:#991b1b; }
+    .act-login { background:#e0f2fe; color:#075985; } .act-logout { background:#f1f5f9; color:#475569; } .act-failed { background:#fef3c7; color:#92400e; } .act-role { background:#ede9fe; color:#5b21b6; }
     .chg { font-size:.74rem; color:var(--slate-light); line-height:1.6; }
     .chg b { color:var(--slate); } .chg .from { color:#b91c1c; } .chg .to { color:#047857; }
     .chip { font-size:.7rem; background:#eef2f6; color:var(--slate); border-radius:6px; padding:2px 8px; font-weight:700; }
@@ -32,7 +33,11 @@
 </style>
 
 @php
-    $actBadge = ['created'=>'act-created','updated'=>'act-updated','deleted'=>'act-deleted'];
+    $actBadge = [
+        'created'=>'act-created','updated'=>'act-updated','deleted'=>'act-deleted',
+        'login'=>'act-login','logout'=>'act-logout','login-failed'=>'act-failed',
+        'role-assigned'=>'act-role','role-removed'=>'act-role',
+    ];
 @endphp
 
 <div class="au-shell">
@@ -53,7 +58,7 @@
                 </div>
                 <div class="col-6 col-md-2"><label class="lbl">Action</label>
                     <select name="action" class="form-select form-select-sm">
-                        @foreach(['all'=>'All','created'=>'Created','updated'=>'Updated','deleted'=>'Deleted'] as $k=>$v)
+                        @foreach(['all'=>'All','created'=>'Created','updated'=>'Updated','deleted'=>'Deleted','login'=>'Login','logout'=>'Logout','login-failed'=>'Failed Login','role-assigned'=>'Role Assigned','role-removed'=>'Role Removed'] as $k=>$v)
                             <option value="{{ $k }}" @selected(request('action',' ')===$k)>{{ $v }}</option>
                         @endforeach
                     </select>
@@ -90,7 +95,7 @@
                             @php $c = $log->changes; @endphp
                             @if($log->action === 'deleted')
                                 <span class="text-muted">Record removed.</span>
-                            @elseif($log->action === 'updated' && is_array($c))
+                            @elseif(in_array($log->action, ['updated','role-assigned','role-removed','login-failed']) && is_array($c))
                                 <div class="chg">
                                     @foreach($c as $field => $vals)
                                         <div><b>{{ \Illuminate\Support\Str::headline($field) }}:</b>

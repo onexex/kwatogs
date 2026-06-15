@@ -296,6 +296,9 @@ class registerCtrl extends Controller
             DB::table('emp_details')->insert($valueDetails);
             DB::table('access')->insert($valuessysaccess);
 
+            // Audit the new employee (inserts via query builder bypass model events).
+            \App\Models\AuditLog::record('created', 'empDetail', $empID, $valueDetails);
+
             if ($request->hasFile('path')) {
                 $imageName = $request->path->getClientOriginalName();
                 $request->path->move('img/profile/', $imageName);
@@ -491,6 +494,13 @@ class registerCtrl extends Controller
 
             $user->education()->delete();
 
+            // Snapshot current values BEFORE updating so we can record before→after
+            // diffs. These tables are written via the query builder, which bypasses
+            // the Auditable model events, so we log the changes manually.
+            $oldUser    = (array) DB::table('users')->where('empID', $request->empID)->first();
+            $oldInfo    = (array) DB::table('emp_infos')->where('empID', $request->empID)->first();
+            $oldDetail  = (array) DB::table('emp_details')->where('empID', $request->empID)->first();
+
             // Insert all data
             DB::table('users')
                 ->where('empID', $request->empID)
@@ -502,6 +512,14 @@ class registerCtrl extends Controller
             DB::table('emp_details')
                 ->where('empID', $request->empID)
                 ->update($valueDetails);
+
+            // Record audit entries (one per table) for whatever actually changed.
+            $userChanges   = \App\Models\AuditLog::diff($oldUser, $valuesUser);
+            $infoChanges   = \App\Models\AuditLog::diff($oldInfo, $valueInfos);
+            $detailChanges = \App\Models\AuditLog::diff($oldDetail, $valueDetails);
+            if (!empty($userChanges))   \App\Models\AuditLog::record('updated', 'User', $request->empID, $userChanges);
+            if (!empty($infoChanges))   \App\Models\AuditLog::record('updated', 'emp_info', $request->empID, $infoChanges);
+            if (!empty($detailChanges)) \App\Models\AuditLog::record('updated', 'empDetail', $request->empID, $detailChanges);
 
             if ($request->hasFile('path')) {
                 $imageName = $request->path->getClientOriginalName();

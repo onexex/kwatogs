@@ -65,16 +65,21 @@ $(document).ready(function() {
     });
 
     function renderDossier(user) {
-        const statusText = user.status == 1 ? 'ACTIVE' : 'INACTIVE';
-        const statusClass = user.status == 1 ? 'bg-success' : 'bg-danger';
-        
+        const detail = user.emp_detail;
+
+        // The badge above the name reflects EMPLOYMENT status:
+        // ACTIVE only when currently Employed (empStatus 1). Resigned (0) and
+        // End Of Contract (2) — or any missing detail — show as INACTIVE.
+        const empStatusVal = detail ? String(detail.empStatus) : '';
+        const isActive = empStatusVal === '1';
+        const statusText = isActive ? 'ACTIVE' : 'INACTIVE';
+        const statusClass = isActive ? 'bg-success' : 'bg-danger';
+
         $('#view_name').text(`${user.lname}, ${user.fname} ${user.mname ?? ''}`);
-        $('#view_status').text(statusText).removeClass('bg-success bg-danger').addClass(statusClass);
+        $('#view_status').text(statusText).removeClass('bg-success bg-danger bg-secondary').addClass(statusClass);
         $('#view_email').text(user.email);
         $('#view_empid_val').text(user.empID);
         $('#editEmployee').attr('href', '/admin/e201/edit/' + user.id);
-
-        const detail = user.emp_detail;
 
         if (detail) {
             const pos = detail.position ? detail.position.pos_desc : 'N/A';
@@ -87,7 +92,8 @@ $(document).ready(function() {
                 : '---';
             
             $('#view_hired').text(hiredDate);
-            $('#view_emp_status').text(detail.empStatus == 1 ? 'Employed' : 'Resigned');
+            const empStatusLabels = { '1': 'Employed', '0': 'Resigned', '2': 'End Of Contract' };
+            $('#view_emp_status').text(empStatusLabels[String(detail.empStatus)] ?? '---');
             $('#view_class').text(detail.classification ? detail.classification.class_desc : '---');
             
             const basic = parseFloat(detail.empBasic || 0);
