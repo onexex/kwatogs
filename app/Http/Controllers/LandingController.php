@@ -41,6 +41,9 @@ class LandingController extends Controller
     private function landingCandidates(): array
     {
         return [
+            // KuBo - Community Platform
+            '/kubo'                             => ['kuboaccess'],
+
             '/pages/modules/registration'        => ['registration', 'enrollemployee'],
 
             // Operations (Workforce)

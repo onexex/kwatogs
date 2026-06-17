@@ -1,0 +1,6 @@
+<?php namespace App\Http\Controllers\KuBo; use App\Http\Controllers\Controller; use Illuminate\Http\JsonResponse; use Illuminate\Http\Request;
+
+class ImageUploadController extends Controller {
+    public function store(Request $r): JsonResponse { $r->validate(['image'=>'required|image|mimes:jpeg,png,jpg,gif,webp|max:10240']); $f=$r->file('image'); $n='kubo_'.time().'_'.uniqid().'.'.$f->getClientOriginalExtension(); $p='file/kubo/'.date('Y/m'); $f->move(public_path($p),$n); $fp=$p.'/'.$n; return response()->json(['success'=>true,'image_path'=>$fp,'url'=>asset($fp)]); }
+    public function storeMultiple(Request $r): JsonResponse { $r->validate(['images'=>'required|array','images.*'=>'required|image|mimes:jpeg,png,jpg,gif,webp|max:10240']); $paths=[]; foreach($r->file('images') as $f){$n='kubo_'.time().'_'.uniqid().'.'.$f->getClientOriginalExtension(); $p='file/kubo/'.date('Y/m'); $f->move(public_path($p),$n); $paths[]=$p.'/'.$n;} return response()->json(['success'=>true,'images'=>$paths,'urls'=>array_map(fn($p)=>asset($p),$paths)]); }
+}

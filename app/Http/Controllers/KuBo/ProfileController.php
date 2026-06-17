@@ -1,0 +1,13 @@
+<?php namespace App\Http\Controllers\KuBo; use App\Http\Controllers\Controller; use App\Models\CommunityPost; use App\Models\CommunityPostReaction; use App\Models\CommunityComment; use App\Models\User; use Illuminate\Http\JsonResponse; use Illuminate\Support\Facades\Auth;
+
+class ProfileController extends Controller {
+    public function ownPosts(): JsonResponse { return $this->posts(Auth::user()); }
+    public function ownPhotos(): JsonResponse { return $this->photos(Auth::user()); }
+    public function ownReposts(): JsonResponse { return $this->reposts(Auth::user()); }
+    public function ownStats(): JsonResponse { return $this->stats(Auth::user()); }
+
+    public function posts(User $user): JsonResponse { $posts = CommunityPost::feed()->where('user_id',$user->empID)->paginate(12); return response()->json(['posts'=>$posts->map(fn($p)=>['id'=>$p->id,'content'=>$p->content,'created_at'=>$p->created_at->diffForHumans(),'images'=>$p->images->map(fn($i)=>['id'=>$i->id,'url'=>asset($i->image_path)]),'reactions'=>['total'=>$p->reactions_count??0],'comments_count'=>$p->comments_count??0]),'has_more'=>$posts->hasMorePages()]); }
+    public function photos(User $user): JsonResponse { $posts = CommunityPost::with('images')->where('user_id',$user->empID)->whereHas('images')->orderBy('created_at','desc')->paginate(12); $all=[]; foreach($posts as $post) foreach($post->images as $img) $all[]=['id'=>$post->id,'image_id'=>$img->id,'url'=>asset($img->image_path),'created_at'=>$post->created_at->diffForHumans()]; return response()->json(['photos'=>$all,'has_more'=>$posts->hasMorePages()]); }
+    public function reposts(User $user): JsonResponse { $ids = $user->communityReposts()->pluck('post_id'); $posts = CommunityPost::feed()->whereIn('id',$ids)->paginate(12); return response()->json(['posts'=>$posts->map(fn($p)=>['id'=>$p->id,'content'=>$p->content,'created_at'=>$p->created_at->diffForHumans(),'user'=>['empID'=>$p->user->empID??'','name'=>$p->user->community_full_name,'avatar'=>$p->user->community_avatar],'images'=>$p->images->map(fn($i)=>['id'=>$i->id,'url'=>asset($i->image_path)]),'reactions'=>['total'=>$p->reactions_count??0],'comments_count'=>$p->comments_count??0]),'has_more'=>$posts->hasMorePages()]); }
+    public function stats(User $user): JsonResponse { return response()->json(['total_posts'=>CommunityPost::where('user_id',$user->empID)->count(),'total_reactions_received'=>CommunityPostReaction::whereIn('post_id',fn($q)=>$q->select('id')->from('community_posts')->where('user_id',$user->empID))->count(),'total_comments'=>CommunityComment::whereIn('post_id',fn($q)=>$q->select('id')->from('community_posts')->where('user_id',$user->empID))->count()]); }
+}

@@ -68,5 +68,7 @@ enum PagePermissionsEnum: string
     case databasebackupcreate = 'Database Backup Create';
     case databasebackuprestore = 'Database Backup Restore';
     case databasebackupdelete = 'Database Backup Delete';
+    case kuboaccess = 'KuBo - Community Access';
+    case kuboadmin = 'KuBo - Admin (Pin/Delete)';
 
 }

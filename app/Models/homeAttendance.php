@@ -64,17 +64,29 @@ class homeAttendance extends Model
     public function calculateNightDiff(Carbon $actualIn, Carbon $actualOut)
     {
         $nightDiffMinutes = 0;
-        
+
         // We start checking from the day of the Clock-In
         $currentDay = $actualIn->copy()->startOfDay();
         // We check until the day of the Clock-Out
         $lastDay = $actualOut->copy()->startOfDay();
 
+        // 🍱 Build the break window (anchored to the shift start date) so we can
+        // exclude any break that falls inside the 10PM–6AM window. Break time is
+        // unpaid, therefore it must NOT be counted as night differential.
+        $breakStart = null;
+        $breakEnd   = null;
+        if ($this->schedule && $this->schedule->break_start && $this->schedule->break_end) {
+            $breakStart = Carbon::parse($actualIn->toDateString() . ' ' . $this->schedule->break_start);
+            $breakEnd   = Carbon::parse($actualIn->toDateString() . ' ' . $this->schedule->break_end);
+            // Handle overnight break (e.g. 11PM–2AM)
+            if ($breakEnd->lt($breakStart)) { $breakEnd->addDay(); }
+        }
+
         while ($currentDay->lte($lastDay)) {
             // Define the Night Window for the current iteration
             // Window: 10 PM (Current Day) to 6 AM (Next Day)
-            $nightStart = $currentDay->copy()->setTime(22, 0); 
-            $nightEnd   = $currentDay->copy()->addDay()->setTime(6, 0); 
+            $nightStart = $currentDay->copy()->setTime(22, 0);
+            $nightEnd   = $currentDay->copy()->addDay()->setTime(6, 0);
 
             // Find the intersection between the Shift and the Night Window
             $intersectStart = $actualIn->gt($nightStart) ? $actualIn : $nightStart;
@@ -82,12 +94,22 @@ class homeAttendance extends Model
 
             if ($intersectEnd->gt($intersectStart)) {
                 $nightDiffMinutes += $intersectEnd->diffInMinutes($intersectStart);
+
+                // 🌙 Deduct the portion of the break that lands inside this
+                // night-window slice (break ∩ night window ∩ worked time).
+                if ($breakStart && $breakEnd) {
+                    $bStart = $breakStart->gt($intersectStart) ? $breakStart : $intersectStart;
+                    $bEnd   = $breakEnd->lt($intersectEnd) ? $breakEnd : $intersectEnd;
+                    if ($bEnd->gt($bStart)) {
+                        $nightDiffMinutes -= $bEnd->diffInMinutes($bStart);
+                    }
+                }
             }
 
             $currentDay->addDay();
         }
 
-        return round($nightDiffMinutes / 60, 2);
+        return round(max($nightDiffMinutes, 0) / 60, 2);
     }
 
     public function updateDailySummary()

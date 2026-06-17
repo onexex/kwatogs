@@ -179,6 +179,15 @@
                 </li>
             @endcan
 
+            @can('kuboaccess')
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->is('kubo*') ? 'active-page' : '' }}" href="{{ route('kubo.feed') }}">
+                        <i class="fas fa-fw fa-users"></i>
+                        <span>KuBo</span>
+                    </a>
+                </li>
+            @endcan
+
             @can('registration')
                 <li class="nav-item">
                     <a class="nav-link {{ request()->is('pages/modules/registration*') ? 'active-page' : '' }}" href="/pages/modules/registration">

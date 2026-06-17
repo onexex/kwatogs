@@ -62,6 +62,17 @@ use App\Http\Controllers\Roles\RolesController;
 use App\Http\Controllers\silCtrl;
 use App\Http\Controllers\sssCtrl;
 use App\Http\Controllers\workTimeCtrl;
+use App\Http\Controllers\KuBo\KuBoController;
+use App\Http\Controllers\KuBo\FeedController;
+use App\Http\Controllers\KuBo\PostController;
+use App\Http\Controllers\KuBo\ReactionController;
+use App\Http\Controllers\KuBo\CommentController;
+use App\Http\Controllers\KuBo\RepostController;
+use App\Http\Controllers\KuBo\NotificationController;
+use App\Http\Controllers\KuBo\ExploreController;
+use App\Http\Controllers\KuBo\ProfileController as KuBoProfileController;
+use App\Http\Controllers\KuBo\HashtagController;
+use App\Http\Controllers\KuBo\ImageUploadController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/auth/login', function () {return view('login.login');})->middleware('throttle:10,1');
@@ -480,6 +491,54 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     Route::post('/registerCtrl/checkEmailAvailability', [registerCtrl::class, 'checkEmailAvailability']);
     Route::get('/check-fullname', [registerCtrl::class, 'checkFullName']);
     Route::post('/update-password', [ProfileController::class, 'updatePassword'])->name('password.update');
+
+    // ============================================
+    // KuBo - Community Platform Routes
+    // ============================================
+
+    // Page Views
+    Route::get('/kubo', [KuBoController::class, 'feed'])->name('kubo.feed');
+    Route::get('/kubo/explore', [KuBoController::class, 'explore'])->name('kubo.explore');
+    Route::get('/kubo/notifications', [KuBoController::class, 'notifications'])->name('kubo.notifications');
+    Route::get('/kubo/profile', [KuBoController::class, 'profile'])->name('kubo.profile');
+    Route::get('/kubo/profile/{empID}', [KuBoController::class, 'profile'])->name('kubo.profile.user');
+    Route::get('/kubo/hashtag/{tag}', [KuBoController::class, 'feed'])->name('kubo.hashtag');
+
+    // AJAX API Endpoints
+    Route::prefix('api/kubo')->group(function () {
+        // Rate-limited KuBo API routes
+        Route::middleware('throttle:30,1')->group(function () {
+            Route::post('/posts', [PostController::class, 'store'])->name('api.kubo.posts.store');
+            Route::put('/posts/{post}', [PostController::class, 'update'])->name('api.kubo.posts.update');
+            Route::delete('/posts/{post}', [PostController::class, 'destroy'])->name('api.kubo.posts.destroy');
+            Route::post('/posts/{post}/pin', [PostController::class, 'pin'])->name('api.kubo.posts.pin');
+            Route::post('/posts/{post}/react', [ReactionController::class, 'toggle'])->name('api.kubo.react');
+            Route::get('/posts/{post}/comments', [CommentController::class, 'index'])->name('api.kubo.comments.index');
+            Route::post('/posts/{post}/comments', [CommentController::class, 'store'])->name('api.kubo.comments.store');
+            Route::put('/comments/{comment}', [CommentController::class, 'update'])->name('api.kubo.comments.update');
+            Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('api.kubo.comments.destroy');
+            Route::post('/comments/{comment}/reply', [CommentController::class, 'reply'])->name('api.kubo.comments.reply');
+            Route::post('/posts/{post}/repost', [RepostController::class, 'store'])->name('api.kubo.repost');
+            Route::post('/notifications/read', [NotificationController::class, 'markRead'])->name('api.kubo.notifications.read');
+            Route::post('/upload/image', [ImageUploadController::class, 'store'])->name('api.kubo.upload.image');
+            Route::post('/upload/images', [ImageUploadController::class, 'storeMultiple'])->name('api.kubo.upload.images');
+        });
+        Route::get('/feed', [FeedController::class, 'load'])->name('api.kubo.feed');
+        Route::get('/notifications', [NotificationController::class, 'index'])->name('api.kubo.notifications');
+        Route::get('/notifications/count', [NotificationController::class, 'unreadCount'])->name('api.kubo.notifications.count');
+        Route::get('/explore/trending', [ExploreController::class, 'trending'])->name('api.kubo.explore.trending');
+        Route::get('/explore/popular', [ExploreController::class, 'popular'])->name('api.kubo.explore.popular');
+        Route::get('/explore/photos', [ExploreController::class, 'photos'])->name('api.kubo.explore.photos');
+        Route::get('/profile/posts', [KuBoProfileController::class, 'ownPosts'])->name('api.kubo.profile.own.posts');
+        Route::get('/profile/photos', [KuBoProfileController::class, 'ownPhotos'])->name('api.kubo.profile.own.photos');
+        Route::get('/profile/reposts', [KuBoProfileController::class, 'ownReposts'])->name('api.kubo.profile.own.reposts');
+        Route::get('/profile/stats', [KuBoProfileController::class, 'ownStats'])->name('api.kubo.profile.own.stats');
+        Route::get('/profile/{user}/posts', [KuBoProfileController::class, 'posts'])->name('api.kubo.profile.posts');
+        Route::get('/profile/{user}/photos', [KuBoProfileController::class, 'photos'])->name('api.kubo.profile.photos');
+        Route::get('/profile/{user}/reposts', [KuBoProfileController::class, 'reposts'])->name('api.kubo.profile.reposts');
+        Route::get('/profile/{user}/stats', [KuBoProfileController::class, 'stats'])->name('api.kubo.profile.stats');
+        Route::get('/hashtags/trending', [HashtagController::class, 'trending'])->name('api.kubo.hashtags.trending');
+    });
 
 });
 

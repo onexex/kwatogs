@@ -1,0 +1,5 @@
+<?php namespace App\Http\Controllers\KuBo; use App\Http\Controllers\Controller; use App\Models\CommunityNotification; use App\Models\CommunityPost; use App\Models\CommunityRepost; use Illuminate\Http\JsonResponse; use Illuminate\Support\Facades\Auth;
+
+class RepostController extends Controller {
+    public function store(CommunityPost $post): JsonResponse { $u=Auth::user(); $e=CommunityRepost::where('post_id',$post->id)->where('user_id',$u->empID)->first(); if($e){$e->delete();$a='removed';}else{CommunityRepost::create(['post_id'=>$post->id,'user_id'=>$u->empID]);$a='added';if($post->user_id!==$u->empID)CommunityNotification::create(['user_id'=>$post->user_id,'type'=>'repost','reference_id'=>$post->id,'actor_id'=>$u->empID,'message'=>$u->community_full_name.' reposted your post.']);} return response()->json(['success'=>true,'action'=>$a,'count'=>CommunityRepost::where('post_id',$post->id)->count()]); }
+}

@@ -7,28 +7,32 @@ return [
     | Cross-Origin Resource Sharing (CORS) Configuration
     |--------------------------------------------------------------------------
     |
-    | Here you may configure your settings for cross-origin resource sharing
-    | or "CORS". This determines what cross-origin operations may execute
-    | in web browsers. You are free to adjust these settings as needed.
-    |
-    | To learn more: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
+    | SECURITY: Restrict to specific known domains.
+    | Wildcard origins allow any website to make API requests.
     |
     */
 
     'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
-    'allowed_methods' => ['*'],
+    'allowed_methods' => ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 
-    'allowed_origins' => ['*'],
+    // SECURITY FIX: Restrict to specific production domains
+    // Update these with your actual production domains
+    'allowed_origins' => [
+        env('APP_URL', 'http://localhost'),
+        // Add your company domains here:
+        // 'https://kwatogs.example.com',
+        // 'https://hris.kwatogs.com',
+    ],
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'],
+    'allowed_headers' => ['Content-Type', 'X-CSRF-TOKEN', 'Authorization', 'X-Requested-With'],
 
     'exposed_headers' => [],
 
-    'max_age' => 0,
+    'max_age' => 86400, // Cache preflight for 24 hours
 
-    'supports_credentials' => false,
+    'supports_credentials' => true, // Required for Sanctum SPA auth
 
 ];

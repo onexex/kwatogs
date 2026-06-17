@@ -196,25 +196,19 @@
         background: var(--teal-light);
     }
 
-    /* Professional Table Refinements */
+    /* Professional Table Refinements (matches Leave Report header) */
     .table-sticky-header thead th {
         position: sticky !important;
         top: 0;
-        background: linear-gradient(180deg, #008080 0%, #006666 100%) !important;
+        background-color: #fafbfc;
         z-index: 10;
-        font-size: 0.68rem;
+        font-size: 0.7rem;
         text-transform: uppercase;
-        letter-spacing: 0.6px;
-        color: #fff !important;
-        border-bottom: none !important;
+        letter-spacing: 0.5px;
+        color: var(--slate-light);
+        border-bottom: 2px solid var(--border);
         padding: 10px 8px;
         white-space: nowrap;
-    }
-    .table-sticky-header thead th:first-child {
-        border-radius: 6px 0 0 0;
-    }
-    .table-sticky-header thead th:last-child {
-        border-radius: 0 6px 0 0;
     }
 
     .table tbody td {

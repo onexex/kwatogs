@@ -74,6 +74,53 @@ class User extends Authenticatable
         return $this->belongsTo(emp_info::class, 'empID', 'empID');
     }
 
+    // KuBo Community Relationships
+
+    public function communityPosts()
+    {
+        return $this->hasMany(CommunityPost::class, 'user_id', 'empID');
+    }
+
+    public function communityReactions()
+    {
+        return $this->hasMany(CommunityPostReaction::class, 'user_id', 'empID');
+    }
+
+    public function communityComments()
+    {
+        return $this->hasMany(CommunityComment::class, 'user_id', 'empID');
+    }
+
+    public function communityReposts()
+    {
+        return $this->hasMany(CommunityRepost::class, 'user_id', 'empID');
+    }
+
+    public function communityNotifications()
+    {
+        return $this->hasMany(CommunityNotification::class, 'user_id', 'empID');
+    }
+
+    public function getCommunityAvatarAttribute(): string
+    {
+        $picPath = $this->empDetail?->empPicPath;
+        if ($picPath && file_exists(public_path($picPath))) {
+            return asset($picPath);
+        }
+        return asset('img/undraw_profile.svg');
+    }
+
+    public function getCommunityFullNameAttribute(): string
+    {
+        $fname = $this->fname ?? '';
+        $mname = $this->mname ?? '';
+        $lname = $this->lname ?? '';
+        $suffix = $this->suffix ?? '';
+
+        $fullName = trim($fname . ' ' . ($mname ? strtoupper(substr($mname, 0, 1)) . '. ' : '') . $lname . ' ' . $suffix);
+        return $fullName ?: 'Kwatogs Employee';
+    }
+
     public function leaves()
     {
         return $this->hasMany(Leave::class, 'employee_id', 'empID');

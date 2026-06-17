@@ -1,0 +1,7 @@
+<?php namespace App\Http\Controllers\KuBo; use App\Http\Controllers\Controller; use App\Models\CommunityNotification; use Illuminate\Http\JsonResponse; use Illuminate\Http\Request; use Illuminate\Support\Facades\Auth;
+
+class NotificationController extends Controller {
+    public function index(): JsonResponse { $u=Auth::user(); $ns=CommunityNotification::with('actor')->where('user_id',$u->empID)->orderBy('created_at','desc')->paginate(20); $d=$ns->map(fn($n)=>['id'=>$n->id,'type'=>$n->type,'message'=>$n->message,'is_read'=>$n->is_read,'created_at'=>$n->created_at->diffForHumans(),'actor'=>$n->actor?['name'=>$n->actor->community_full_name,'avatar'=>$n->actor->community_avatar]:null]); return response()->json(['notifications'=>$d,'has_more'=>$ns->hasMorePages()]); }
+    public function markRead(Request $r): JsonResponse { $u=Auth::user(); if($r->id)CommunityNotification::where('id',$r->id)->where('user_id',$u->empID)->update(['is_read'=>true,'read_at'=>now()]); else CommunityNotification::where('user_id',$u->empID)->where('is_read',false)->update(['is_read'=>true,'read_at'=>now()]); return response()->json(['success'=>true]); }
+    public function unreadCount(): JsonResponse { return response()->json(['count'=>CommunityNotification::where('user_id',Auth::user()->empID)->where('is_read',false)->count()]); }
+}
