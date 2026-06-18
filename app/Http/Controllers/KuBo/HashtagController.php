@@ -1,6 +1,7 @@
-<?php namespace App\Http\Controllers\KuBo; use App\Http\Controllers\Controller; use App\Models\CommunityHashtag; use App\Models\CommunityPost; use Illuminate\Http\JsonResponse;
+<?php namespace App\Http\Controllers\KuBo; use App\Http\Controllers\Controller; use App\Models\CommunityHashtag; use App\Models\CommunityPost; use Illuminate\Http\JsonResponse; use Illuminate\Http\Request;
 
 class HashtagController extends Controller {
     public function posts(string $tag): JsonResponse { $tag = strtolower(ltrim($tag,'#')); $ids = CommunityHashtag::where('tag',$tag)->pluck('post_id'); $posts = CommunityPost::feed()->whereIn('id',$ids)->paginate(12); $d = $posts->map(fn($p)=>['id'=>$p->id,'content'=>$p->content,'created_at'=>$p->created_at->diffForHumans(),'user'=>['empID'=>$p->user->empID??'','name'=>$p->user->community_full_name,'avatar'=>$p->user->community_avatar,'department'=>$p->user->empDetail?->department?->depName??''],'images'=>$p->images->map(fn($i)=>['id'=>$i->id,'url'=>asset($i->image_path)]),'hashtags'=>$p->hashtags->pluck('tag'),'reactions'=>['total'=>$p->reactions_count??0],'comments_count'=>$p->comments_count??0]); return response()->json(['tag'=>$tag,'posts'=>$d,'total'=>$ids->count(),'has_more'=>$posts->hasMorePages()]); }
     public function trending(): JsonResponse { $tags = CommunityHashtag::selectRaw('tag,COUNT(*) as total')->groupBy('tag')->orderBy('total','desc')->limit(20)->get(); return response()->json(['tags'=>$tags]); }
+    public function suggest(Request $request): JsonResponse { $q = $request->input('q',''); $tags = CommunityHashtag::where('tag','like',$q.'%')->selectRaw('tag as name,COUNT(*) as count')->groupBy('tag')->orderBy('count','desc')->limit(10)->get(); return response()->json(['hashtags'=>$tags]); }
 }

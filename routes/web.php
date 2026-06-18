@@ -538,6 +538,7 @@ Route::group(['middleware'=>['AuthCheck']], function(){
         Route::get('/profile/{user}/reposts', [KuBoProfileController::class, 'reposts'])->name('api.kubo.profile.reposts');
         Route::get('/profile/{user}/stats', [KuBoProfileController::class, 'stats'])->name('api.kubo.profile.stats');
         Route::get('/hashtags/trending', [HashtagController::class, 'trending'])->name('api.kubo.hashtags.trending');
+        Route::get('/hashtags/suggest', [HashtagController::class, 'suggest'])->name('api.kubo.hashtags.suggest');
     });
 
 });

@@ -32,6 +32,8 @@ class HrDashboardController extends Controller
         $d['byDept'] = DB::table('emp_details as e')
             ->leftJoin('departments as dp', 'dp.id', '=', 'e.empDepID')
             ->where('e.empStatus', '1')
+            ->whereNotNull('e.empDepID')
+            ->where('e.empID', '!=', 'KWTGS-2026-0001')
             ->selectRaw("dp.id as id, COALESCE(dp.dep_name,'Unassigned') as name, COUNT(*) as c")
             ->groupBy('dp.id', 'name')->orderByDesc('c')->limit(8)->get();
 
@@ -72,10 +74,14 @@ class HrDashboardController extends Controller
         $d['otCount']  = Overtime::whereDate('date_from','>=',$monthStart)->count();
 
         // ── Gender diversity ────────────────────────────────────────────
-        $d['male']   = DB::table('emp_infos')->where('gender','Male')->count();
-        $d['female'] = DB::table('emp_infos')->where('gender','Female')->count();
-        $d['otherG'] = max(0, DB::table('emp_infos')->count() - $d['male'] - $d['female']);
-        $d['malePct'] = $d['total'] > 0 ? round($d['male'] / $d['total'] * 100) : 0;
+        $d['male']   = DB::table('emp_infos as i')
+            ->join('emp_details as e', 'e.empID', '=', 'i.empID')
+            ->where('e.empStatus', '1')->where('i.gender', 'Male')->count();
+        $d['female'] = DB::table('emp_infos as i')
+            ->join('emp_details as e', 'e.empID', '=', 'i.empID')
+            ->where('e.empStatus', '1')->where('i.gender', 'Female')->count();
+        $d['otherG'] = max(0, $d['active'] - $d['male'] - $d['female']);
+        $d['malePct'] = $d['active'] > 0 ? round($d['male'] / $d['active'] * 100) : 0;
 
         // ── Employee turnover (last 6 months) ───────────────────────────
         $turnover = [];
@@ -141,6 +147,8 @@ class HrDashboardController extends Controller
         $weekDays = collect(range(0, 6))->map(fn ($i) => Carbon::today()->addDays($i)->format('m-d'))->all();
         $d['birthdays'] = DB::table('emp_infos as i')
             ->join('users as u', 'u.empID', '=', 'i.empID')
+            ->join('emp_details as e', 'e.empID', '=', 'i.empID')
+            ->where('e.empStatus', '1')
             ->whereNotNull('i.empBdate')
             ->whereIn(DB::raw("DATE_FORMAT(i.empBdate, '%m-%d')"), $weekDays)
             ->selectRaw("TRIM(CONCAT(u.lname,', ',u.fname)) as name, DATE_FORMAT(i.empBdate,'%b %d') as bday")
