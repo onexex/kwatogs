@@ -38,7 +38,7 @@
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
             width: 95%;
             max-width: 1000px;
-            overflow: hidden; /* Clips the inner content to radius */
+            overflow: hidden;
         }
 
         .login-card-form {
@@ -56,7 +56,6 @@
             margin-bottom: 35px;
         }
 
-        /* Floating Label Customization */
         .form-floating > .form-control:focus ~ label,
         .form-floating > .form-control:not(:placeholder-shown) ~ label {
             color: var(--primary-teal);
@@ -92,26 +91,23 @@
             box-shadow: 0 5px 15px rgba(0, 128, 128, 0.3);
         }
 
+        .btn-color:disabled {
+            opacity: .75;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
         .img-logo {
-        
             background-color: #f8fafc;
-            
-            
             background-image: url('../img/kwatogslogo.jpg');
             background-repeat: no-repeat;
-            
-          
-            background-position: center center; 
-           
-            background-size: contain; 
-            
-            /* 5. Layout properties */
+            background-position: center center;
+            background-size: contain;
             height: 100%;
             min-height: 500px;
-            width: 100%; /* Siguraduhing sakop ang buong lapad ng column */
+            width: 100%;
             position: relative;
-            
-            /* 6. Optional: Para hindi mag-pixelate sa malalaking screen */
             image-rendering: -webkit-optimize-contrast;
         }
 
@@ -133,13 +129,6 @@
         .toggle-password:hover { color: var(--primary-teal) !important; }
         .toggle-password:focus { box-shadow: none; }
 
-        .btn-color:disabled {
-            opacity: .75;
-            cursor: not-allowed;
-            transform: none !important;
-            box-shadow: none !important;
-        }
-
         .form-control.is-invalid {
             border-color: #dc3545;
         }
@@ -153,71 +142,90 @@
 <body>
     <div class="login-container">
         <div class="row g-0">
+
+            {{-- Left: form column --}}
             <div class="col-lg-6 col-md-12">
                 <div class="login-card-form">
                     <h2>Welcome Back</h2>
                     <p>Please enter your details to sign in.</p>
-                    
+
                     <form id="frmlogin" action="#" autocomplete="off" novalidate>
                         @csrf
-                        {{-- Honeypot field: hidden from real users, bots tend to fill it in --}}
-                        <div class="position-absolute" style="left:-9999px; top:-9999px;" aria-hidden="true">
-                            <label for="website">Website</label>
-                            <input type="text" name="website" id="website" tabindex="-1" autocomplete="off">
-                        </div>
+
+                        {{-- Honeypot: bots fill this, humans don't --}}
+                        <input type="text" name="website" style="display:none" tabindex="-1" autocomplete="off">
+
+                        {{-- Email --}}
                         <div class="form-floating mb-3">
-                            <input type="email" name="username" class="form-control" id="floatingInput"
-                                placeholder="name@example.com" value="{{ old('username') }}"
-                                autocomplete="username" maxlength="50" required>
-                            <label for="floatingInput"><i class="fa-regular fa-envelope me-2"></i>Email Address</label>
-                            <span class="text-danger small error-text username_error"></span>
+                            <input type="email"
+                                   class="form-control"
+                                   id="floatingInput"
+                                   name="username"
+                                   placeholder="name@example.com"
+                                   autocomplete="username">
+                            <label for="floatingInput">Email address</label>
+                            <span class="error-text username_error text-danger" style="font-size:.8rem;"></span>
                         </div>
 
+                        {{-- Password --}}
                         <div class="form-floating mb-3 position-relative">
-                            <input type="password" name="password" class="form-control pe-5" id="floatingPassword"
-                                placeholder="Password" autocomplete="current-password" maxlength="500" required>
-                            <label for="floatingPassword"><i class="fa-solid fa-lock me-2"></i>Password</label>
-                            <button type="button" class="btn btn-link position-absolute top-0 end-0 h-100 px-3 text-muted toggle-password" tabindex="-1" aria-label="Show password">
-                                <i class="fa-regular fa-eye"></i>
-                            </button>
-                            <span class="text-danger small error-text password_error"></span>
+                            <input type="password"
+                                   class="form-control"
+                                   id="floatingPassword"
+                                   name="password"
+                                   placeholder="Password"
+                                   autocomplete="current-password">
+                            <label for="floatingPassword">Password</label>
+                            <a href="#"
+                               class="toggle-password position-absolute end-0 top-50 translate-middle-y me-3 text-muted"
+                               aria-label="Show password">
+                                <i class="fa fa-eye"></i>
+                            </a>
+                            <span class="error-text password_error text-danger" style="font-size:.8rem;"></span>
                         </div>
 
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <div class="form-check">
-                                <input type="checkbox" class="form-check-input" id="rememberMe">
-                                <label class="form-check-label small text-muted" for="rememberMe">Remember me</label>
-                            </div>
-                            <a href="#" class="small text-decoration-none text-teal fw-bold">Forgot Password?</a>
-                        </div>
-
-                        <button type="submit" class="btn btn-color shadow-sm" id="btnLogin">
-                            <span class="btn-label">Sign In <i class="fa-solid fa-arrow-right ms-2"></i></span>
+                        {{-- Submit --}}
+                        <button type="button" id="btnLogin" class="btn btn-color">
+                            <span class="btn-label">
+                                <i class="fa-solid fa-right-to-bracket me-2"></i>Sign In
+                            </span>
                         </button>
 
-                        <div class="text-center mt-4 pt-2">
-                            <span class="text-muted small"><i class="fa-solid fa-shield-halved me-1 text-teal"></i>Your connection to this portal is secured.</span>
-                        </div>
                     </form>
                 </div>
             </div>
 
+            {{-- Right: logo / branding column --}}
             <div class="col-lg-6 d-none d-lg-block">
-                <div class="img-logo ">
+                <div class="img-logo">
                     <div class="overlay-text">
-                        <h3 class="fw-bold">KWATOGS. Portal</h3>
-                        <p class="mb-0">Secure Management System v2.0</p>
+                        <h3 class="fw-bold mb-1">{{ config('app.name', 'HR Portal') }}</h3>
+                        <p class="mb-0" style="opacity:.85;font-size:.9rem;">Your all-in-one workforce management solution</p>
                     </div>
                 </div>
             </div>
-           
-             
-            
-        </div>
-        
-    </div>
-    
 
-    <script src="{{ asset('js/login.js') }}" defer></script>
+        </div>
+    </div>
+
+    <script src="{{ asset('js/login.js') }}"></script>
+
+    {{-- IP-denied flash: fires when CheckEmployeeIp middleware redirects here --}}
+    @if(session('ip_denied'))
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            Swal.fire({
+                icon: 'error',
+                title: 'Access Denied',
+                text: '{{ session("ip_denied") }}',
+                confirmButtonColor: '#008080',
+                confirmButtonText: 'OK',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+            });
+        });
+    </script>
+    @endif
+
 </body>
 </html>

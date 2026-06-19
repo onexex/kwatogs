@@ -70,5 +70,8 @@ enum PagePermissionsEnum: string
     case databasebackupdelete = 'Database Backup Delete';
     case kuboaccess = 'KuBo - Community Access';
     case kuboadmin = 'KuBo - Admin (Pin/Delete)';
+    case allowedips = 'IP Restriction Management';
+    case allowedipslogs = 'IP Access Logs';
+    case bypass_ip_restriction = 'Bypass IP Restriction';
 
 }

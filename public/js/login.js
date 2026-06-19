@@ -115,6 +115,24 @@ $(document).ready(function() {
                 });
             }
 
+            // 403 IP address not in the allowlist
+            // The server already destroyed the session before returning this,
+            // so no cleanup is needed here — just surface the reason.
+            if (res.data.status == 403) {
+                $('span.error-text').text("");
+                $('input.border').removeClass('border border-danger is-invalid');
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Access Denied',
+                    text: res.data.msg,
+                    confirmButtonColor: '#008080',
+                    confirmButtonText: 'OK',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                });
+            }
+
             // 429 too many attempts (rate limited)
             if (res.data.status == 429) {
                 Swal.fire({

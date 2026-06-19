@@ -99,6 +99,8 @@
            class="{{ $permissiontab === 'overtime' ? 'active' : '' }}"><i class="fas fa-user-clock me-2"></i> Overtime</a>
         <a href="{{ route('user-roles.show', ['user_role' => $role->id, 'permission' => 'report']) }}"
            class="{{ $permissiontab === 'report' ? 'active' : '' }}"><i class="fas fa-chart-column me-2"></i> Report</a>
+        <a href="{{ route('user-roles.show', ['user_role' => $role->id, 'permission' => 'kubo']) }}"
+           class="{{ $permissiontab === 'kubo' ? 'active' : '' }}"><i class="fas fa-users me-2"></i> KuBo</a>
     </div>
 
     {{-- ── Toolbar ── --}}

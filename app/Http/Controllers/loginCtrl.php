@@ -5,6 +5,8 @@ use DB;
 use Validator;
 use Carbon\Carbon;
 
+use App\Models\AllowedIp;
+use App\Models\IpAccessLog;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,6 +21,17 @@ class loginCtrl extends Controller
      * cases so brute-force attempts can't be used to enumerate valid accounts.
      */
     private const INVALID_CREDENTIALS_MSG = 'Incorrect email or password!';
+
+    /**
+     * Spatie role that always bypasses IP restriction with no extra config.
+     */
+    private const ADMIN_ROLE = 'admin';
+
+    /**
+     * Permission that any other role can be granted to also bypass IP restriction.
+     * Assign it via Settings -> User Roles.
+     */
+    private const BYPASS_PERMISSION = 'bypass_ip_restriction';
 
     public function loginSystem(Request $request){
 
@@ -98,6 +111,32 @@ class loginCtrl extends Controller
                 $request->session()->put('rpt_attend', $row->rpt_attend);
             }
         }
+
+        // ── IP Restriction ────────────────────────────────────────────────────────
+        // Admin role → always bypass. Other roles → bypass only if they have the
+        // bypass_ip_restriction permission. Everyone else is checked against the allowlist.
+        $needsIpCheck = ! $userinfo->hasRole(self::ADMIN_ROLE)
+                     && ! $userinfo->hasPermissionTo(self::BYPASS_PERMISSION);
+
+        if ($needsIpCheck) {
+            if (! AllowedIp::isAllowed($request->ip())) {
+                // Record the blocked login attempt before tearing down
+                IpAccessLog::record('blocked', 'login', $request->ip(), $userinfo);
+
+                // Tear down: undo Auth::login() and clear the session
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return response()->json([
+                    'status' => 403,
+                    'msg'    => 'Access Denied. Your current IP address is not authorized.',
+                ]);
+            }
+        }
+
+        // ── Record successful login ───────────────────────────────────────────
+        IpAccessLog::record('allowed', 'login', $request->ip(), $userinfo);
 
         return response()->json(['status'=>200]);
     }

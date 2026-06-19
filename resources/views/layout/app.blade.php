@@ -183,7 +183,7 @@
                 <li class="nav-item">
                     <a class="nav-link {{ request()->is('kubo*') ? 'active-page' : '' }}" href="{{ route('kubo.feed') }}">
                         <i class="fas fa-fw fa-users"></i>
-                        <span>KuBo</span>
+                        <span>KwHub</span>
                     </a>
                 </li>
             @endcan
@@ -312,6 +312,7 @@
                     'userroles'           => ['name' => 'User Roles', 'url' => '/user-roles', 'icon' => 'fa-shield-halved'],
                     'admine201'           => ['name' => 'Admin E-201', 'url' => '/pages/management/e201', 'icon' => 'fa-id-card-alt'],
                     'leavecreditallocation'          => ['name' => 'Leave Credit Allocation', 'url' => '/pages/management/leavecreditallocations', 'icon' => 'fa-list-check'],
+                    'allowedips'          => ['name' => 'IP Restriction', 'url' => '/pages/management/allowed-ips', 'icon' => 'fa-network-wired', 'permissions' => ['allowedips', 'allowedipslogs']],
                 ];
                 // 1. Sort the modules alphabetically (A→Z) by display name
                 $managementModules = collect($managementModules)->sortBy(fn($m) => strtolower($m['name']))->toArray();
@@ -540,7 +541,8 @@
 
     <script src="{{ asset('js/jquery.easing.min.js') }}"></script>
     <script src="{{ asset('js/system.js') }}" defer></script>
-    
+
+    @stack('scripts')
 </body>
 
 </html>

@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             SssContributionSeeder::class,
             PhilhealthContributionSeeder::class,
             PagibigContributionSeeder::class,
+            AllowedIpSeeder::class,
         ]);
     }
 }

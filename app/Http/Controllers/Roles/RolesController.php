@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Enums\Permissions\PagePermissionsEnum;
 use App\Enums\Permissions\OvertimePermissionEnum;
 use App\Enums\Permissions\ReportPermissionEnum;
+use App\Enums\Permissions\KuBoPermissionEnum;
 
 class RolesController extends Controller
 {
@@ -112,6 +113,10 @@ class RolesController extends Controller
     else if ($request->permission == 'leave') {
         $permissionEnums = [
             'Leave Permissions' => LeavePermissionEnum::class,
+        ];
+    } else if ($request->permission == 'kubo') {
+        $permissionEnums = [
+            'KuBo Permissions' => KuBoPermissionEnum::class,
         ];
     } else {
         // Default to Page Permissions

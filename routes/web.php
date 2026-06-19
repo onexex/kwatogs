@@ -67,11 +67,14 @@ use App\Http\Controllers\KuBo\FeedController;
 use App\Http\Controllers\KuBo\PostController;
 use App\Http\Controllers\KuBo\ReactionController;
 use App\Http\Controllers\KuBo\CommentController;
+use App\Http\Controllers\AllowedIpController;
 use App\Http\Controllers\KuBo\RepostController;
 use App\Http\Controllers\KuBo\NotificationController;
 use App\Http\Controllers\KuBo\ExploreController;
 use App\Http\Controllers\KuBo\ProfileController as KuBoProfileController;
 use App\Http\Controllers\KuBo\HashtagController;
+use App\Http\Controllers\KuBo\PresenceController;
+use App\Http\Controllers\KuBo\ChatController;
 use App\Http\Controllers\KuBo\ImageUploadController;
 use Illuminate\Support\Facades\Route;
 
@@ -81,7 +84,7 @@ Route::get('/logoutSystem',[loginCtrl::class, 'logoutSystem']);
 // Route::get('/', function () {return view('home');});
 
 
-Route::group(['middleware'=>['AuthCheck']], function(){
+Route::group(['middleware' => ['AuthCheck', 'check.employee.ip']], function () {
 
     ##
 
@@ -493,7 +496,7 @@ Route::group(['middleware'=>['AuthCheck']], function(){
     Route::post('/update-password', [ProfileController::class, 'updatePassword'])->name('password.update');
 
     // ============================================
-    // KuBo - Community Platform Routes
+    // KwHub - Community Platform Routes
     // ============================================
 
     // Page Views
@@ -539,7 +542,46 @@ Route::group(['middleware'=>['AuthCheck']], function(){
         Route::get('/profile/{user}/stats', [KuBoProfileController::class, 'stats'])->name('api.kubo.profile.stats');
         Route::get('/hashtags/trending', [HashtagController::class, 'trending'])->name('api.kubo.hashtags.trending');
         Route::get('/hashtags/suggest', [HashtagController::class, 'suggest'])->name('api.kubo.hashtags.suggest');
+        Route::post('/presence/ping', [PresenceController::class, 'ping'])->name('api.kubo.presence.ping');
+        Route::get('/presence/online', [PresenceController::class, 'online'])->name('api.kubo.presence.online');
+        Route::get('/conversations', [ChatController::class, 'conversations'])->name('api.kubo.conversations');
+        Route::get('/messages/{empID}', [ChatController::class, 'messages'])->name('api.kubo.messages');
+        Route::post('/messages/{empID}', [ChatController::class, 'send'])->name('api.kubo.messages.send');
     });
+
+    // ─── Allowed IP Management ────────────────────────────────────────────────
+    // Specific named routes MUST come before the resource so Laravel doesn't
+    // swallow e.g. GET .../allowed-ips/dashboard as the resource's show() route.
+    Route::prefix('pages/management/allowed-ips')->name('allowed-ips.')->group(function () {
+        // Dashboard & stats
+        Route::get('dashboard',       [AllowedIpController::class, 'dashboard'])->name('dashboard');
+        Route::get('stats',           [AllowedIpController::class, 'stats'])->name('stats');
+
+        // IP Access Logs
+        Route::get('logs',            [AllowedIpController::class, 'logs'])->name('logs');
+        Route::get('logs/export',     [AllowedIpController::class, 'exportLogs'])->name('logs.export');
+
+        // Bulk actions
+        Route::post('bulk/enable',    [AllowedIpController::class, 'bulkEnable'])->name('bulk.enable');
+        Route::post('bulk/disable',   [AllowedIpController::class, 'bulkDisable'])->name('bulk.disable');
+        Route::post('bulk/delete',    [AllowedIpController::class, 'bulkDelete'])->name('bulk.delete');
+
+        // CSV Import
+        Route::post('import',         [AllowedIpController::class, 'import'])->name('import');
+        Route::get('import/template', [AllowedIpController::class, 'importTemplate'])->name('import.template');
+
+        // Excel Export (IPs)
+        Route::get('export',          [AllowedIpController::class, 'exportIps'])->name('export');
+
+        // Toggle — after statics, before resource catch-all
+        Route::put('{allowed_ip}/toggle', [AllowedIpController::class, 'toggle'])->name('toggle');
+    });
+
+    // Resource routes last — {allowed_ip} wildcard won't shadow the named routes above
+    Route::resource('pages/management/allowed-ips', AllowedIpController::class)
+        ->names('allowed-ips')
+        ->parameters(['allowed-ips' => 'allowed_ip'])
+        ->except(['show']);
 
 });
 

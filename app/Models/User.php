@@ -125,6 +125,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(Leave::class, 'employee_id', 'empID');
     }
+
+    /**
+     * IP addresses added to the allowlist by this user.
+     */
+    public function allowedIps()
+    {
+        return $this->hasMany(AllowedIp::class, 'created_by', 'empID');
+    }
     
     protected function empID(): Attribute
     {
