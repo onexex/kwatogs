@@ -86,6 +86,8 @@ jobs:
             rm -f bootstrap/cache/packages.php
             
             # Ligtas nang patakbuhin ang mga commands dahil malinis na ang listahan ng packages
+            php artisan app:create-permission   
+            php artisan mirate
             php artisan optimize:clear
             php artisan optimize
             php artisan optimize
