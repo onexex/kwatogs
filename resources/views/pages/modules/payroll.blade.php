@@ -50,15 +50,33 @@
             font-weight: 700;
             color: var(--slate);
             margin: 0;
-            letter-spacing: -.2px;
+            letter-spacing: .3px;
+            text-transform: uppercase; /* matches Attendance Viewer's header treatment */
         }
         .payroll-topbar .breadcrumb {
-            font-size: 0.78rem;
+            font-size: 0.75rem;
             margin: 2px 0 0;
             padding: 0;
             background: none;
         }
-        .payroll-topbar .breadcrumb-item.active.text-teal { color: var(--teal) !important; font-weight: 700; }
+        .payroll-topbar .breadcrumb-item.active.text-teal { color: var(--teal) !important; font-weight: 600; }
+
+        /* ── Soft status badges (same pattern as Attendance Viewer's badge-soft-primary) ── */
+        .badge-soft-success {
+            background-color: rgba(16, 185, 129, .12);
+            color: #047857;
+            border: 1px solid rgba(16, 185, 129, .25);
+        }
+        .badge-soft-warning {
+            background-color: rgba(245, 158, 11, .12);
+            color: #92400e;
+            border: 1px solid rgba(245, 158, 11, .25);
+        }
+        .badge-soft-primary {
+            background-color: rgba(0, 128, 128, .1);
+            color: var(--teal);
+            border: 1px solid rgba(0, 128, 128, .2);
+        }
 
         /* ── Buttons ─────────────────────────────────────────────── */
         .btn-teal {
@@ -467,7 +485,7 @@
                     <h5 class="sc-title">Payroll Register</h5>
                 </div>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <span id="approvalBadge" class="badge rounded-pill px-3 py-2 d-none" style="background:#dcfce7;color:#166534;font-size:.72rem;font-weight:700;">
+                    <span id="approvalBadge" class="badge badge-soft-success rounded-pill px-3 py-2 d-none" style="font-size:.72rem;font-weight:700;">
                         <i class="fa fa-lock me-1"></i><span id="approvalBadgeText">APPROVED · FINAL</span>
                     </span>
                     <button class="btn btn-success btn-sm rounded-pill px-3 fw-bold shadow-sm d-none" id="btnApprovePayroll">

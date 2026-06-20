@@ -20,6 +20,33 @@ document.addEventListener("DOMContentLoaded", function () {
                 document.querySelector(".table-responsive")?.innerHTML ||
                 "<p>No table data</p>";
 
+            // Summary strip (Employees / Gross / Net / Pay Receivable), computed from
+            // the same totals already tallied while rendering the on-screen table
+            // (see window.lastPayrollTotals in fetchPayroll). Omitted gracefully if
+            // Print is clicked before any data has been fetched yet.
+            const __totals = window.lastPayrollTotals;
+            const __fmt = window.formatNumber || ((v) => (parseFloat(v) || 0).toFixed(2));
+            const summaryStrip = __totals ? `
+                <div class="summary-strip">
+                    <div class="summary-card">
+                        <div class="summary-label">Employees</div>
+                        <div class="summary-value">${window.lastPayrollCount ?? "—"}</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">Total Gross Pay</div>
+                        <div class="summary-value">&#8369;${__fmt(__totals.gross_pay)}</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-label">Total Net Pay</div>
+                        <div class="summary-value">&#8369;${__fmt(__totals.net_pay)}</div>
+                    </div>
+                    <div class="summary-card highlight">
+                        <div class="summary-label">Total Pay Receivable</div>
+                        <div class="summary-value">&#8369;${__fmt(__totals.pay_rec)}</div>
+                    </div>
+                </div>
+            ` : "";
+
             // Get input values
             const payDate = document.getElementById("pay_date")?.value || "N/A";
             const dateFrom =
@@ -114,6 +141,40 @@ document.addEventListener("DOMContentLoaded", function () {
                                 line-height: 1.4;
                                 text-align: center;
                             }
+                            .summary-strip {
+                                display: flex;
+                                gap: 10px;
+                                margin: 18px 0 6px;
+                                page-break-inside: avoid;
+                            }
+                            .summary-card {
+                                flex: 1;
+                                background: #f0fbfa;
+                                border: 1px solid #b9e4e1;
+                                border-radius: 8px;
+                                padding: 10px 12px;
+                                text-align: center;
+                            }
+                            .summary-card.highlight {
+                                background: #008080;
+                                border-color: #008080;
+                            }
+                            .summary-card.highlight .summary-label,
+                            .summary-card.highlight .summary-value {
+                                color: #fff;
+                            }
+                            .summary-label {
+                                font-size: 0.62rem;
+                                text-transform: uppercase;
+                                letter-spacing: .5px;
+                                color: #64748b;
+                                margin-bottom: 4px;
+                            }
+                            .summary-value {
+                                font-size: 1rem;
+                                font-weight: 800;
+                                color: #008080;
+                            }
                             table {
                                 width: 100%;
                                 border-collapse: collapse;
@@ -172,6 +233,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                 table { page-break-inside: auto; }
                                 tr { page-break-inside: avoid; page-break-after: auto; }
                                 .sign { page-break-inside: avoid; }
+                                .summary-strip { page-break-inside: avoid; }
                                 .no-print { display: none !important; }
                             }
                         </style>
@@ -194,6 +256,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <strong>Generated On:</strong> ${generatedAt}
                             </div>
                         </div>
+                        ${summaryStrip}
                         ${table}
 
                         <div class="sign">
@@ -620,6 +683,9 @@ $(document).ready(function () {
             maximumFractionDigits: 2,
         });
     }
+    // Exposed globally so the Print Report handler (a separate closure, defined
+    // earlier in this file) can reuse the exact same formatting at click time.
+    window.formatNumber = formatNumber;
 
     // ✅ Fetch Payroll Data
     function fetchPayroll() {
@@ -741,6 +807,11 @@ $(document).ready(function () {
                     </tr>
                 `;
                 $payrollTableBody.append(totalsRow);
+
+                // Stashed for the Print Report button (btnPrint) so it can build a
+                // summary strip without re-parsing formatted numbers out of the DOM.
+                window.lastPayrollTotals = totals;
+                window.lastPayrollCount = data.length;
             })
             .catch(function (error) {
                 console.error(error);
