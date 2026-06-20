@@ -22,7 +22,9 @@ class empDetail extends Model
         'empAgencyID', 'empHMOID', 'empHMONo', 'empPicPath', 'empDateHired',
         'empDateResigned', 'empDateRegular', 'empPrevPos', 'empPrevDep',
         'empPrevWorkStartDate', 'empPassport', 'empPassportExpDate', 'empPassportIssueAuth',
-        'empPagibig', 'empPhilhealth', 'empSSS', 'empTIN', 'empUMID', 'empPrevDesignation'
+        'empPagibig', 'empPhilhealth', 'empSSS', 'empTIN', 'empUMID', 'empPrevDesignation',
+        // Per-employee government-dues enrolment toggles (default enrolled)
+        'sss_enabled', 'philhealth_enabled', 'pagibig_enabled',
     ];
 
     protected $casts = [
@@ -33,6 +35,9 @@ class empDetail extends Model
         'empDateHired' => 'date',
         'empDateResigned' => 'date',
         'empDateRegular' => 'date',
+        'sss_enabled' => 'boolean',
+        'philhealth_enabled' => 'boolean',
+        'pagibig_enabled' => 'boolean',
     ];
 
     public function company(): BelongsTo

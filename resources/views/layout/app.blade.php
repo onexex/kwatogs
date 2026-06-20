@@ -298,6 +298,7 @@
                     'databasebackup'      => ['name' => 'Database Backup', 'url' => '/pages/management/databasebackup', 'icon' => 'fa-database', 'permissions' => ['databasebackup', 'databasebackupcreate', 'databasebackuprestore', 'databasebackupdelete']],
                     'departments'         => ['name' => 'Departments', 'url' => '/pages/management/departments', 'icon' => 'fa-sitemap'],
                     'employeestatus'      => ['name' => 'Emp Status', 'url' => '/pages/management/employeestatus', 'icon' => 'fa-user-tag'],
+                    'govdues'             => ['name' => 'Government Dues', 'url' => '/pages/management/govdues', 'icon' => 'fa-landmark'],
                     'hmo'                 => ['name' => 'HMOs', 'url' => '/pages/management/hmo', 'icon' => 'fa-heart-pulse'],
                     'holidaylogger'       => ['name' => 'Holidays', 'url' => '/pages/management/holidaylogger', 'icon' => 'fa-calendar'],
                     'joblevels'           => ['name' => 'Job Levels', 'url' => '/pages/management/joblevels', 'icon' => 'fa-layer-group'],

@@ -730,11 +730,21 @@ class PayrollController extends Controller
                 );
 
                 $monthlyGross = $grossPay + $previousGross;
+
+                // Per-employee government-dues enrolment toggles (default ON).
+                // Read off the already-eager-loaded empDetail — no extra query.
+                $duesFlags = [
+                    'sss'        => (bool) (optional($emp->empDetail)->sss_enabled ?? true),
+                    'philhealth' => (bool) (optional($emp->empDetail)->philhealth_enabled ?? true),
+                    'pagibig'    => (bool) (optional($emp->empDetail)->pagibig_enabled ?? true),
+                ];
+
                 $contributions = ContributionHelper::computeAll(
                     $monthlyGross,
                     $employeeClass,
                     $isEndOfMonth,
-                    $emp->empID
+                    $emp->empID,
+                    $duesFlags
                 );
 
                 //  Extract loan deductions

@@ -10,7 +10,15 @@ use App\Models\Loan;
 
 class ContributionHelper
 {
-    public static function computeAll($monthlyGross, $employeeClass, $isEndOfMonth = false, $employeeId = null)
+    /**
+     * @param array $duesFlags Per-employee government-dues toggles, e.g.
+     *        ['sss' => true, 'philhealth' => false, 'pagibig' => true].
+     *        A missing/true flag means the employee IS subject to that due
+     *        (default), so existing callers that omit it are unaffected.
+     *        A false flag zeroes that contribution (both employee & employer
+     *        share) and removes it from the taxable-income deduction.
+     */
+    public static function computeAll($monthlyGross, $employeeClass, $isEndOfMonth = false, $employeeId = null, array $duesFlags = [])
     {
         // If NOT end of month or employee is trainee → no deductions
         if (!$isEndOfMonth || $employeeClass === 'TRN') {
@@ -38,6 +46,20 @@ class ContributionHelper
         $sss = SssContribution::compute($monthlyGross, $employeeClass);
         $philhealth = PhilhealthContribution::compute($monthlyGross, $employeeClass);
         $pagibig = PagibigContribution::compute($monthlyGross, $employeeClass);
+
+        // ── Per-employee enrolment toggles ──────────────────────────────
+        // If an employee is NOT subject to a government due, zero it out
+        // entirely (employee + employer share). Omitted flag => enrolled.
+        $zeroShare = ['employee_share' => 0, 'employer_share' => 0, 'total' => 0];
+        if (array_key_exists('sss', $duesFlags) && !$duesFlags['sss']) {
+            $sss = $zeroShare;
+        }
+        if (array_key_exists('philhealth', $duesFlags) && !$duesFlags['philhealth']) {
+            $philhealth = $zeroShare;
+        }
+        if (array_key_exists('pagibig', $duesFlags) && !$duesFlags['pagibig']) {
+            $pagibig = $zeroShare;
+        }
 
         // Default loan values
         $loanDeduction = 0;

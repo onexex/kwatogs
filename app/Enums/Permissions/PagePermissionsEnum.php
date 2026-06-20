@@ -37,6 +37,7 @@ enum PagePermissionsEnum: string
     // case archive = 'Archive Management';
     case classification = 'Classification';
     case companies = 'Companies';
+    case govdues = 'Government Dues';
     case departments = 'Departments';
     case e201document = 'E-201 Document';
     case employeestatus = 'Employee Status';

@@ -125,6 +125,12 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip']], function () {
     Route::get('/classification/delete',[classiticationCtrl::class, 'delete']);
     Route::get('/classification/edit',[classiticationCtrl::class, 'edit']);
 
+    //government dues (per-employee SSS / PhilHealth / Pag-IBIG enrolment toggles)
+    Route::get('/pages/management/govdues',[App\Http\Controllers\GovDuesCtrl::class, 'index'])->middleware('can:govdues');
+    Route::get('/govdues/get_all',[App\Http\Controllers\GovDuesCtrl::class, 'getAll'])->middleware('can:govdues');
+    Route::post('/govdues/toggle',[App\Http\Controllers\GovDuesCtrl::class, 'toggle'])->middleware('can:govdues');
+    Route::post('/govdues/toggle-all',[App\Http\Controllers\GovDuesCtrl::class, 'toggleAll'])->middleware('can:govdues');
+
     //payroll
     Route::get('/pages/modules/payroll',[pageCtrl::class, 'payroll']);
 
