@@ -502,20 +502,33 @@ class PayrollController extends Controller
                         $summary = $attendanceSummaries[$dateStr] ?? null;
 
                         // --- Quick lookups using collections ---
+                        // FIX: LeaveDetail has no start_date/end_date (only a single `date`
+                        // column — one row per leave day), so the previous range comparison
+                        // here always evaluated false and $onLeave never matched anything.
                         $onLeave = $employeeLeaves->first(fn($l) =>
-                            $dateStr >= $l->start_date && $dateStr <= $l->end_date
+                            Carbon::parse($l->date)->format('Y-m-d') === $dateStr
                         );
 
                         $onOB = $employeeObs->first(fn($ob) =>
                             $dateStr >= $ob->start_date && $dateStr <= $ob->end_date
                         );
 
+                        // Now that $onLeave can actually match (see fix above), distinguish
+                        // paid vs unpaid leave (LeaveDetail.leave_kind: '1' = paid, '0' = unpaid)
+                        // — only paid leave should count toward daysPresent / holiday pay below.
+                        $isPaidLeave   = $onLeave && (string) $onLeave->leave_kind === '1';
+                        $isUnpaidLeave = $onLeave && !$isPaidLeave;
+
                         // OT total is computed once above from all approved OT (see $totalOT).
 
-                        if ($onLeave || $onOB) {
+                        if ($isPaidLeave || $onOB) {
                             $isAbsent = false;
                             // Pwede mo rin i-count as daysPresent kung bayad ang leave nila
-                            $daysPresent++; 
+                            $daysPresent++;
+                        } elseif ($isUnpaidLeave) {
+                            // Approved but unpaid: not a disciplinary absence, but also not a
+                            // paid day — doesn't add to absentDays OR daysPresent.
+                            $isAbsent = false;
                         } else {
                             $isAbsent = (!$summary || $summary->total_hours == 0);
                             if ($isAbsent) {
@@ -565,7 +578,10 @@ class PayrollController extends Controller
                                 if ($holidayType == '0') { // REGULAR holiday
                                     if ($worked) {
                                         $holidayPay += $dailyRate * 1;
-                                    } elseif ($onLeave || $onOB) {
+                                    } elseif ($isPaidLeave || $onOB) {
+                                        // Unpaid leave ($isUnpaidLeave) does NOT grant holiday pay here —
+                                        // it can still qualify via $eligibleViaLastScheduledWorkday below,
+                                        // same as any other day the employee didn't work the holiday.
                                         $holidayPay += $dailyRate;
                                     } elseif ($eligibleViaLastScheduledWorkday) {
                                         $holidayPay += $dailyRate;
