@@ -10,8 +10,20 @@ use App\Models\AuditLog;
  */
 trait Auditable
 {
-    /** Fields never worth auditing. */
-    protected static array $auditIgnore = ['updated_at', 'created_at', 'remember_token', 'password'];
+    /**
+     * Fields never worth auditing. Override this method (not a property —
+     * PHP doesn't allow a class to redeclare a trait's static property with
+     * a different default value) in a model to add more ignored fields,
+     * e.g.:
+     *   protected static function auditIgnore(): array
+     *   {
+     *       return ['updated_at', 'created_at', 'remember_token', 'password', 'config'];
+     *   }
+     */
+    protected static function auditIgnore(): array
+    {
+        return ['updated_at', 'created_at', 'remember_token', 'password'];
+    }
 
     public static function bootAuditable(): void
     {
@@ -28,7 +40,7 @@ trait Auditable
             if ($action === 'updated') {
                 $changes = [];
                 foreach ($this->getChanges() as $k => $new) {
-                    if (in_array($k, static::$auditIgnore, true)) {
+                    if (in_array($k, static::auditIgnore(), true)) {
                         continue;
                     }
                     $changes[$k] = ['from' => $this->getOriginal($k), 'to' => $new];
@@ -38,7 +50,7 @@ trait Auditable
                 }
             } elseif ($action === 'created') {
                 $attrs = $this->getAttributes();
-                foreach (static::$auditIgnore as $ig) {
+                foreach (static::auditIgnore() as $ig) {
                     unset($attrs[$ig]);
                 }
                 $changes = $attrs;

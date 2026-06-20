@@ -136,6 +136,14 @@ class PayrollController extends Controller
             $endDate = $validated['date_to'];
             $payDate = $validated['pay_date'];
 
+            // Holiday-pay eligibility (see business rule in CLAUDE.md) needs to look back
+            // to an employee's last SCHEDULED workday before a holiday, which can fall
+            // before this cut-off's start (e.g. a holiday on day 1, last workday was the
+            // prior period's Friday). Widen the lookup-only bulk fetches below by this
+            // many days so that look-back never needs a per-employee/per-holiday query.
+            $holidayLookbackDays = 14;
+            $lookbackStart = Carbon::parse($startDate)->subDays($holidayLookbackDays)->format('Y-m-d');
+
             // ── Approval lock: an approved pay date is final ──
             if (\App\Models\PayrollApproval::isLocked($payDate)
                 && !optional($request->user())->can('regeneratepayroll')) {
@@ -287,15 +295,19 @@ class PayrollController extends Controller
                 ];
             }
 
+            // NOTE: lower bound widened to $lookbackStart (not $startDate) so the holiday
+            // look-back rule can check an employee's leave status on a day before this
+            // cut-off without an extra query. This is a pure lookup map — it does not
+            // change which days are iterated as "this period's attendance" anywhere below.
             $allLeaves = LeaveDetail::where('status', 'APPROVEDBYCFO')
-            ->whereBetween('date', [$startDate, $endDate])
+            ->whereBetween('date', [$lookbackStart, $endDate])
             ->get()
             ->groupBy('employee_id');
 
             $allObs = OB::where('status', 'APPROVEDBYCFO')
-                ->where(function ($q) use ($startDate, $endDate) {
-                    $q->whereBetween('start_date', [$startDate, $endDate])
-                    ->orWhereBetween('end_date', [$startDate, $endDate]);
+                ->where(function ($q) use ($lookbackStart, $endDate) {
+                    $q->whereBetween('start_date', [$lookbackStart, $endDate])
+                    ->orWhereBetween('end_date', [$lookbackStart, $endDate]);
                 })
                 ->get()
                 ->groupBy('employee_id');
@@ -316,9 +328,23 @@ class PayrollController extends Controller
                 ->get()
                 ->groupBy('employee_id');
 
+            // SEPARATE from $allSchedules above on purpose: $allSchedules is iterated
+            // directly as "every day this employee is scheduled THIS period" (the daily
+            // attendance loop below), so it must stay scoped to [$startDate, $endDate].
+            // This one is only ever used as a lookup to find a single past date (the
+            // last scheduled workday before a holiday) and is safe to widen.
+            $allSchedulesForLookback = EmployeeSchedule::whereIn('employee_id', $employeeIds)
+                ->whereBetween('sched_start_date', [$lookbackStart, $endDate])
+                ->get()
+                ->groupBy('employee_id');
+
+            // Widened lower bound — see $lookbackStart note above. Only used as a
+            // date-keyed lookup map, so extra pre-period rows are harmless: the daily
+            // loop below only ever looks up dates that come from $allSchedules (still
+            // scoped to this period), never iterates this collection wholesale.
             $allSummaries = AttendanceSummary::whereIn('employee_id', $employeeIds)
                 ->with('manualDeductions')
-                ->whereBetween('attendance_date', [$startDate, $endDate])
+                ->whereBetween('attendance_date', [$lookbackStart, $endDate])
                 ->get()
                 ->groupBy('employee_id');
 
@@ -394,6 +420,61 @@ class PayrollController extends Controller
                 //    NOT inside the schedule-driven daily loop below.
                 $totalOT = $employeeOtsAll->sum(fn($ot) => (float) ($ot->total_pay ?? 0));
 
+                // ==============================
+                //  HOLIDAY-PAY ELIGIBILITY VIA LAST SCHEDULED WORKDAY (see CLAUDE.md)
+                //  Built once per employee, reused for every holiday in this period.
+                //  Everything here reads from collections already bulk-loaded above
+                //  (widened by $lookbackStart) — no per-employee/per-holiday queries.
+                // ==============================
+
+                // Distinct scheduled dates within the look-back buffer, sorted ascending,
+                // as plain 'Y-m-d' strings (ISO format sorts/compares correctly as strings,
+                // so the eligibility check below never needs to re-parse them with Carbon).
+                $scheduledDatesForLookback = $allSchedulesForLookback->get($emp->empID, collect())
+                    ->map(fn($s) => Carbon::parse($s->sched_start_date)->format('Y-m-d'))
+                    ->unique()
+                    ->sort()
+                    ->values();
+
+                // Was the employee Present, on Approved PAID Leave (leave_kind == 1), or on
+                // OB on a given date? Reuses $attendanceSummaries / $employeeLeaves /
+                // $employeeObs already loaded above — no additional queries.
+                $isPaidOnDate = function (string $d) use ($attendanceSummaries, $employeeLeaves, $employeeObs) {
+                    $summary = $attendanceSummaries[$d] ?? null;
+                    if ($summary && $summary->total_hours > 0) {
+                        return true; // Present
+                    }
+
+                    $paidLeave = $employeeLeaves->first(fn($l) =>
+                        Carbon::parse($l->date)->format('Y-m-d') === $d && (string) $l->leave_kind === '1'
+                    );
+                    if ($paidLeave) {
+                        return true; // Approved paid leave
+                    }
+
+                    $onOb = $employeeObs->first(fn($ob) => $d >= $ob->start_date && $d <= $ob->end_date);
+
+                    return (bool) $onOb;
+                };
+
+                // Resolves the business rule: find this employee's last scheduled workday
+                // strictly before $holidayDateStr (capped at $holidayLookbackDays back), then
+                // check whether that day was Present / Approved Paid Leave / OB. No schedule
+                // found within the cap => ineligible (holiday pay = 0), per the agreed default.
+                $wasEligibleViaLastScheduledWorkday = function (string $holidayDateStr) use ($scheduledDatesForLookback, $holidayLookbackDays, $isPaidOnDate) {
+                    $cutoffStr = Carbon::parse($holidayDateStr)->subDays($holidayLookbackDays)->format('Y-m-d');
+
+                    $lastScheduledDate = $scheduledDatesForLookback
+                        ->filter(fn($d) => $d < $holidayDateStr && $d >= $cutoffStr)
+                        ->last();
+
+                    if ($lastScheduledDate === null) {
+                        return false; // no provable scheduled workday in range -> ineligible
+                    }
+
+                    return $isPaidOnDate($lastScheduledDate);
+                };
+
                 // Skip only when there is truly nothing to pay this cut-off:
                 // no schedule AND no OT AND no OB AND no approved leave.
                 if ($employeeSchedules->isEmpty()
@@ -465,8 +546,12 @@ class PayrollController extends Controller
                         if ($holidayType !== null) {
                             $worked        = $summary && $summary->total_hours > 0;
                             $appliedHolidays[] = ['date' => $dateStr, 'type' => $holidayType == '0' ? 'Regular' : 'Special'];
-                            $prevDay       = $date->copy()->subDay()->format('Y-m-d');
-                            $presentBefore = isset($attendanceSummaries[$prevDay]) && $attendanceSummaries[$prevDay]->total_hours > 0;
+                            // Business rule: if the employee didn't work the holiday and wasn't on
+                            // leave/OB that day either, fall back to their LAST SCHEDULED WORKDAY
+                            // before the holiday (not just literal yesterday — rest days/weekends
+                            // are skipped) and check Present / Approved Paid Leave / OB on THAT day.
+                            // No scheduled workday found within $holidayLookbackDays => ineligible.
+                            $eligibleViaLastScheduledWorkday = $wasEligibleViaLastScheduledWorkday($dateStr);
                             $hasOtToday    = $employeeOts->has($dateStr);
 
                             if ($hasOtToday) {
@@ -482,7 +567,7 @@ class PayrollController extends Controller
                                         $holidayPay += $dailyRate * 1;
                                     } elseif ($onLeave || $onOB) {
                                         $holidayPay += $dailyRate;
-                                    } elseif ($presentBefore) {
+                                    } elseif ($eligibleViaLastScheduledWorkday) {
                                         $holidayPay += $dailyRate;
                                         if ($absentDays > 0) {
                                             $absentDays--;

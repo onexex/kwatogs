@@ -298,6 +298,7 @@
                     'joblevels'           => ['name' => 'Job Levels', 'url' => '/pages/management/joblevels', 'icon' => 'fa-layer-group'],
                     'leavevalidations'    => ['name' => 'Leave Valid.', 'url' => '/pages/management/leavevalidations', 'icon' => 'fa-calendar-check'],
                     'lilovalidations'     => ['name' => 'Lilo Valid.', 'url' => '/pages/management/lilovalidations', 'icon' => 'fa-clock-rotate-left'],
+                    'mailintegration'     => ['name' => 'Mail Integration', 'url' => '/pages/management/mailintegration', 'icon' => 'fa-paper-plane'],
                     'obvalidations'       => ['name' => 'OB Valid.', 'url' => '/pages/management/obvalidations', 'icon' => 'fa-map-check'],
                     'otfiling'            => ['name' => 'OT Maintenance', 'url' => '/pages/management/otfiling', 'icon' => 'fa-wrench'],
                     'pagibigcontribution' => ['name' => 'Pagibig Contri.', 'url' => '/pages/management/pagibigcontribution', 'icon' => 'fa-piggy-bank'],

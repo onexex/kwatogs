@@ -482,6 +482,11 @@
                     <button class="btn btn-teal btn-sm rounded-pill px-3 fw-bold shadow-sm" id="btnPrintPayslips">
                         <i class="fa fa-file-invoice me-2"></i> Print Payslips
                     </button>
+                    @can('payslipemail')
+                        <button class="btn btn-light btn-sm rounded-pill px-3 fw-bold shadow-sm" id="btnEmailPayslips" data-bs-toggle="modal" data-bs-target="#payslipEmailModal">
+                            <i class="fa fa-paper-plane me-2 text-teal"></i> Email Payslips
+                        </button>
+                    @endcan
                     <div class="dropdown">
                         <button class="btn btn-light btn-sm rounded-pill px-3 fw-bold shadow-sm dropdown-toggle" type="button" id="btnExportMenu" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fa fa-file-excel me-2 text-success"></i> Export
@@ -604,12 +609,75 @@
         </div>
     </div>
 
+    {{-- ===================== Email Payslips Modal ===================== --}}
+    <div class="modal fade" id="payslipEmailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fa fa-paper-plane me-2 text-teal"></i>Email Payslips</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="payslipEmailAlert"></div>
+
+                    <div class="border rounded-3 p-3 mb-3" style="background:#f8fafc;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <strong style="font-size:.85rem;">Payslip Email Settings</strong>
+                            <button type="button" class="btn btn-link btn-sm p-0" id="btnTogglePayslipEmailSettings">Edit</button>
+                        </div>
+                        <div id="payslipEmailSettingsView" style="font-size:.82rem; color:#64748b;">Loading...</div>
+                        <div id="payslipEmailSettingsForm" class="d-none mt-2">
+                            <div class="mb-2">
+                                <label class="form-label" style="font-size:.8rem;">PDF Password</label>
+                                <select class="form-select form-select-sm" id="selPayslipPasswordSource"></select>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="chkAutoSendOnApproval">
+                                <label class="form-check-label" style="font-size:.8rem;" for="chkAutoSendOnApproval">
+                                    Automatically email payslips when a payroll run is approved
+                                </label>
+                            </div>
+                            <button type="button" class="btn btn-teal btn-sm" id="btnSavePayslipEmailSettings">Save Settings</button>
+                        </div>
+                    </div>
+
+                    <p style="font-size:.85rem; color:#64748b;">
+                        Sends a password-protected PDF payslip to the employee's email on file, for the pay date and filters currently selected on this screen.
+                    </p>
+
+                    <div class="table-responsive" style="max-height: 320px; overflow:auto;">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Email</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="payslipEmailStatusBody">
+                                <tr><td colspan="4" class="text-center text-muted">Open this dialog to load status…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light rounded-pill px-4 fw-bold text-muted" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-teal rounded-pill px-4 fw-bold shadow-sm" id="btnSendPayslipEmails">
+                        <i class="fa fa-paper-plane me-2"></i> Send Now
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>window.companyPayrollPeriods = @json($companyPeriods ?? []);</script>
     <script>window.canViewPayrollLogs = @can('payrolllogs') true @else false @endcan;</script>
     <script>window.payrollLogoUrl = "{{ asset('img/kwatogslogo.jpg') }}";</script>
     <script>
         window.canApprovePayroll = @can('approvepayroll') true @else false @endcan;
         window.canRegeneratePayroll = @can('regeneratepayroll') true @else false @endcan;
+        window.canSendPayslipEmail = @can('payslipemail') true @else false @endcan;
     </script>
     <script src="{{ asset('js/modules/payroll.js') }}"></script>
 @endsection

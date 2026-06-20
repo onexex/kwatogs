@@ -8,6 +8,8 @@ use App\Http\Controllers\classiticationCtrl;
 use App\Http\Controllers\companyCtrl;
 use App\Http\Controllers\PayrollPeriodController;
 use App\Http\Controllers\DatabaseBackupController;
+use App\Http\Controllers\MailIntegrationController;
+use App\Http\Controllers\PayslipEmailController;
 use App\Http\Controllers\departmentCtrl;
 use App\Http\Controllers\earlyoutCtrl;
 use App\Http\Controllers\EmployeeRecordController;
@@ -174,6 +176,15 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip']], function () {
     Route::get('/pages/management/databasebackup/{filename}/download',[DatabaseBackupController::class, 'download'])->name('database-backup.download');
     Route::post('/pages/management/databasebackup/{filename}/restore',[DatabaseBackupController::class, 'restore'])->name('database-backup.restore');
     Route::delete('/pages/management/databasebackup/{filename}',[DatabaseBackupController::class, 'destroy'])->name('database-backup.destroy');
+
+    // Mail Integration (modular email provider config for payslip automation, etc.)
+    Route::get('/pages/management/mailintegration',[MailIntegrationController::class, 'index'])->name('mail-integration.index')->middleware('can:mailintegration');
+    Route::post('/pages/management/mailintegration',[MailIntegrationController::class, 'store'])->name('mail-integration.store')->middleware('can:mailintegration');
+    Route::put('/pages/management/mailintegration/{mailIntegration}',[MailIntegrationController::class, 'update'])->name('mail-integration.update')->middleware('can:mailintegration');
+    Route::post('/pages/management/mailintegration/{mailIntegration}/test',[MailIntegrationController::class, 'test'])->name('mail-integration.test')->middleware('can:mailintegration');
+    Route::post('/pages/management/mailintegration/{mailIntegration}/activate',[MailIntegrationController::class, 'activate'])->name('mail-integration.activate')->middleware('can:mailintegration');
+    Route::delete('/pages/management/mailintegration/{mailIntegration}',[MailIntegrationController::class, 'destroy'])->name('mail-integration.destroy')->middleware('can:mailintegration');
+
     Route::get('/pages/management/departments',[pageCtrl::class, 'departments']);
     Route::get('/pages/management/relationship',[pageCtrl::class, 'relationship']);
     Route::get('/pages/management/leavevalidations',[pageCtrl::class, 'leavevalidations']);
@@ -433,6 +444,13 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip']], function () {
     Route::get('/payroll/details/by-payroll', [PayrollController::class, 'getDetailsByPayroll'])
     ->name('payroll.details.by-payroll');
     Route::get('/payroll/payslip', [PayrollController::class, 'payslip'])->name('payroll.payslip');
+
+    // Payslip email automation
+    Route::post('/payroll/payslip/send', [PayslipEmailController::class, 'sendBatch'])->name('payslip-email.send')->middleware('can:payslipemail');
+    Route::get('/payroll/payslip/status', [PayslipEmailController::class, 'status'])->name('payslip-email.status')->middleware('can:payslipemail');
+    Route::post('/payroll/payslip/{payroll}/resend', [PayslipEmailController::class, 'resend'])->name('payslip-email.resend')->middleware('can:payslipemail');
+    Route::get('/payroll/payslip-email/settings', [PayslipEmailController::class, 'getSettings'])->name('payslip-email.settings.get')->middleware('can:payslipemail');
+    Route::post('/payroll/payslip-email/settings', [PayslipEmailController::class, 'updateSettings'])->name('payslip-email.settings.update')->middleware('can:payslipemail');
     Route::get('/payroll/export/cash', [PayrollExportController::class, 'exportCash'])->name('payroll.export.cash');
     Route::get('/payroll/export/card', [PayrollExportController::class, 'exportCard'])->name('payroll.export.card');
     Route::get('/payroll-logs', [PayrollLogController::class, 'index'])->name('payroll-logs.index')->middleware('can:payrolllogs');

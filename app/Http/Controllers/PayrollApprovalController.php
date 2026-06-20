@@ -2,7 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\SendPayslipEmailJob;
+use App\Models\MailIntegrationSetting;
+use App\Models\Payroll;
 use App\Models\PayrollApproval;
+use App\Models\PayslipEmailSetting;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -45,7 +49,23 @@ class PayrollApprovalController extends Controller
             ]
         );
 
-        return response()->json(['success' => true, 'message' => 'Payroll approved and locked as final.']);
+        $message = 'Payroll approved and locked as final.';
+
+        // Optional: fire off payslip emails automatically when approval happens,
+        // if an admin has turned this on in the Email Payslips settings panel.
+        $emailSetting = PayslipEmailSetting::current();
+
+        if ($emailSetting->auto_send_on_approval && MailIntegrationSetting::where('is_active', true)->exists()) {
+            $payrolls = Payroll::where('pay_date', $request->pay_date)->get();
+
+            foreach ($payrolls as $payroll) {
+                SendPayslipEmailJob::dispatch($payroll->id, 'system (auto-send on approval)');
+            }
+
+            $message .= ' Payslip emails for '.$payrolls->count().' employee(s) have been queued.';
+        }
+
+        return response()->json(['success' => true, 'message' => $message]);
     }
 
     /** Reopen an approved pay date (override). Requires regeneratepayroll. */

@@ -1043,4 +1043,128 @@ $(function () {
                 .catch(err => Swal.fire("Error", err.response?.data?.message || "Unable to reopen.", "error"));
         });
     });
+
+    // ===================== Email Payslips =====================
+    if (window.canSendPayslipEmail) {
+        const payslipEmailParams = () => ({
+            pay_date: $("#pay_date").val(),
+            company_id: $("#selCompany").val() || "all",
+            classification_id: $("#selFilter").val() || "all",
+            department_id: $("#selDepartment").val() || "all",
+        });
+
+        function loadPayslipEmailSettings() {
+            axios.get("/payroll/payslip-email/settings").then(res => {
+                const data = res.data.data;
+                const options = res.data.options;
+                const $select = $("#selPayslipPasswordSource").empty();
+                Object.keys(options).forEach(key => {
+                    $select.append(`<option value="${key}">${options[key]}</option>`);
+                });
+                $select.val(data.password_source);
+                $("#chkAutoSendOnApproval").prop("checked", data.auto_send_on_approval);
+
+                const sourceLabel = options[data.password_source] || data.password_source;
+                $("#payslipEmailSettingsView").html(
+                    `PDF password: <strong>${sourceLabel}</strong> &middot; Auto-send on approval: <strong>${data.auto_send_on_approval ? "On" : "Off"}</strong>`
+                );
+            }).catch(() => {
+                $("#payslipEmailSettingsView").html('<span class="text-danger">Could not load settings.</span>');
+            });
+        }
+
+        function statusBadge(status) {
+            if (status === "sent") return '<span class="badge bg-success text-white">Sent</span>';
+            if (status === "failed") return '<span class="badge bg-danger text-white">Failed</span>';
+            if (status === "queued") return '<span class="badge bg-secondary text-white">Queued</span>';
+            return '<span class="badge bg-light text-muted">Not sent</span>';
+        }
+
+        function loadPayslipEmailStatus() {
+            const params = payslipEmailParams();
+            if (!params.pay_date) {
+                $("#payslipEmailStatusBody").html('<tr><td colspan="4" class="text-center text-muted">Select a pay date first.</td></tr>');
+                return;
+            }
+            $("#payslipEmailStatusBody").html('<tr><td colspan="4" class="text-center text-muted">Loading…</td></tr>');
+            axios.get("/payroll/payslip/status", { params }).then(res => {
+                const rows = res.data.data || [];
+                if (!rows.length) {
+                    $("#payslipEmailStatusBody").html('<tr><td colspan="4" class="text-center text-muted">No payroll records for this selection.</td></tr>');
+                    return;
+                }
+                $("#payslipEmailStatusBody").html(rows.map(r => `
+                    <tr>
+                        <td>${r.name || r.employee_id}</td>
+                        <td>${r.email || '<span class="text-danger">No email on file</span>'}</td>
+                        <td>${statusBadge(r.status)}${r.error ? `<div class="small text-danger">${r.error}</div>` : ''}</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-secondary btn-resend-payslip" data-payroll-id="${r.payroll_id}">Resend</button>
+                        </td>
+                    </tr>
+                `).join(''));
+            }).catch(() => {
+                $("#payslipEmailStatusBody").html('<tr><td colspan="4" class="text-center text-danger">Failed to load status.</td></tr>');
+            });
+        }
+
+        $("#payslipEmailModal").on("show.bs.modal", function () {
+            $("#payslipEmailAlert").empty();
+            loadPayslipEmailSettings();
+            loadPayslipEmailStatus();
+        });
+
+        $("#btnTogglePayslipEmailSettings").on("click", function () {
+            $("#payslipEmailSettingsForm").toggleClass("d-none");
+        });
+
+        $("#btnSavePayslipEmailSettings").on("click", function () {
+            axios.post("/payroll/payslip-email/settings", {
+                password_source: $("#selPayslipPasswordSource").val(),
+                auto_send_on_approval: $("#chkAutoSendOnApproval").is(":checked"),
+            }).then(() => {
+                $("#payslipEmailSettingsForm").addClass("d-none");
+                loadPayslipEmailSettings();
+            }).catch(err => {
+                Swal.fire("Error", err.response?.data?.message || "Could not save settings.", "error");
+            });
+        });
+
+        $("#btnSendPayslipEmails").on("click", function () {
+            const params = payslipEmailParams();
+            if (!params.pay_date) {
+                showAlert("Select a pay date first.", "warning", "No Pay Date");
+                return;
+            }
+            Swal.fire({
+                icon: "question",
+                title: "Email payslips?",
+                html: `Pay date: <strong>${params.pay_date}</strong><br>This sends a password-protected PDF to every matching employee's email on file.`,
+                showCancelButton: true,
+                confirmButtonText: "Yes, send",
+                confirmButtonColor: "#008080",
+            }).then(r => {
+                if (!r.isConfirmed) return;
+                axios.post("/payroll/payslip/send", params)
+                    .then(res => {
+                        Swal.fire({ icon: "success", title: "Queued", text: res.data.message, timer: 1800, showConfirmButton: false });
+                        setTimeout(loadPayslipEmailStatus, 1200);
+                    })
+                    .catch(err => {
+                        Swal.fire("Error", err.response?.data?.message || "Unable to send payslip emails.", "error");
+                    });
+            });
+        });
+
+        $(document).on("click", ".btn-resend-payslip", function () {
+            const payrollId = $(this).data("payroll-id");
+            const $btn = $(this).prop("disabled", true).text("Sending…");
+            axios.post(`/payroll/payslip/${payrollId}/resend`)
+                .then(() => { setTimeout(loadPayslipEmailStatus, 1000); })
+                .catch(err => {
+                    Swal.fire("Error", err.response?.data?.message || "Unable to resend.", "error");
+                    $btn.prop("disabled", false).text("Resend");
+                });
+        });
+    }
 });
