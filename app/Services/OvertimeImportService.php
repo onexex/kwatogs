@@ -89,7 +89,10 @@ class OvertimeImportService
         if ($out->lessThanOrEqualTo($in)) { $out->addDay(); } // crossed midnight
         $totalHours = $out->floatDiffInHours($in);
 
-        if ($totalHours >= 8) {
+        // Holiday & rest-day OT is FLAT: pay the full hours at the day-type rate,
+        // no 1-hour meal break deduction. Only a plain 'regular' day uses the
+        // meal-break + two-tier (first 8 hrs x rate, beyond 8 x1.25) logic.
+        if ($dayType === 'regular' && $totalHours >= 8) {
             $payable = $totalHours - 1;            // 1-hour meal break
             $premium = min($payable, 8);
             $excess  = max($payable - 8, 0);

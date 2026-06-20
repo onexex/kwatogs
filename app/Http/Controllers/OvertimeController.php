@@ -223,11 +223,12 @@ class OvertimeController extends Controller
             };
 
             // ── OT computation ──────────────────────────────────────────────
-            // Regular & rest day: two-tier (first 8 hrs x1.30, beyond 8 x1.25),
-            //   with a 1-hour meal break deducted when the span is >= 9 hours.
-            // Holidays & combo day types: unchanged (flat $overtimeRate).
-             if ($totalHours >= 8) {
-                $payableHours = $totalHours >= 8 ? $totalHours - 1 : $totalHours;
+            // Holiday & rest-day OT is FLAT: full hours x $overtimeRate, no meal
+            //   break deducted.
+            // Only a plain 'regular' day uses the two-tier (first 8 hrs x rate,
+            //   beyond 8 x1.25) logic with a 1-hour meal break when span >= 8.
+             if ($day_type === 'regular' && $totalHours >= 8) {
+                $payableHours = $totalHours - 1;
                 $premiumHours = min($payableHours, 8);
                 $excessHours  = max($payableHours - 8, 0);
 
