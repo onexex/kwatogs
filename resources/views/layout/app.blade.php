@@ -237,11 +237,16 @@
                 $modulePagesGroupActive = !is_null($modulePagesActiveKey);
 
                 // 5. Count pending leave requests waiting for the current user's approval
+                //    NOTE: scoped by emp_details.empCompID (company-wide), matching
+                //    LeaveRequestContoller::getAll() exactly — it previously filtered by
+                //    empISID (direct reports only), which under-counted (often to 0) for
+                //    HR/CFO-level approvers who aren't anyone's direct supervisor but can
+                //    still see/approve every pending leave in the company on that list page.
                 $pendingLeaveCount = 0;
                 if (auth()->user()?->can('pendingleaverequests')) {
                     $pendingLeaveUser = auth()->user();
                     $pendingLeaveCount = \App\Models\Leave::join('emp_details', 'emp_details.empID', '=', 'leaves.employee_id')
-                        ->where('emp_details.empISID', $pendingLeaveUser->empID)
+                        ->where('emp_details.empCompID', optional($pendingLeaveUser->empDetail)->empCompID)
                         ->where(function ($q) use ($pendingLeaveUser) {
                             if ($pendingLeaveUser->can('approveleave')) {
                                 $q->orWhere('leaves.status', \App\Enums\LeaveStatusEnum::FORAPPROVAL->name);
