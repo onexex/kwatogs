@@ -252,6 +252,7 @@
         }
 
         /* ── Payroll table ───────────────────────────────────────── */
+        .payroll-table { border-collapse: separate; border-spacing: 0; }
         .payroll-table thead th {
             position: sticky !important;
             top: 0;
@@ -270,8 +271,11 @@
             padding: 8px 5px;
             white-space: nowrap;
             color: var(--slate);
+            border-bottom: 1px solid #f1f5f9;
         }
-        .payroll-table tbody tr:hover { background: var(--teal-light); }
+        /* Zebra striping for easier row tracking across the wide table */
+        .payroll-table tbody tr:nth-child(even):not(.payroll-totals) td { background-color: #fbfdfd; }
+        .payroll-table tbody tr:hover:not(.payroll-totals) td { background: var(--teal-light) !important; }
 
         .bg-earnings {
             background-color: rgba(0, 128, 128, 0.03);
@@ -282,6 +286,58 @@
         .fw-bold-total {
             font-weight: 800;
             color: var(--teal);
+        }
+
+        /* ── Frozen first columns (#, Employee) so identity stays visible
+              while scrolling the 20+ money columns horizontally ───────── */
+        .payroll-table th.col-num,
+        .payroll-table td.col-num {
+            position: sticky;
+            left: 0;
+            width: 40px;
+            min-width: 40px;
+            background-color: var(--surface);
+            z-index: 9;
+        }
+        .payroll-table th.col-emp,
+        .payroll-table td.col-emp {
+            position: sticky;
+            left: 40px;
+            min-width: 150px;
+            text-align: left;
+            background-color: var(--surface);
+            z-index: 9;
+            box-shadow: 6px 0 8px -6px rgba(15, 23, 42, .18);
+        }
+        .payroll-table thead th.col-num,
+        .payroll-table thead th.col-emp { z-index: 12; }
+        /* Keep frozen cells opaque against zebra + hover tints */
+        .payroll-table tbody tr:nth-child(even):not(.payroll-totals) td.col-num,
+        .payroll-table tbody tr:nth-child(even):not(.payroll-totals) td.col-emp { background-color: #fbfdfd; }
+        .payroll-table tbody tr:hover:not(.payroll-totals) td.col-num,
+        .payroll-table tbody tr:hover:not(.payroll-totals) td.col-emp { background: var(--teal-light) !important; }
+
+        /* Muted zero values — drop the visual weight of 0.00 so real numbers pop */
+        .payroll-table tbody td.cell-zero { color: var(--muted); font-weight: 400; }
+
+        /* Totals row: frozen label cell + emphasis */
+        .payroll-table tr.payroll-totals td { border-top: 2px solid var(--teal); }
+        .payroll-table tr.payroll-totals td.col-totals {
+            position: sticky;
+            left: 0;
+            z-index: 9;
+            background: #e0f2f1;
+            text-align: left;
+        }
+
+        /* Loading + empty states */
+        .payroll-state td { padding: 38px 12px !important; }
+        .payroll-state .spinner-border { width: 1.4rem; height: 1.4rem; }
+        .payroll-empty-icon {
+            width: 46px; height: 46px; border-radius: 50%;
+            background: var(--teal-light); color: var(--teal);
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 1.1rem; margin-bottom: 10px;
         }
 
         /* ── Sub-section divider ─────────────────────────────────── */
@@ -521,8 +577,8 @@
                     <table class="table table-hover align-middle text-center payroll-table mb-0">
                         <thead>
                             <tr>
-                                <th rowspan="2" class="ps-4">#</th>
-                                <th rowspan="2">Employee</th>
+                                <th rowspan="2" class="ps-4 col-num">#</th>
+                                <th rowspan="2" class="col-emp">Employee</th>
                                 <th rowspan="2">Basic Salary</th>
                                 <th rowspan="2">Bi-Monthly</th>
                                 <th rowspan="2">Abs/Trd/Ut</th>

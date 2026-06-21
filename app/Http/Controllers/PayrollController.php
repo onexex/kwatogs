@@ -563,6 +563,12 @@ class PayrollController extends Controller
                         //  HOLIDAY HANDLING (OT on the date overrides; otherwise pay holiday)
                         // ==============================
                         $holidayType = $holidayTypeForDate($dateStr); // dept-aware (null = none for this employee)
+                        // Track the holiday benefit granted for THIS date only, so the Payroll
+                        // Detail Report can show a dedicated "Holiday Pay" line for the day.
+                        // $holidayPay is a running per-employee total; the per-day amount is the
+                        // delta added inside the branch below.
+                        $dayHolidayType   = $holidayType === null ? null : ($holidayType == '0' ? 'Regular' : 'Special');
+                        $holidayPayBefore = $holidayPay;
                         if ($holidayType !== null) {
                             $worked        = $summary && $summary->total_hours > 0;
                             $appliedHolidays[] = ['date' => $dateStr, 'type' => $holidayType == '0' ? 'Regular' : 'Special'];
@@ -599,12 +605,19 @@ class PayrollController extends Controller
                                             $absentDays--;
                                         }
                                     }
-                                } elseif ($holidayType == '1' && $worked) { // SPECIAL holiday, worked
+                                } elseif ($holidayType == '1' && ($worked || $isPaidLeave || $onOB)) {
+                                    // SPECIAL holiday premium (+30%). OB and approved PAID leave are
+                                    // treated as rendered work here — same policy as the regular-holiday
+                                    // branch above — so they earn 130% (100% via daysPresent + 30%),
+                                    // not just 100%. Unpaid leave and plain absence get nothing
+                                    // (special holidays follow "no work, no pay"; no day-before rule).
                                     $holidayPay += $dailyRate * 0.3;
                                 }
                             }
                         }
                           $logsType = $onLeave ? 'Leave' : ($onOB ? 'OB' : ($isAbsent ? 'Absent' : 'Present'));
+                        // Per-day holiday benefit actually granted (0 if ineligible / OT-paid).
+                        $dayHolidayPay = round($holidayPay - $holidayPayBefore, 2);
                         //  Collect daily record (one bulk insert per employee below — perf).
                         //  Keyed by date so overlapping schedules don't duplicate a day.
                         $detailRows[$dateStr] = [
@@ -613,6 +626,8 @@ class PayrollController extends Controller
                             'date'                => $dateStr,
                             'payroll_id'          => null,
                             'logsType'            => $logsType,
+                            'holiday_type'        => $dayHolidayPay > 0 ? $dayHolidayType : null,
+                            'holiday_pay'         => $dayHolidayPay,
                             'totalHours'          => $summary->total_hours ?? 0,
                             'late_minutes'        => $summary->mins_late ?? 0,
                             'undertime_minutes'   => $summary->mins_undertime ?? 0,
@@ -1047,9 +1062,11 @@ class PayrollController extends Controller
                 'employee_name' => $employee ? strtoupper(trim(($employee->lname ?? '') . ' ' . ($employee->fname ?? ''))) : 'UNKNOWN',
                 'department'    => $empDetail?->department?->dep_name ?? 'N/A',
                 'position'      => $empDetail?->position?->pos_desc ?? 'N/A',
-                'records'       => $rows->map(function ($row) {
-                    return [
-                        'date'                => $row->date?->format('Y-m-d') ?? 'N/A',
+                'records'       => $rows->flatMap(function ($row) {
+                    $date = $row->date?->format('Y-m-d') ?? 'N/A';
+
+                    $records = [[
+                        'date'                => $date,
                         'logsType'            => $row->logsType ?? '',
                         'totalHours'          => $row->totalHours ?? 0,
                         'late_minutes'        => $row->late_minutes ?? 0,
@@ -1061,7 +1078,29 @@ class PayrollController extends Controller
                         'penalty_amount'      => $row->penalty_amount ?? 0,
                         'adjustment_amount'   => $row->adjustment_amount ?? 0,
                         'remarks'             => $row->remarks ?? '',
-                    ];
+                    ]];
+
+                    // Holiday benefit gets its own line right under the day's row
+                    // (e.g. a present employee on a regular holiday => Present + Holiday Pay).
+                    if (($row->holiday_pay ?? 0) > 0) {
+                        $records[] = [
+                            'date'                => $date,
+                            'logsType'            => 'Holiday Pay',
+                            'totalHours'          => 0,
+                            'late_minutes'        => 0,
+                            'undertime_minutes'   => 0,
+                            'late_deduction'      => 0,
+                            'undertime_deduction' => 0,
+                            'night_diff_hours'    => 0,
+                            'night_diff_pay'      => 0,
+                            'penalty_amount'      => 0,
+                            'adjustment_amount'   => 0,
+                            'remarks'             => trim(($row->holiday_type ? $row->holiday_type . ' Holiday ' : 'Holiday ')
+                                                    . '+₱' . number_format((float) $row->holiday_pay, 2)),
+                        ];
+                    }
+
+                    return $records;
                 })->values(),
                 'totals' => [
                     'totalHours'          => $rows->sum('totalHours'),

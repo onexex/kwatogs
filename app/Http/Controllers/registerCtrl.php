@@ -14,11 +14,63 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 
 class registerCtrl extends Controller
 {
+    /**
+     * Build a safe, collision-free profile picture filename derived from the
+     * employee's ID. Using the raw client filename (getClientOriginalName) is
+     * unsafe — two employees uploading "photo.jpg" overwrite each other, and a
+     * crafted name can attempt path traversal. We keep only the extension.
+     */
+    private function profileImageName(Request $request, string $empID): string
+    {
+        $ext  = strtolower($request->file('path')->getClientOriginalExtension() ?: 'jpg');
+        $slug = preg_replace('/[^A-Za-z0-9_-]/', '', $empID);
+        return "{$slug}_" . time() . ".{$ext}";
+    }
+
+    /**
+     * Build the three education rows, skipping any level the user left blank
+     * (no school name) so we don't persist empty placeholder rows.
+     */
+    private function buildEducation(Request $request, string $empID, $timestamp = null): array
+    {
+        $levels = [
+            'Primary'   => 'primary',
+            'Secondary' => 'secondary',
+            'Tertiary'  => 'tertiary',
+        ];
+
+        $rows = [];
+        foreach ($levels as $label => $prefix) {
+            $school = $request->input("{$prefix}_school");
+            if (empty($school)) {
+                continue; // nothing entered for this level — don't store an empty row
+            }
+
+            $row = [
+                'empID'             => $empID,
+                'schoolLevel'       => $label,
+                'schoolName'        => $school,
+                'schoolYearStarted' => $request->input("{$prefix}_year_started"),
+                'schoolYearEnded'   => $request->input("{$prefix}_year_graduated"),
+                'schoolAddress'     => $request->input("{$prefix}_school_address"),
+            ];
+
+            if ($timestamp) {
+                $row['created_at'] = $timestamp;
+                $row['updated_at'] = $timestamp;
+            }
+
+            $rows[] = $row;
+        }
+
+        return $rows;
+    }
     public function generateEmpID() {
         // 1. Get only the latest ID, don't load all users
         $latestEmployee = User::orderBy('id', 'desc')->first();
@@ -209,37 +261,10 @@ class registerCtrl extends Controller
                 'updated_at' => $current_date_time,
             ];
 
-            $valueEdu = collect([
-                [
-                    'empID' => $empID,
-                    'schoolLevel' => "Primary",
-                    'schoolName' => $request->primary_school,
-                    'schoolYearStarted' => $request->primary_year_started,
-                    'schoolYearEnded' => $request->primary_year_graduated,
-                    'schoolAddress' => $request->primary_school_address,
-                ],
-                [
-                    'empID' => $empID,
-                    'schoolLevel' => "Secondary",
-                    'schoolName' => $request->secondary_school,
-                    'schoolYearStarted' => $request->secondary_year_started,
-                    'schoolYearEnded' => $request->secondary_year_graduated,
-                    'schoolAddress' => $request->secondary_school_address,
-                ],
-                [
-                    'empID' => $empID,
-                    'schoolLevel' => "Tertiary",
-                    'schoolName' => $request->tertiary_school,
-                    'schoolYearStarted' => $request->tertiary_year_started,
-                    'schoolYearEnded' => $request->tertiary_year_graduated,
-                    'schoolAddress' => $request->tertiary_school_address,
-                ]
-            ])->map(function ($item) use ($current_date_time) {
-                return array_merge($item, [
-                    'created_at' => $current_date_time,
-                    'updated_at' => $current_date_time,
-                ]);
-            })->toArray();
+            $valueEdu = $this->buildEducation($request, $empID, $current_date_time);
+
+            // Safe, unique profile picture filename (never trust the client name).
+            $imageName = $this->profileImageName($request, $empID);
 
             $valueDetails = [
                 'empID' => $empID,
@@ -262,7 +287,7 @@ class registerCtrl extends Controller
                 'empAgencyID' => $request->agency,
                 'empHMOID' => $request->hmo,
                 'empHMONo' => $request->hmo_number,
-                'empPicPath' => $request->path->getClientOriginalName(),
+                'empPicPath' => $imageName,
                 'empDateHired' => $request->date_hired,
                 'empDateResigned' => $request->emp_status == 1 ? null : $request->date_resigned,
                 'empDateRegular' => $request->date_regularization,
@@ -292,7 +317,9 @@ class registerCtrl extends Controller
             // Insert all data
             DB::table('users')->insert($valuesUser);
             DB::table('emp_infos')->insert($valueInfos);
-            DB::table('emp_educations')->insert($valueEdu);
+            if (!empty($valueEdu)) {
+                DB::table('emp_educations')->insert($valueEdu);
+            }
             DB::table('emp_details')->insert($valueDetails);
             DB::table('access')->insert($valuessysaccess);
 
@@ -300,8 +327,11 @@ class registerCtrl extends Controller
             \App\Models\AuditLog::record('created', 'empDetail', $empID, $valueDetails);
 
             if ($request->hasFile('path')) {
-                $imageName = $request->path->getClientOriginalName();
-                $request->path->move('img/profile/', $imageName);
+                // Absolute path to the real served public/ folder. More robust than a
+                // relative path here: the deploy ships the whole app (public/ included)
+                // and routes through it via the root .htaccess, so public_path() always
+                // resolves to .../public regardless of PHP's CWD (mod_php vs PHP-FPM).
+                $request->file('path')->move(public_path('img/profile'), $imageName);
             }
 
             DB::commit();
@@ -322,23 +352,36 @@ class registerCtrl extends Controller
         $user = User::where('empID', $request->empID)
             ->first();
 
-        $userEmail = User::where('email', $request->email)
-            ->where('empID', '!=', $request->empID) // exclude current user
-            ->first();
-
-        if ($userEmail) {
+        // Guard against a missing/invalid empID so we don't hit a null-method
+        // fatal (e.g. $user->education()) further down.
+        if (!$user) {
             return response()->json([
-                'status' => 201,
-                'error' => [
-                    'email' => ['The email address is already in use.']
-                ]
+                'status' => 203,
+                'msg'    => 'Employee not found.',
             ]);
         }
 
         $validator = Validator::make($request->all(), [
-            'email' => 'required',
-            'firstname' => 'required',
-            'lastname' => 'required',
+            // Email must be valid and unique, ignoring this employee's own row.
+            'email' => [
+                'required',
+                'email',
+                Rule::unique('users', 'email')->ignore($request->empID, 'empID'),
+            ],
+            'firstname' => [
+                'required',
+                'string',
+                'min:2',
+                'max:50',
+                'regex:/^[a-zA-Z\sñÑ-]+$/',
+            ],
+            'lastname' => [
+                'required',
+                'string',
+                'min:2',
+                'max:50',
+                'regex:/^[a-zA-Z\sñÑ-]+$/',
+            ],
             'company' => 'required',
             'gender' => 'required',
             'citizenship' => 'required',
@@ -350,10 +393,15 @@ class registerCtrl extends Controller
             // 'job_level' => 'required',
             'birthdate' => 'required',
             'province' => 'required',
-            'mobile' => 'required',
+            'mobile' => [
+                'required',
+                'numeric',
+                'digits:11',
+                'regex:/^09\d{9}$/',
+            ],
             'city' => 'required',
             'barangay' => 'required',
-            'zipcode' => 'required',
+            'zipcode' => 'required|numeric',
             'country' => 'required',
             // 'agency' => 'required',
             // 'hmo' => 'required',
@@ -361,10 +409,22 @@ class registerCtrl extends Controller
             'date_hired' => 'required',
             'basic'=>'required|numeric',
             'allowance'=>'required|numeric',
+
+            // Government IDs — same digit rules as registration.
+            'philhealth' => 'nullable|digits:12',
+            'pagibig'    => 'nullable|digits:12',
+            'sss'        => 'nullable|digits:10',
+            'tin'        => 'nullable|digits:9',
+            'umid'       => 'nullable|digits:12',
+
+            // Profile picture is optional on update, but if supplied must be a valid image.
+            'path' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+
             // Resignation date is mandatory when the employee is marked Resigned.
             'date_resigned' => 'nullable|required_if:emp_status,0',
         ], [
             'date_resigned.required_if' => 'Date Resigned is required when the status is Resigned.',
+            'email.unique'              => 'The email address is already in use.',
         ]);
 
         if (!$validator->passes()) {
@@ -374,29 +434,7 @@ class registerCtrl extends Controller
         DB::beginTransaction();
         try {
             /**
-             * 🔒 Generate safe, unique empID
-             * Format: COMPANYCODE-YYYY-0001
-             */
-            $companyCode = strtoupper($request->company);
-            $year = now()->format('Y');
-
-            // Lock table to prevent race conditions
-            $latestEmp = DB::table('users')
-                ->where('empID', 'LIKE', "{$companyCode}-{$year}-%")
-                ->lockForUpdate()
-                ->orderBy('empID', 'desc')
-                ->first();
-
-            if ($latestEmp) {
-                // Extract last 4 digits
-                $lastNumber = (int) substr($latestEmp->empID, -4);
-                $nextNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
-            } else {
-                $nextNumber = '0001';
-            }
-
-            /**
-             * 👇 Insert operations
+             * 👇 Update operations (empID is fixed on update — never regenerated)
              */
             $valuesUser = [
                 'email' => $request->email,
@@ -428,32 +466,7 @@ class registerCtrl extends Controller
                 'empCountry' => $request->country,
             ];
 
-            $valueEdu = collect([
-                [
-                    'empID' => $request->empID,
-                    'schoolLevel' => "Primary",
-                    'schoolName' => $request->primary_school,
-                    'schoolYearStarted' => $request->primary_year_started,
-                    'schoolYearEnded' => $request->primary_year_graduated,
-                    'schoolAddress' => $request->primary_school_address,
-                ],
-                [
-                    'empID' => $request->empID,
-                    'schoolLevel' => "Secondary",
-                    'schoolName' => $request->secondary_school,
-                    'schoolYearStarted' => $request->secondary_year_started,
-                    'schoolYearEnded' => $request->secondary_year_graduated,
-                    'schoolAddress' => $request->secondary_school_address,
-                ],
-                [
-                    'empID' => $request->empID,
-                    'schoolLevel' => "Tertiary",
-                    'schoolName' => $request->tertiary_school,
-                    'schoolYearStarted' => $request->tertiary_year_started,
-                    'schoolYearEnded' => $request->tertiary_year_graduated,
-                    'schoolAddress' => $request->tertiary_school_address,
-                ]
-            ])->toArray();
+            $valueEdu = $this->buildEducation($request, $request->empID);
 
             $valueDetails = [
                 'empISID' => $request->immediate,
@@ -510,7 +523,9 @@ class registerCtrl extends Controller
             DB::table('emp_infos')
                 ->where('empID', $request->empID)
                 ->update($valueInfos);
-            DB::table('emp_educations')->insert($valueEdu);
+            if (!empty($valueEdu)) {
+                DB::table('emp_educations')->insert($valueEdu);
+            }
             DB::table('emp_details')
                 ->where('empID', $request->empID)
                 ->update($valueDetails);
@@ -524,12 +539,14 @@ class registerCtrl extends Controller
             if (!empty($detailChanges)) \App\Models\AuditLog::record('updated', 'empDetail', $request->empID, $detailChanges);
 
             if ($request->hasFile('path')) {
-                $imageName = $request->path->getClientOriginalName();
-                $request->path->move('img/profile/', $imageName);
+                // Safe, unique filename (never trust the client-supplied name).
+                // public_path() targets the real served public/ folder deterministically.
+                $imageName = $this->profileImageName($request, $request->empID);
+                $request->file('path')->move(public_path('img/profile'), $imageName);
                 DB::table('emp_details')
                     ->where('empID', $request->empID)
                     ->update([
-                        'empPicPath' => $request->path->getClientOriginalName(),
+                        'empPicPath' => $imageName,
                     ]);
             }
 
@@ -537,7 +554,7 @@ class registerCtrl extends Controller
 
             return response()->json([
                 'status' => 200,
-                'msg' => 'The employee was added successfully!',
+                'msg' => 'The employee was updated successfully!',
                 'empID' => $request->empID
             ]);
         } catch (\Exception $e) {

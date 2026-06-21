@@ -20,33 +20,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 document.querySelector(".table-responsive")?.innerHTML ||
                 "<p>No table data</p>";
 
-            // Summary strip (Employees / Gross / Net / Pay Receivable), computed from
-            // the same totals already tallied while rendering the on-screen table
-            // (see window.lastPayrollTotals in fetchPayroll). Omitted gracefully if
-            // Print is clicked before any data has been fetched yet.
-            const __totals = window.lastPayrollTotals;
-            const __fmt = window.formatNumber || ((v) => (parseFloat(v) || 0).toFixed(2));
-            const summaryStrip = __totals ? `
-                <div class="summary-strip">
-                    <div class="summary-card">
-                        <div class="summary-label">Employees</div>
-                        <div class="summary-value">${window.lastPayrollCount ?? "—"}</div>
-                    </div>
-                    <div class="summary-card">
-                        <div class="summary-label">Total Gross Pay</div>
-                        <div class="summary-value">&#8369;${__fmt(__totals.gross_pay)}</div>
-                    </div>
-                    <div class="summary-card">
-                        <div class="summary-label">Total Net Pay</div>
-                        <div class="summary-value">&#8369;${__fmt(__totals.net_pay)}</div>
-                    </div>
-                    <div class="summary-card highlight">
-                        <div class="summary-label">Total Pay Receivable</div>
-                        <div class="summary-value">&#8369;${__fmt(__totals.pay_rec)}</div>
-                    </div>
-                </div>
-            ` : "";
-
             // Get input values
             const payDate = document.getElementById("pay_date")?.value || "N/A";
             const dateFrom =
@@ -141,40 +114,6 @@ document.addEventListener("DOMContentLoaded", function () {
                                 line-height: 1.4;
                                 text-align: center;
                             }
-                            .summary-strip {
-                                display: flex;
-                                gap: 10px;
-                                margin: 18px 0 6px;
-                                page-break-inside: avoid;
-                            }
-                            .summary-card {
-                                flex: 1;
-                                background: #f0fbfa;
-                                border: 1px solid #b9e4e1;
-                                border-radius: 8px;
-                                padding: 10px 12px;
-                                text-align: center;
-                            }
-                            .summary-card.highlight {
-                                background: #008080;
-                                border-color: #008080;
-                            }
-                            .summary-card.highlight .summary-label,
-                            .summary-card.highlight .summary-value {
-                                color: #fff;
-                            }
-                            .summary-label {
-                                font-size: 0.62rem;
-                                text-transform: uppercase;
-                                letter-spacing: .5px;
-                                color: #64748b;
-                                margin-bottom: 4px;
-                            }
-                            .summary-value {
-                                font-size: 1rem;
-                                font-weight: 800;
-                                color: #008080;
-                            }
                             table {
                                 width: 100%;
                                 border-collapse: collapse;
@@ -233,7 +172,6 @@ document.addEventListener("DOMContentLoaded", function () {
                                 table { page-break-inside: auto; }
                                 tr { page-break-inside: avoid; page-break-after: auto; }
                                 .sign { page-break-inside: avoid; }
-                                .summary-strip { page-break-inside: avoid; }
                                 .no-print { display: none !important; }
                             }
                         </style>
@@ -256,7 +194,6 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <strong>Generated On:</strong> ${generatedAt}
                             </div>
                         </div>
-                        ${summaryStrip}
                         ${table}
 
                         <div class="sign">
@@ -464,6 +401,7 @@ document.addEventListener("DOMContentLoaded", function () {
             printWindow.document.write(`
                 <html>
                     <head>
+                        <meta charset="utf-8">
                         <title>Payroll Detail Report</title>
                         <style>
                             * { box-sizing: border-box; }
@@ -698,7 +636,11 @@ $(document).ready(function () {
         const classificationId = $("#selFilter").val() || "all";
         const departmentId = $("#selDepartment").val() || "all";
 
-        $payrollTableBody.html('<tr><td colspan="25">Loading...</td></tr>');
+        $payrollTableBody.html(
+            '<tr class="payroll-state"><td colspan="25" class="text-center text-muted">' +
+            '<div class="spinner-border text-teal" role="status"></div>' +
+            '<div class="mt-2 small fw-semibold">Loading payroll…</div></td></tr>'
+        );
 
         axios
             .get("/payroll/fetch", {
@@ -717,14 +659,20 @@ $(document).ready(function () {
 
                 if (data && data.success === false) {
                     $payrollTableBody.html(
-                        `<tr><td colspan="25">${data.message || "Error fetching payroll data."}${data.error ? " (" + data.error + ")" : ""}</td></tr>`,
+                        `<tr class="payroll-state"><td colspan="25" class="text-center text-danger">` +
+                        `<div class="payroll-empty-icon" style="background:#fee2e2;color:#b91c1c;"><i class="fa fa-triangle-exclamation"></i></div>` +
+                        `<div class="fw-semibold">${data.message || "Error fetching payroll data."}</div>` +
+                        `${data.error ? `<div class="small text-muted">${data.error}</div>` : ""}</td></tr>`,
                     );
                     return;
                 }
 
                 if (!Array.isArray(data) || data.length === 0) {
                     $payrollTableBody.html(
-                        '<tr><td colspan="25">No payroll data found.</td></tr>',
+                        '<tr class="payroll-state"><td colspan="25" class="text-center text-muted">' +
+                        '<div class="payroll-empty-icon"><i class="fa fa-folder-open"></i></div>' +
+                        '<div class="fw-semibold">No payroll data found</div>' +
+                        '<div class="small">Generate the payroll for this pay date, or adjust your filters.</div></td></tr>',
                     );
                     return;
                 }
@@ -736,8 +684,8 @@ $(document).ready(function () {
                 $.each(data, function (index, payroll) {
                     const row = `
                     <tr>
-                        <td class="ps-4">${index + 1}</td>
-                        <td>
+                        <td class="ps-4 col-num text-muted">${index + 1}</td>
+                        <td class="col-emp fw-semibold">
                             ${((payroll.employee?.fname || "") + " " + (payroll.employee?.lname || ""))
                                 .toLowerCase()
                                 .replace(/\b\w/g, (char) => char.toUpperCase())}
@@ -748,19 +696,19 @@ $(document).ready(function () {
                         </td>
                             <td>${formatNumber(payroll.basic_salary)}</td>
                             <td>${formatNumber(payroll.basicPay)}</td>
-                            <td>${formatNumber(payroll.abs_ut_deduction || 0)}</td>
+                            <td class="text-danger">${formatNumber(payroll.abs_ut_deduction || 0)}</td>
 
-                            <td>${formatNumber(payroll.holiday_pay || 0)}</td>
-                            <td>${formatNumber(payroll.overtime_pay || 0)}</td>
-                            <td>${formatNumber(payroll.night_diff_pay || 0)}</td>
+                            <td class="bg-earnings">${formatNumber(payroll.holiday_pay || 0)}</td>
+                            <td class="bg-earnings">${formatNumber(payroll.overtime_pay || 0)}</td>
+                            <td class="bg-earnings">${formatNumber(payroll.night_diff_pay || 0)}</td>
 
-                            <td class="bg-light fw-bold">${formatNumber(payroll.gross_pay || 0)}</td>
+                            <td class="bg-light fw-bold-total">${formatNumber(payroll.gross_pay || 0)}</td>
 
-                            <td>${formatNumber(payroll.sss_contribution || 0)}</td>
-                            <td>${formatNumber(payroll.sss_loan || 0)}</td>
-                            <td>${formatNumber(payroll.pagibig_contribution || 0)}</td>
-                            <td>${formatNumber(payroll.pagibig_loan || 0)}</td>
-                            <td>${formatNumber(payroll.philhealth_contribution || 0)}</td>
+                            <td class="bg-deductions">${formatNumber(payroll.sss_contribution || 0)}</td>
+                            <td class="bg-deductions">${formatNumber(payroll.sss_loan || 0)}</td>
+                            <td class="bg-deductions">${formatNumber(payroll.pagibig_contribution || 0)}</td>
+                            <td class="bg-deductions">${formatNumber(payroll.pagibig_loan || 0)}</td>
+                            <td class="bg-deductions">${formatNumber(payroll.philhealth_contribution || 0)}</td>
 
                             <td>${formatNumber(payroll.taxable_income || 0)}</td>
                             <td>${formatNumber(payroll.withholding_tax || 0)}</td>
@@ -772,7 +720,7 @@ $(document).ready(function () {
                             <td>${formatNumber(payroll.company_loan || 0)}</td>
                             <td>${formatNumber(payroll.cash_advance || 0)}</td>
                             <td class="bg-light fw-bold">${formatNumber(payroll.net_pay || 0)}</td>
-                            <td class="pe-4 fw-bold">${formatNumber(payroll.pay_rec || 0)}</td>
+                            <td class="pe-4 fw-bold-total">${formatNumber(payroll.pay_rec || 0)}</td>
                     </tr>
                     `;
                     sumFields.forEach((fld) => { totals[fld] += Number(payroll[fld]) || 0; });
@@ -782,7 +730,7 @@ $(document).ready(function () {
                 // ── Grand totals row ──
                 const totalsRow = `
                     <tr class="payroll-totals fw-bold" style="background:#e0f2f1;border-top:2px solid #008080;">
-                        <td colspan="2" class="ps-4 text-uppercase">Totals</td>
+                        <td colspan="2" class="ps-4 text-uppercase col-totals">Totals (${data.length})</td>
                         <td>${formatNumber(totals.basic_salary)}</td>
                         <td>${formatNumber(totals.basicPay)}</td>
                         <td>${formatNumber(totals.abs_ut_deduction)}</td>
@@ -808,16 +756,20 @@ $(document).ready(function () {
                 `;
                 $payrollTableBody.append(totalsRow);
 
-                // Stashed for the Print Report button (btnPrint) so it can build a
-                // summary strip without re-parsing formatted numbers out of the DOM.
-                window.lastPayrollTotals = totals;
-                window.lastPayrollCount = data.length;
+                // Visually mute zero amounts so meaningful figures stand out. Only
+                // touches data rows (not the totals row) and only exact "0.00" cells.
+                $payrollTableBody.find("tr:not(.payroll-totals) td").each(function () {
+                    if (this.textContent.trim() === "0.00") this.classList.add("cell-zero");
+                });
             })
             .catch(function (error) {
                 console.error(error);
                 const apiError = error.response?.data;
                 $payrollTableBody.html(
-                    `<tr><td colspan="25">${apiError?.message || "Error fetching payroll data."}${apiError?.error ? " (" + apiError.error + ")" : ""}</td></tr>`,
+                    `<tr class="payroll-state"><td colspan="25" class="text-center text-danger">` +
+                    `<div class="payroll-empty-icon" style="background:#fee2e2;color:#b91c1c;"><i class="fa fa-triangle-exclamation"></i></div>` +
+                    `<div class="fw-semibold">${apiError?.message || "Error fetching payroll data."}</div>` +
+                    `${apiError?.error ? `<div class="small text-muted">${apiError.error}</div>` : ""}</td></tr>`,
                 );
             });
     }

@@ -23,27 +23,57 @@ class AttendanceImportService
 
     public function import(array $rows): array
     {
-        $result = ['inserted' => 0, 'updated' => 0, 'skipped' => 0, 'errors' => []];
+        $result = ['inserted' => 0, 'updated' => 0, 'skipped' => 0, 'errors' => [], 'aborted' => false];
 
         // Skip the header row if present
         $start = (!empty($rows) && stripos($this->cell($rows[0], 'employee_id'), 'employee') !== false) ? 1 : 0;
 
+        $this->buildUserIndex(); // preload employees once (empID + name lookups)
+
+        // ── Phase 1: validate every row up-front (no DB writes) and catch in-file duplicates. ──
+        $prepared = [];
+        $seen = [];
         for ($i = $start; $i < count($rows); $i++) {
             $row = $rows[$i];
             $lineNo = $i + 1;
             if ($this->isBlankRow($row)) { continue; }
             try {
-                $created = $this->processRow($row);
-                $created ? $result['inserted']++ : $result['updated']++;
+                $data = $this->validateRow($row);
+                $key = $data['employee_id'] . '|' . $data['date'];
+                if (isset($seen[$key])) {
+                    throw new \Exception("Duplicate of row {$seen[$key]} (same employee and date).");
+                }
+                $seen[$key] = $lineNo;
+                $data['_line'] = $lineNo;
+                $data['_key'] = $key;
+                $prepared[] = $data;
             } catch (\Throwable $e) {
-                $result['skipped']++;
                 $result['errors'][] = "Row {$lineNo}: " . $e->getMessage();
             }
         }
+
+        // Reject rows that already exist in the DB (single bulk query, not one per row).
+        $this->flagExisting($prepared, $result);
+
+        // ── All-or-nothing: a single bad row aborts the whole import so data stays accurate. ──
+        if (!empty($result['errors'])) {
+            $result['aborted'] = true;
+            $result['skipped'] = count($prepared) + count($result['errors']);
+            return $result;
+        }
+
+        // ── Phase 2: persist everything in one transaction (rolls back if anything fails). ──
+        DB::transaction(function () use (&$result, $prepared) {
+            foreach ($prepared as $data) {
+                $this->persist($data) ? $result['inserted']++ : $result['updated']++;
+            }
+        });
+
         return $result;
     }
 
-    private function processRow(array $row): bool
+    /** Validate + compute one row into a payload (throws on any problem, writes nothing). */
+    private function validateRow(array $row): array
     {
         $empID = $this->resolveEmpID(trim($this->cell($row, 'employee_id')));
 
@@ -90,41 +120,49 @@ class AttendanceImportService
             $timeOutTs = $outDate . ' ' . $timeOut . ':00';
         }
 
-        return DB::transaction(function () use (
-            $empID, $dateStr, $endDateStr, $schedIn, $schedOut, $breakStart, $breakEnd, $shiftType,
-            $timeInTs, $timeOutTs, $totalHours, $minsLate, $minsUt, $minsNd, $overBreak, $outpass, $status, $remarks
-        ) {
-            // 1) schedule (prerequisite)
-            $sched = EmployeeSchedule::updateOrCreate(
-                ['employee_id' => $empID, 'sched_start_date' => $dateStr],
-                [
-                    'sched_in' => $schedIn, 'sched_out' => $schedOut, 'sched_end_date' => $endDateStr,
-                    'break_start' => $breakStart, 'break_end' => $breakEnd, 'shift_type' => $shiftType,
-                ]
-            );
+        return [
+            'employee_id' => $empID, 'date' => $dateStr, 'end_date' => $endDateStr,
+            'sched_in' => $schedIn, 'sched_out' => $schedOut, 'break_start' => $breakStart,
+            'break_end' => $breakEnd, 'shift_type' => $shiftType, 'time_in_ts' => $timeInTs,
+            'time_out_ts' => $timeOutTs, 'total_hours' => $totalHours, 'mins_late' => $minsLate,
+            'mins_undertime' => $minsUt, 'mins_night_diff' => $minsNd, 'over_break' => $overBreak,
+            'outpass' => $outpass, 'status' => $status, 'remarks' => $remarks,
+        ];
+    }
 
-            // 2) home attendance (actual log)
-            homeAttendance::updateOrCreate(
-                ['employee_id' => $empID, 'attendance_date' => $dateStr],
-                [
-                    'schedule_id' => $sched->id, 'time_in' => $timeInTs, 'time_out' => $timeOutTs,
-                    'duration_hours' => $totalHours, 'night_diff_hours' => round($minsNd / 60, 2),
-                    'status' => $status, 'remarks' => $remarks,
-                ]
-            );
+    /** Persist one validated payload. Runs inside the caller's transaction. */
+    private function persist(array $d): bool
+    {
+        // 1) schedule (prerequisite)
+        $sched = EmployeeSchedule::updateOrCreate(
+            ['employee_id' => $d['employee_id'], 'sched_start_date' => $d['date']],
+            [
+                'sched_in' => $d['sched_in'], 'sched_out' => $d['sched_out'], 'sched_end_date' => $d['end_date'],
+                'break_start' => $d['break_start'], 'break_end' => $d['break_end'], 'shift_type' => $d['shift_type'],
+            ]
+        );
 
-            // 3) attendance summary (per-day rollup, unique employee+date)
-            $summary = AttendanceSummary::updateOrCreate(
-                ['employee_id' => $empID, 'attendance_date' => $dateStr],
-                [
-                    'total_hours' => $totalHours, 'mins_late' => $minsLate, 'mins_undertime' => $minsUt,
-                    'mins_night_diff' => $minsNd, 'over_break_minutes' => $overBreak, 'outpass_minutes' => $outpass,
-                    'status' => $status, 'remarks' => $remarks,
-                ]
-            );
+        // 2) home attendance (actual log)
+        homeAttendance::updateOrCreate(
+            ['employee_id' => $d['employee_id'], 'attendance_date' => $d['date']],
+            [
+                'schedule_id' => $sched->id, 'time_in' => $d['time_in_ts'], 'time_out' => $d['time_out_ts'],
+                'duration_hours' => $d['total_hours'], 'night_diff_hours' => round($d['mins_night_diff'] / 60, 2),
+                'status' => $d['status'], 'remarks' => $d['remarks'],
+            ]
+        );
 
-            return $summary->wasRecentlyCreated;
-        });
+        // 3) attendance summary (per-day rollup, unique employee+date)
+        $summary = AttendanceSummary::updateOrCreate(
+            ['employee_id' => $d['employee_id'], 'attendance_date' => $d['date']],
+            [
+                'total_hours' => $d['total_hours'], 'mins_late' => $d['mins_late'], 'mins_undertime' => $d['mins_undertime'],
+                'mins_night_diff' => $d['mins_night_diff'], 'over_break_minutes' => $d['over_break'], 'outpass_minutes' => $d['outpass'],
+                'status' => $d['status'], 'remarks' => $d['remarks'],
+            ]
+        );
+
+        return $summary->wasRecentlyCreated;
     }
 
     // ── metric computation ──────────────────────────────────────────────
@@ -187,16 +225,41 @@ class AttendanceImportService
 
     // ── employee resolution (empID, or by "LASTNAME, FIRSTNAME") ──────────
     private ?array $userIndex = null;
+    private array $empIdSet = [];
+
+    /** Bulk-check the prepared payloads against existing AttendanceSummary rows; move collisions to errors. */
+    private function flagExisting(array &$prepared, array &$result): void
+    {
+        if (empty($prepared)) { return; }
+        $empIds = array_values(array_unique(array_column($prepared, 'employee_id')));
+        $dates  = array_values(array_unique(array_column($prepared, 'date')));
+
+        $existing = [];
+        foreach (AttendanceSummary::whereIn('employee_id', $empIds)->whereIn('attendance_date', $dates)
+                     ->get(['employee_id', 'attendance_date']) as $a) {
+            $existing[$a->employee_id . '|' . Carbon::parse($a->attendance_date)->toDateString()] = true;
+        }
+
+        $kept = [];
+        foreach ($prepared as $d) {
+            if (isset($existing[$d['_key']])) {
+                $result['errors'][] = "Row {$d['_line']}: Attendance already exists for this employee and date.";
+            } else {
+                $kept[] = $d;
+            }
+        }
+        $prepared = $kept;
+    }
 
     private function resolveEmpID(string $value): string
     {
         if ($value === '') { throw new \Exception('Employee ID / name is required.'); }
 
-        // exact empID match first
-        if (User::where('empID', $value)->exists()) { return $value; }
+        // exact empID match first (against the preloaded set — no per-row query)
+        $this->buildUserIndex();
+        if (isset($this->empIdSet[$value])) { return $value; }
 
         // fall back to name match
-        $this->buildUserIndex();
         $parts = explode(',', $value, 2);
         if (count($parts) === 2) {
             $last = $this->nrm($parts[0]);
@@ -228,6 +291,7 @@ class AttendanceImportService
         $this->userIndex = [];
         foreach (User::select('empID', 'fname', 'lname')->get() as $u) {
             if (!$u->empID) { continue; }
+            $this->empIdSet[$u->empID] = true;
             $last = $this->nrm($u->lname);
             $first = $this->nrm($u->fname);
             $firstTok = $first === '' ? '' : explode(' ', $first)[0];

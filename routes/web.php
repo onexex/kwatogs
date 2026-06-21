@@ -19,7 +19,6 @@ use App\Http\Controllers\empStatCtrl;
 use App\Http\Controllers\eovalidationCtrl;
 use App\Http\Controllers\hmoCtrl;
 use App\Http\Controllers\holidayLoggerCtrl;
-use App\Http\Controllers\homeAttendanceCtrl;
 use App\Http\Controllers\homeDarCtrl;
 use App\Http\Controllers\jobleveCtrl;
 use App\Http\Controllers\Leave\LeaveController;
@@ -366,11 +365,9 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip']], function () {
     Route::get('/home/filter_dar',[homeDarCtrl::class, 'filter_dar']);
     Route::get('/home/logs_dar',[homeDarCtrl::class, 'logs_dar']);
 
-    //HOME ATTENDANCE LOG
-    Route::post('/home/create_attendance',[homeAttendanceCtrl::class, 'create_attendance']);
-    Route::get('/home/mdl_attendance',[homeAttendanceCtrl::class, 'log_attendance']);
-    Route::get('/home/getall_attendance',[homeAttendanceCtrl::class, 'getall_attendance']);
-    Route::get('/home/filter_attendance',[homeAttendanceCtrl::class, 'filter_attendance']);
+    // HOME ATTENDANCE LOG — legacy CENAR punch retired (wrote non-fillable columns and
+    // corrupted home_attendance). The live punch is AttendanceController@timeIn/timeOut
+    // (routes 'attendance.timein' / 'attendance.timeout') backed by homeAttendance::logTimeIn/logTimeOut.
 
     //ARCHIVE MANAGEMENT
     Route::post('/archive/create_update',[archiveCtrl::class, 'create_update']);

@@ -19,44 +19,113 @@ class LeaveImportService
 
     private const STATUSES = ['FORAPPROVAL', 'CANCELED', 'APPROVED', 'APPROVEDBYCFO', 'DISAPPROVED'];
 
+    // Reference data preloaded once per import to avoid per-row queries.
+    private array $empIdSet = [];
+    private array $leaveTypeById = [];
+    private array $leaveTypeByName = [];
+
     public function __construct(private ?int $approverUserId = null) {}
 
     public function import(array $rows): array
     {
-        $result = ['inserted' => 0, 'updated' => 0, 'skipped' => 0, 'errors' => []];
+        $result = ['inserted' => 0, 'updated' => 0, 'skipped' => 0, 'errors' => [], 'aborted' => false];
+        $this->preload();
         $start = (!empty($rows) && stripos($this->cell($rows[0], 'employee_id'), 'employee') !== false) ? 1 : 0;
 
+        // ── Phase 1: validate every row up-front (no DB writes) and catch in-file duplicates. ──
+        $prepared = [];
+        $seen = [];
         for ($i = $start; $i < count($rows); $i++) {
             $row = $rows[$i];
             $lineNo = $i + 1;
             if ($this->isBlankRow($row)) { continue; }
             try {
-                $created = $this->processRow($row);
-                $created ? $result['inserted']++ : $result['updated']++;
+                $data = $this->validateRow($row);
+                $key = $data['employee_id'] . '|' . $data['start_date'] . '|' . $data['end_date'] . '|' . $data['leave_type'];
+                if (isset($seen[$key])) {
+                    throw new \Exception("Duplicate of row {$seen[$key]} (same employee, dates and leave type).");
+                }
+                $seen[$key] = $lineNo;
+                $data['_line'] = $lineNo;
+                $data['_key'] = $key;
+                $prepared[] = $data;
             } catch (\Throwable $e) {
-                $result['skipped']++;
                 $result['errors'][] = "Row {$lineNo}: " . $e->getMessage();
             }
         }
+
+        // Reject rows that already exist in the DB (single bulk query, not one per row).
+        $this->flagExisting($prepared, $result);
+
+        // ── All-or-nothing: a single bad row aborts the whole import so data stays accurate. ──
+        if (!empty($result['errors'])) {
+            $result['aborted'] = true;
+            $result['skipped'] = count($prepared) + count($result['errors']);
+            return $result;
+        }
+
+        // ── Phase 2: persist everything in one transaction (rolls back if anything fails). ──
+        DB::transaction(function () use (&$result, $prepared) {
+            foreach ($prepared as $data) {
+                $this->persist($data) ? $result['inserted']++ : $result['updated']++;
+            }
+        });
+
         return $result;
     }
 
-    private function processRow(array $row): bool
+    /** Load employees and leave types once so row validation never hits the DB. */
+    private function preload(): void
+    {
+        $this->empIdSet = User::whereNotNull('empID')->pluck('empID')->flip()->all();
+        foreach (leavetype::all(['id', 'type_leave']) as $t) {
+            $this->leaveTypeById[(int) $t->id] = (int) $t->id;
+            $this->leaveTypeByName[strtolower(trim($t->type_leave))] = (int) $t->id;
+        }
+    }
+
+    /** Bulk-check the prepared payloads against existing Leave rows; move collisions to errors. */
+    private function flagExisting(array &$prepared, array &$result): void
+    {
+        if (empty($prepared)) { return; }
+        $empIds = array_values(array_unique(array_column($prepared, 'employee_id')));
+        $starts = array_values(array_unique(array_column($prepared, 'start_date')));
+
+        $existing = [];
+        foreach (Leave::whereIn('employee_id', $empIds)->whereIn('start_date', $starts)
+                     ->get(['employee_id', 'start_date', 'end_date', 'leave_type']) as $l) {
+            $k = $l->employee_id . '|' . Carbon::parse($l->start_date)->toDateString() . '|'
+                . Carbon::parse($l->end_date)->toDateString() . '|' . $l->leave_type;
+            $existing[$k] = true;
+        }
+
+        $kept = [];
+        foreach ($prepared as $d) {
+            if (isset($existing[$d['_key']])) {
+                $result['errors'][] = "Row {$d['_line']}: A leave already exists for this employee, dates and leave type.";
+            } else {
+                $kept[] = $d;
+            }
+        }
+        $prepared = $kept;
+    }
+
+    /** Validate + normalise one row into a payload (throws on any problem, writes nothing). */
+    private function validateRow(array $row): array
     {
         $empID = trim($this->cell($row, 'employee_id'));
         if ($empID === '') { throw new \Exception('Employee ID is required.'); }
-        if (!User::where('empID', $empID)->exists()) {
+        if (!isset($this->empIdSet[$empID])) {
             throw new \Exception("Employee ID '{$empID}' not found.");
         }
 
         // resolve leave type (accepts the type name or a numeric id)
         $typeRaw = trim($this->cell($row, 'leave_type'));
         if ($typeRaw === '') { throw new \Exception('Leave Type is required.'); }
-        $type = is_numeric($typeRaw)
-            ? leavetype::where('id', (int) $typeRaw)->first()
-            : leavetype::whereRaw('LOWER(type_leave) = ?', [strtolower($typeRaw)])->first();
-        if (!$type) { throw new \Exception("Leave Type '{$typeRaw}' not found."); }
-        $leaveTypeId = $type->id;
+        $leaveTypeId = is_numeric($typeRaw)
+            ? ($this->leaveTypeById[(int) $typeRaw] ?? null)
+            : ($this->leaveTypeByName[strtolower($typeRaw)] ?? null);
+        if (!$leaveTypeId) { throw new \Exception("Leave Type '{$typeRaw}' not found."); }
 
         $startStr = $this->parseDate($this->cell($row, 'start_date'));
         $endStr   = $this->parseDate($this->cell($row, 'end_date'));
@@ -84,39 +153,45 @@ class LeaveImportService
 
         $approvedAt = in_array($status, ['APPROVED', 'APPROVEDBYCFO'], true) ? now() : null;
 
-        return DB::transaction(function () use (
-            $empID, $startStr, $endStr, $leaveTypeId, $totalHrs, $reason, $status, $halfDay,
-            $leaveKind, $hoursPerDay, $approvedAt
-        ) {
-            $leave = Leave::updateOrCreate(
-                ['employee_id' => $empID, 'start_date' => $startStr, 'end_date' => $endStr, 'leave_type' => $leaveTypeId],
-                [
-                    'total_hrs' => $totalHrs, 'reason' => $reason, 'status' => $status,
-                    'is_half_day' => $halfDay, 'leave_kind' => $leaveKind,
-                    'approved_by' => $approvedAt ? $this->approverUserId : null, 'approved_at' => $approvedAt,
-                ]
-            );
-            $created = $leave->wasRecentlyCreated;
+        return [
+            'employee_id' => $empID, 'start_date' => $startStr, 'end_date' => $endStr,
+            'leave_type' => $leaveTypeId, 'total_hrs' => $totalHrs, 'reason' => $reason,
+            'status' => $status, 'is_half_day' => $halfDay, 'leave_kind' => $leaveKind,
+            'hours_per_day' => $hoursPerDay, 'approved_at' => $approvedAt,
+        ];
+    }
 
-            // rebuild per-day details
-            LeaveDetail::where('leave_id', $leave->id)->delete();
-            $d = Carbon::parse($startStr);
-            $end = Carbon::parse($endStr);
-            while ($d->lte($end)) {
-                LeaveDetail::create([
-                    'employee_id' => $empID,
-                    'leave_id' => $leave->id,
-                    'leavetype_id' => $leaveTypeId,
-                    'date' => $d->format('Y-m-d'),
-                    'leave_kind' => $leaveKind,
-                    'total_hours' => $hoursPerDay,
-                    'status' => $status,
-                ]);
-                $d->addDay();
-            }
+    /** Persist one validated payload. Runs inside the caller's transaction. */
+    private function persist(array $d): bool
+    {
+        $leave = Leave::updateOrCreate(
+            ['employee_id' => $d['employee_id'], 'start_date' => $d['start_date'], 'end_date' => $d['end_date'], 'leave_type' => $d['leave_type']],
+            [
+                'total_hrs' => $d['total_hrs'], 'reason' => $d['reason'], 'status' => $d['status'],
+                'is_half_day' => $d['is_half_day'], 'leave_kind' => $d['leave_kind'],
+                'approved_by' => $d['approved_at'] ? $this->approverUserId : null, 'approved_at' => $d['approved_at'],
+            ]
+        );
+        $created = $leave->wasRecentlyCreated;
 
-            return $created;
-        });
+        // rebuild per-day details
+        LeaveDetail::where('leave_id', $leave->id)->delete();
+        $day = Carbon::parse($d['start_date']);
+        $end = Carbon::parse($d['end_date']);
+        while ($day->lte($end)) {
+            LeaveDetail::create([
+                'employee_id' => $d['employee_id'],
+                'leave_id' => $leave->id,
+                'leavetype_id' => $d['leave_type'],
+                'date' => $day->format('Y-m-d'),
+                'leave_kind' => $d['leave_kind'],
+                'total_hours' => $d['hours_per_day'],
+                'status' => $d['status'],
+            ]);
+            $day->addDay();
+        }
+
+        return $created;
     }
 
     // ── helpers ──

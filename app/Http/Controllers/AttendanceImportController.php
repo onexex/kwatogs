@@ -77,13 +77,19 @@ class AttendanceImportController extends Controller
 
         $result = $service->import($rows);
 
+        $aborted = !empty($result['aborted']);
+        $message = $aborted
+            ? "Import canceled — {$result['skipped']} row(s) had errors or duplicates. Fix them and re-upload; nothing was imported."
+            : "Imported: {$result['inserted']} new, {$result['updated']} updated.";
+
         return response()->json([
             'success'  => true,
+            'aborted'  => $aborted,
             'inserted' => $result['inserted'],
             'updated'  => $result['updated'],
             'skipped'  => $result['skipped'],
             'errors'   => $result['errors'],
-            'message'  => "Imported: {$result['inserted']} new, {$result['updated']} updated, {$result['skipped']} skipped.",
+            'message'  => $message,
         ]);
     }
 }

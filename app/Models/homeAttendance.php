@@ -199,10 +199,42 @@ class homeAttendance extends Model
         $summary->over_break_minutes = max(0, $breakMinutes - $maxBreakMinutes);
         $summary->outpass_minutes = $outPass;
 
-        // 6️⃣ Determine attendance status
-        $summary->status = $summary->total_hours > 0 ? 'Present' : 'Absent';
+        // 6️⃣ Determine attendance status.
+        // Use the SAME lowercase vocabulary as AttendanceImportService ('present'/'absent'/
+        // 'ob'/'leave') so the column has one consistent set of values across punch + import.
+        $summary->status = $summary->total_hours > 0 ? 'present' : 'absent';
 
         $summary->save();
+    }
+
+    /**
+     * Close a punch whose owner never logged out. Sets the time-out to the scheduled
+     * end of that shift (falling back to $reference), applies the company "missed logout"
+     * penalty (0 paid hours), and rolls the change into the daily summary so the day is
+     * never left half-open or unreconciled.
+     */
+    public function autoCloseMissedLogout(?Carbon $reference = null)
+    {
+        $reference = $reference ? $reference->copy() : now();
+
+        $schedOut = $reference; // fallback when no schedule is attached
+        if ($this->schedule && $this->schedule->sched_out) {
+            // attendance_date is cast to a Carbon; normalise to a plain Y-m-d before appending the time.
+            $dayStr = Carbon::parse($this->attendance_date)->toDateString();
+            $schedOut = Carbon::parse($dayStr . ' ' . $this->schedule->sched_out);
+            if ($this->time_in && $schedOut->lt(Carbon::parse($this->time_in))) {
+                $schedOut->addDay(); // overnight shift
+            }
+        }
+
+        $this->time_out        = $schedOut;
+        $this->duration_hours  = 0; // company policy: missed logout earns no paid hours
+        $this->night_diff_hours = 0;
+        $this->remarks         = 'Auto-closed (Missed logout)';
+        $this->save();
+        $this->updateDailySummary();
+
+        return $this;
     }
 
     public function logTimeOut($timeOut = null)
@@ -237,12 +269,18 @@ class homeAttendance extends Model
                 ->first();
         }
         $this->schedule_id = $schedule?->id ?? $this->schedule_id;
+        // Keep the in-memory relation in sync with whatever schedule we resolved, so that
+        // evaluatePunch() and calculateNightDiff() (which read $this->schedule) operate on
+        // the SAME shift this method clamps against — no divergent re-derivation.
+        if ($schedule) { $this->setRelation('schedule', $schedule); }
 
         // ⚡ 2. CLAMP PUNCH TIMES TO SCHEDULE (Core logic change)
         if ($schedule && $schedule->sched_in && $schedule->sched_out) {
-            // Construct Schedule Objects (Handling potential overnight shift logic)
-            $schedIn = Carbon::parse($actualIn->toDateString() . ' ' . $schedule->sched_in);
-            $schedOut = Carbon::parse($actualIn->toDateString() . ' ' . $schedule->sched_out);
+            // Anchor the shift window to the schedule's START date (the work day), NOT the
+            // punch-in calendar date — these differ for overnight / cross-day punches and
+            // must agree with evaluatePunch(), which also anchors to sched_start_date.
+            $schedIn = Carbon::parse($schedule->sched_start_date . ' ' . $schedule->sched_in);
+            $schedOut = Carbon::parse($schedule->sched_start_date . ' ' . $schedule->sched_out);
 
             // Handle overnight shift: If sched_out is earlier than sched_in, it's the next day
             if ($schedOut->lt($schedIn)) {
@@ -259,14 +297,14 @@ class homeAttendance extends Model
 
             // If they clocked out before the shift even started, or in after it ended
             if ($workingIn->gt($workingOut)) {
-                $workingIn = $workingOut; 
+                $workingIn = $workingOut;
             }
 
             // 🍱 LUNCH BREAK HANDLING (Inside scheduled time only)
             $breakDuration = 0;
             if ($schedule->break_start && $schedule->break_end) {
-                $breakStart = Carbon::parse($actualIn->toDateString() . ' ' . $schedule->break_start);
-                $breakEnd = Carbon::parse($actualIn->toDateString() . ' ' . $schedule->break_end);
+                $breakStart = Carbon::parse($schedule->sched_start_date . ' ' . $schedule->break_start);
+                $breakEnd = Carbon::parse($schedule->sched_start_date . ' ' . $schedule->break_end);
 
                 // Handle overnight break
                 if ($breakEnd->lt($breakStart)) { $breakEnd->addDay(); }
@@ -279,13 +317,13 @@ class homeAttendance extends Model
                 }
             }
 
-            // Evaluate punch using the "clamped" times
-            $evaluated = $this->evaluatePunch($workingIn, $workingOut);
-            
+            // Evaluate using the SAME schedule window so night-diff/remarks clamp identically.
+            $evaluated = $this->evaluatePunch($workingIn, $workingOut, $schedIn, $schedOut);
+
             $totalMinutes = ($workingOut->diffInMinutes($workingIn)) - $breakDuration;
             $this->duration_hours = max($totalMinutes / 60, 0);
-            $this->night_diff_hours = $evaluated['night_diff_hours']; // evaluatePunch should use workingIn/Out
-            $this->remarks = $evaluated['remarks'];  
+            $this->night_diff_hours = $evaluated['night_diff_hours'];
+            $this->remarks = $evaluated['remarks'];
             // If actual logout is a different day than the scheduled logout
             if ($actualOut->toDateString() !== $schedOut->toDateString() && $actualOut->gt($schedOut)) {
                 $this->remarks .= ' [Logout Next Day - Capped]';
@@ -315,44 +353,24 @@ class homeAttendance extends Model
         $yesterday = $now->copy()->subDay()->toDateString();
     
 
-        // 1️⃣ Auto-close any previous open logs from older days
+        // 1️⃣ Auto-close any previous open logs from older days (missed logouts).
         $previousOpenLogs = self::where('employee_id', $employeeId)
             ->whereNull('time_out')
             ->whereDate('attendance_date', '<', $today)
             ->get();
 
-        // foreach ($previousOpenLogs as $log) {
-        //     $evaluated = $log->evaluatePunch(Carbon::parse($log->time_in), $now);
-        //     $log->time_out = $evaluated['time_out'] ?? $now;
-        //     $log->duration_hours = $evaluated['duration_hours'] ?? 0;
-        //     $log->night_diff_hours = $evaluated['night_diff_hours'] ?? 0;
-        //     $log->remarks = $evaluated['remarks'] ?? 'Auto-closed (Missed logout)';
-        //     $log->save();
-        // }
-
         foreach ($previousOpenLogs as $log) {
-            // Kunin ang scheduled out time nila para sa shift na naiwan
-            $schedOut = $now; // fallback
-            if ($log->schedule) {
-                $schedOut = Carbon::parse($log->attendance_date . ' ' . $log->schedule->sched_out);
-                if ($schedOut->lt(Carbon::parse($log->time_in))) {
-                    $schedOut->addDay(); // Handle overnight
-                }
-            }
-
-            $evaluated = $log->evaluatePunch(Carbon::parse($log->time_in), $schedOut);
-            
-            // ✨ I-set ang time_out sa kung kailan sana sila dapat nag-out ✨
-            $log->time_out = $schedOut; 
-            $log->duration_hours = 0; // 0 hours paid penalty dahil nakalimutan mag-out (o palitan base sa policy niyo)
-            $log->night_diff_hours = 0;
-            $log->remarks = 'Auto-closed (Missed logout)';
-            $log->save();
+            $log->autoCloseMissedLogout($now);
         }
 
-        // 2️⃣ Prevent duplicate open punches
+        // 2️⃣ Prevent duplicate open punches.
+        // After older-day logs are closed above, any punch still open is from TODAY.
+        // A recent one (< 16h) means the employee simply forgot to log out before
+        // re-punching → block. A stale one (≥ 16h) is a dangling record → close it so
+        // it can't orphan (logTimeOut only ever closes the latest open punch).
         $openPunch = self::where('employee_id', $employeeId)
             ->whereNull('time_out')
+            ->latest('time_in')
             ->first();
 
         if ($openPunch) {
@@ -360,6 +378,7 @@ class homeAttendance extends Model
             if ($now->diffInHours($lastIn) < 16) {
                 throw new \Exception('You still have an active punch. Please log out before punching in again.');
             }
+            $openPunch->autoCloseMissedLogout($now);
         }
 
         // 3️⃣ Match an active schedule (supports overnight)
@@ -419,10 +438,17 @@ class homeAttendance extends Model
             throw new \Exception('No active schedule found for your time-in window.');
         }
 
-        // 4️⃣ Check break restriction
+        // 4️⃣ Check break restriction.
+        // Anchor the break window to the matched shift (NOT "today"). For a night shift a
+        // break whose clock time is before the shift start (e.g. 02:00 lunch on a 22:00→06:00
+        // shift) actually falls on the NEXT day, so shift it forward; then handle a break that
+        // itself crosses midnight. Anchoring to "today" mis-dated this for overnight shifts.
         if ($matchedSchedule->break_start && $matchedSchedule->break_end) {
-            $breakStart = Carbon::parse($today . ' ' . $matchedSchedule->break_start);
-            $breakEnd = Carbon::parse($today . ' ' . $matchedSchedule->break_end);
+            $shiftIn = Carbon::parse($matchedSchedule->sched_start_date . ' ' . $matchedSchedule->sched_in);
+            $breakStart = Carbon::parse($matchedSchedule->sched_start_date . ' ' . $matchedSchedule->break_start);
+            $breakEnd = Carbon::parse($matchedSchedule->sched_start_date . ' ' . $matchedSchedule->break_end);
+            if ($breakStart->lt($shiftIn)) { $breakStart->addDay(); $breakEnd->addDay(); } // post-midnight break
+            if ($breakEnd->lt($breakStart)) { $breakEnd->addDay(); } // break itself crosses midnight
             $earlyReturn = $breakEnd->copy()->subMinutes(10);
 
             if ($now->between($breakStart, $earlyReturn)) {
@@ -443,7 +469,7 @@ class homeAttendance extends Model
             'schedule_id'     => $matchedSchedule->id,
             'attendance_date' => $attendanceDate,
             'time_in'         => $now,
-            'status'          => 'Present',
+            'status'          => 'present',
         ]);
     }
 
@@ -519,7 +545,14 @@ class homeAttendance extends Model
     //     return $result;
     // }
 
-    protected function evaluatePunch($actualIn, $actualOut)
+    /**
+     * Evaluate a punch into duration / night-diff / remarks.
+     *
+     * The schedule window may be supplied by the caller ($schedIn/$schedOut) so this method
+     * clamps against the EXACT same shift boundaries logTimeOut() used; when not supplied it
+     * derives them from the attached schedule (anchored to sched_start_date).
+     */
+    protected function evaluatePunch($actualIn, $actualOut, ?Carbon $schedIn = null, ?Carbon $schedOut = null)
     {
         $result = [
             'time_out' => $actualOut,
@@ -528,31 +561,35 @@ class homeAttendance extends Model
             'remarks' => 'Regular Shift',
         ];
 
-        if ($this->schedule) {
+        // Derive the window from the schedule only if the caller didn't pass one in.
+        if ((!$schedIn || !$schedOut) && $this->schedule) {
             $schedIn = Carbon::parse($this->schedule->sched_start_date . ' ' . $this->schedule->sched_in);
-            $schedOut = Carbon::parse($this->schedule->sched_end_date . ' ' . $this->schedule->sched_out);
+            $schedOut = Carbon::parse($this->schedule->sched_start_date . ' ' . $this->schedule->sched_out);
             if ($schedOut->lt($schedIn)) { $schedOut->addDay(); }
+        }
 
+        if ($schedIn && $schedOut) {
             // ✨ HARD CLAMPING (ANTI-ABUSE) ✨
-            // Kung pumasok nang maaga (actualIn < schedIn), gamitin pa rin ang schedIn.
-            // Kung lumabas nang maaga (actualOut < schedOut), gamitin ang actualOut.
-            // Kung lumabas nang late (actualOut > schedOut), gamitin ang schedOut.
-            
+            // Early in (actualIn < schedIn)   -> use schedIn.
+            // Early out (actualOut < schedOut) -> use actualOut.
+            // Late out (actualOut > schedOut) -> use schedOut.
             $calcIn = ($actualIn->lt($schedIn)) ? $schedIn->copy() : $actualIn->copy();
             $calcOut = ($actualOut->gt($schedOut)) ? $schedOut->copy() : $actualOut->copy();
 
-            // 🛡️ Safety: Invalid punch detection
+            // Build a transparent remark without one condition silently clobbering another.
+            $notes = [];
+            if ($actualIn->lt($schedIn)) { $notes[] = 'Early In (Capped at Sched)'; }
+            if ($actualOut->gt($schedOut)) { $notes[] = 'Late Out (Capped at Sched)'; }
+
+            // 🛡️ Safety: invalid punch takes precedence over the cap notes.
             if ($calcIn->gt($calcOut)) {
                 $calcIn = $calcOut->copy();
                 $result['remarks'] = 'Invalid (Time-in after Time-out)';
+            } elseif (!empty($notes)) {
+                $result['remarks'] = implode(' + ', $notes);
             }
-
-            // Add remarks for transparency
-            if ($actualIn->lt($schedIn)) $result['remarks'] = 'Early In (Capped at Sched)';
-            if ($actualOut->gt($schedOut)) $result['remarks'] = 'Late Out (Capped at Sched)';
-            
         } else {
-            // Fallback kung walang schedule
+            // Fallback when there is no schedule
             $calcIn = $actualIn;
             $calcOut = $actualOut;
             $result['remarks'] = 'No Schedule (Actual Time)';

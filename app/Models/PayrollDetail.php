@@ -15,6 +15,8 @@ class PayrollDetail extends Model
         'payroll_id',
         'employee_id',
         'logsType',
+        'holiday_type',
+        'holiday_pay',
         'totalHours',
         'late_minutes',
         'undertime_minutes',
@@ -31,6 +33,7 @@ class PayrollDetail extends Model
 
     protected $casts = [
         'date' => 'date',
+        'holiday_pay' => 'decimal:2',
     ];
 
     // 🔗 Relationships
