@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class leavevalidationModel extends Model
 {
     use HasFactory;
+    use \App\Traits\Auditable;
     protected $table = 'leavevalidation_models';
     protected $primaryKey = 'id';
 

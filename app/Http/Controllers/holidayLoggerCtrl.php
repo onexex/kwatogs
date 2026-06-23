@@ -11,53 +11,60 @@ class holidayLoggerCtrl extends Controller
 {
     public function create_update(Request $request)
     {
-        $values = [
-            'date'=>$request->date,
-            'description'=>$request->description,
-            'type'=>$request->type,
-            // empty / "All Departments" => NULL (applies to every department)
-            'department_id'=> ($request->department_id === '' || $request->department_id === null) ? null : $request->department_id,
-        ];
-
         $validator = Validator::make($request->all(),[
             'date'=>'required',
             'description'=>'required',
-            'department_id'=>'nullable',
             'type'=>'required',
         ]);
 
         if(!$validator->passes()){
             return response()->json(['status'=>201, 'error'=>$validator->errors()->toArray()]);
-        }else{
-            //     $insert = holidayLoggerModel::create($values);
-                
-            // if($insert){
-            //     return response()->json(['status'=>200, 'msg'=>'Holiday Logger Created.']);
-            // }else{
-            //     return response()->json(['status'=>202, 'msg'=>'Error saving']);
-            // }
-            if($request->formAction==1){
-                // $checkIfExist =  philhealthModel::where('EE',$request->ee);
-                //     if($checkIfExist->count()>0){
-                //         return response()->json(['status'=>200, 'msg'=>'EE exist!']);
-                //     }
-                $insert = holidayLoggerModel::create($values);
-            }else{
-                $insert = holidayLoggerModel::where('id',$request->updateID)->update($values);
-            }
-            if($insert){
-                if($request->formAction==1){
-                    return response()->json(['status'=>200, 'msg'=>'Holiday Logger Created.']);
-                }else{
-                    return response()->json(['status'=>200, 'msg'=>'Holiday Logger Updated.']);
-                }
-            }else{
-                return response()->json(['status'=>202, 'msg'=>'Error saving']);
-
-            }
         }
 
+        // "All Departments" / empty selection => a single row with NULL department_id.
+        // Otherwise the user may pick several departments at once, producing one
+        // holiday row per department so they don't have to add them one by one.
+        $applyToAll = $request->boolean('all_departments');
+        $departmentIds = $request->input('department_ids', []);
+        if (!is_array($departmentIds)) {
+            $departmentIds = array_filter([$departmentIds], fn($v) => $v !== '' && $v !== null);
+        }
+        $departmentIds = array_values(array_unique(array_filter($departmentIds, fn($v) => $v !== '' && $v !== null)));
 
+        $base = [
+            'date'        => $request->date,
+            'description' => $request->description,
+            'type'        => $request->type,
+        ];
+
+        if($request->formAction==1){
+            // Create: one row per selected department, or a single NULL row for "All".
+            $targets = ($applyToAll || empty($departmentIds)) ? [null] : $departmentIds;
+            $inserted = 0;
+            foreach($targets as $deptId){
+                if(holidayLoggerModel::create($base + ['department_id' => $deptId])){
+                    $inserted++;
+                }
+            }
+
+            if($inserted){
+                $msg = $inserted > 1
+                    ? "Holiday added for {$inserted} departments."
+                    : 'Holiday Logger Created.';
+                return response()->json(['status'=>200, 'msg'=>$msg]);
+            }
+            return response()->json(['status'=>202, 'msg'=>'Error saving']);
+        }
+
+        // Update: a single existing row applies to one department (or All).
+        // Load + save the instance (not where()->update()) so the Auditable trait fires.
+        $deptId = ($applyToAll || empty($departmentIds)) ? null : $departmentIds[0];
+        $record = holidayLoggerModel::where('id',$request->updateID)->first();
+        if($record){
+            $record->forceFill($base + ['department_id' => $deptId])->save();
+            return response()->json(['status'=>200, 'msg'=>'Holiday Logger Updated.']);
+        }
+        return response()->json(['status'=>202, 'msg'=>'Error saving']);
     }
 
    public function getall(Request $request)

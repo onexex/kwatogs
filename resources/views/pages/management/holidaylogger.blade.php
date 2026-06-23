@@ -276,6 +276,78 @@
         transition: all .2s;
     }
     .btn-cancel-holiday:hover { background: var(--bg); }
+
+    /* ── Department multi-select picker ──────────────────────── */
+    .dept-all-toggle {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius-input);
+        padding: 10px 14px;
+        font-size: 0.82rem;
+        color: var(--slate);
+        cursor: pointer;
+        margin-bottom: 0;
+    }
+    .dept-all-toggle input { accent-color: var(--teal); width: 16px; height: 16px; cursor: pointer; }
+
+    .dept-picker {
+        margin-top: 10px;
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        border-radius: var(--radius-input);
+        overflow: hidden;
+    }
+    .dept-picker-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--border);
+        background: var(--teal-light);
+    }
+    .dept-picker-hint {
+        font-size: 0.72rem;
+        color: var(--slate-light);
+        font-weight: 600;
+        margin-right: auto;
+    }
+    .dept-link-btn {
+        background: none;
+        border: none;
+        color: var(--teal-dark);
+        font-size: 0.72rem;
+        font-weight: 700;
+        cursor: pointer;
+        padding: 2px 6px;
+        border-radius: 6px;
+    }
+    .dept-link-btn:hover { background: rgba(0,128,128,.12); }
+
+    .dept-picker-list {
+        max-height: 200px;
+        overflow-y: auto;
+        padding: 8px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 4px 14px;
+    }
+    @media (max-width: 575px) { .dept-picker-list { grid-template-columns: 1fr; } }
+    .dept-chk {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        border-radius: 6px;
+        font-size: 0.82rem;
+        color: var(--slate);
+        cursor: pointer;
+        margin: 0;
+    }
+    .dept-chk:hover { background: var(--teal-light); }
+    .dept-chk input { accent-color: var(--teal); width: 15px; height: 15px; cursor: pointer; }
 </style>
 
 <div class="holiday-shell">
@@ -357,13 +429,28 @@
                         </div>
 
                         <div class="col-12">
-                            <label class="field-label" for="selDepartmentHoliday">Department</label>
-                            <select class="form-select" name="department_id" id="selDepartmentHoliday">
-                                <option value="">All Departments</option>
-                                @foreach($departments as $dept)
-                                    <option value="{{ $dept->id }}">{{ $dept->dep_name }}</option>
-                                @endforeach
-                            </select>
+                            <label class="field-label">Departments</label>
+
+                            <label class="dept-all-toggle" for="chkAllDepartments">
+                                <input type="checkbox" id="chkAllDepartments" name="all_departments" value="1" checked>
+                                <span><strong>All Departments</strong> — applies this holiday company-wide</span>
+                            </label>
+
+                            <div id="deptPickerWrap" class="dept-picker" style="display:none;">
+                                <div class="dept-picker-toolbar">
+                                    <span class="dept-picker-hint">Select one or more departments</span>
+                                    <button type="button" class="dept-link-btn" id="btnSelectAllDepts">Select all</button>
+                                    <button type="button" class="dept-link-btn" id="btnClearDepts">Clear</button>
+                                </div>
+                                <div class="dept-picker-list">
+                                    @foreach($departments as $dept)
+                                        <label class="dept-chk">
+                                            <input type="checkbox" class="dept-checkbox" name="department_ids[]" value="{{ $dept->id }}">
+                                            <span>{{ $dept->dep_name }}</span>
+                                        </label>
+                                    @endforeach
+                                </div>
+                            </div>
                             <span class="text-danger small error-text department_id_error"></span>
                         </div>
                     </div>

@@ -35,7 +35,8 @@ class PayrollPeriodController extends Controller
         ]);
 
         DB::transaction(function () use ($companyId, $data) {
-            PayrollPeriod::where('company_id', $companyId)->delete();
+            // Load + instance-delete each so the Auditable trait records every removal.
+            PayrollPeriod::where('company_id', $companyId)->get()->each->delete();
 
             foreach ($data['periods'] as $i => $p) {
                 $eom = !empty($p['pay_end_of_month']);

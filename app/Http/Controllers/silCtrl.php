@@ -47,7 +47,8 @@ class silCtrl extends Controller
                     //     }
                     $insert = silModel::create($values);
                 }else{
-                    $insert = silModel::where('id',$request->updateID)->update($values);
+                    $record = silModel::where('id',$request->updateID)->first();
+                    $insert = $record ? $record->forceFill($values)->save() : false;
                 }
             if($insert){
                 if($request->formAction==1){

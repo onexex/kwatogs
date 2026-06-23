@@ -11,7 +11,7 @@ class holidayLoggerModel extends Model
     use HasFactory;
     use \App\Traits\Auditable;
     protected $table = 'holiday_logger';
-    protected $primaryKey = 'id ';
+    protected $primaryKey = 'id';
     public $timestamps = true;
 
     protected $fillable = [

@@ -9,7 +9,7 @@ class access extends Model
 {
     use HasFactory;
       protected $table = 'access';
-    protected $primaryKey = 'id ';
+    protected $primaryKey = 'id';
     public $timestamps = true;
 
     protected $fillable = [

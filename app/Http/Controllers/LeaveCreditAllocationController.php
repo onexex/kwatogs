@@ -78,13 +78,16 @@ class LeaveCreditAllocationController extends Controller
      */
     public function update(Request $request, LeaveCreditAllocation $leaveCreditAllocation)
     {
-        LeaveCreditAllocation::where('id', $request->id)->update([
-            'employee_id' => $request->employee_id,
-            'leavetype_id' => $request->leave_type,
-            'credits_allocated' => $request->leave_credit,
-            'balance' => $request->leave_credit, // Update balance to match new allocated credits
-            'year' => $request->year,
-        ]);
+        $record = LeaveCreditAllocation::where('id', $request->id)->first();
+        if ($record) {
+            $record->forceFill([
+                'employee_id' => $request->employee_id,
+                'leavetype_id' => $request->leave_type,
+                'credits_allocated' => $request->leave_credit,
+                'balance' => $request->leave_credit, // Update balance to match new allocated credits
+                'year' => $request->year,
+            ])->save();
+        }
 
         return response()->json([
             'status' => 'success',

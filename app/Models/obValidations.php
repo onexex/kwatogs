@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class obValidations extends Model
 {
     use HasFactory;
+    use \App\Traits\Auditable;
 
     protected $table = "ob_validations";
     protected $primaryKey = "id";

@@ -1,10 +1,10 @@
-// SSS contribution schedule editor
+// Pag-IBIG contribution schedule editor
 $(document).ready(function () {
     var formaction = 1;
     var updateID = '';
     var allRows = [];
 
-    var peso = function (n) {
+    var num = function (n) {
         var v = parseFloat(n);
         if (isNaN(v)) return '—';
         return v.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -17,22 +17,19 @@ $(document).ready(function () {
 
     get_all();
 
-    // ── Load + render ──────────────────────────────────────────
     function get_all() {
-        axios.get('/getSSS').then(function (res) {
+        axios.get('/getPagibig').then(function (res) {
             if (res.data.status !== 200) return;
             allRows = res.data.data || [];
             var years = res.data.years || [];
-
             var $sel = $('#selYear');
             var current = $sel.val();
             $sel.empty().append('<option value="all">All Years</option>');
             years.forEach(function (y) { $sel.append('<option value="' + y + '">' + y + '</option>'); });
-            // Keep prior selection, else default to the newest year
             if (current && $sel.find('option[value="' + current + '"]').length) $sel.val(current);
             else if (years.length) $sel.val(String(years[0]));
             render();
-        }).catch(function (e) { Swal.fire('Error', 'Could not load SSS table: ' + e, 'error'); });
+        }).catch(function (e) { Swal.fire('Error', 'Could not load Pag-IBIG table: ' + e, 'error'); });
     }
 
     function render() {
@@ -42,70 +39,69 @@ $(document).ready(function () {
         rows.forEach(function (it) {
             html += '<tr>' +
                 '<td class="ps-4"><span class="yr-badge">' + esc(it.effective_year) + '</span></td>' +
-                '<td>' + peso(it.range_from) + '</td>' +
-                '<td>' + peso(it.range_to) + '</td>' +
-                '<td>' + peso(it.employee_share) + '</td>' +
-                '<td>' + peso(it.employer_share) + '</td>' +
-                '<td>' + peso(it.ec) + '</td>' +
-                '<td>' + peso(it.mpf) + '</td>' +
-                '<td><b>' + peso(it.total_contribution) + '</b></td>' +
+                '<td>' + num(it.range_from) + '</td>' +
+                '<td>' + num(it.range_to) + '</td>' +
+                '<td>' + num(it.employee_rate) + '</td>' +
+                '<td>' + num(it.employer_rate) + '</td>' +
+                '<td>' + num(it.max_salary_credit) + '</td>' +
+                '<td>' + num(it.employee_share) + '</td>' +
+                '<td>' + num(it.employer_share) + '</td>' +
+                '<td><b>' + num(it.total_contribution) + '</b></td>' +
                 '<td class="pe-4 text-end">' +
-                    '<button class="icon-action-btn btnEdit" data-id="' + it.id + '" data-bs-toggle="modal" data-bs-target="#mdlSSS" title="Edit"><i class="fa-solid fa-pencil text-primary"></i></button> ' +
+                    '<button class="icon-action-btn btnEdit" data-id="' + it.id + '" data-bs-toggle="modal" data-bs-target="#mdlPAG" title="Edit"><i class="fa-solid fa-pencil text-primary"></i></button> ' +
                     '<button class="icon-action-btn danger btnDelete" data-id="' + it.id + '" title="Delete"><i class="fa-solid fa-trash"></i></button>' +
                 '</td></tr>';
         });
-        if (!rows.length) html = '<tr><td colspan="9" class="text-center py-5 text-muted small">No brackets for this year. Click “Add Bracket” to create one.</td></tr>';
-        $('#tblSSS').empty().append(html);
+        if (!rows.length) html = '<tr><td colspan="10" class="text-center py-5 text-muted small">No brackets for this year. Click “Add Bracket” to create one.</td></tr>';
+        $('#tblPAG').empty().append(html);
         $('#rowCount').text(rows.length + ' bracket' + (rows.length === 1 ? '' : 's'));
     }
 
     $(document).on('change', '#selYear', render);
 
-    // ── Create ─────────────────────────────────────────────────
-    $(document).on('click', '#btnCreateSSS', function () {
+    $(document).on('click', '#btnCreatePAG', function () {
         formaction = 1; updateID = '';
-        $('#frmSSS')[0].reset();
-        $('span.error-text').text(''); $('#frmSSS .form-control').removeClass('border border-danger');
+        $('#frmPAG')[0].reset();
+        $('span.error-text').text(''); $('#frmPAG .form-control').removeClass('border border-danger');
         var yr = $('#selYear').val();
         $('#txtYear').val(yr && yr !== 'all' ? yr : new Date().getFullYear());
-        $('#lblTitleSSS').text('Add SSS Bracket');
+        $('#lblTitlePAG').text('Add Pag-IBIG Bracket');
     });
 
-    // ── Edit ───────────────────────────────────────────────────
     $(document).on('click', '.btnEdit', function () {
         formaction = 2; updateID = $(this).data('id');
-        $('#lblTitleSSS').text('Update SSS Bracket');
-        $('span.error-text').text(''); $('#frmSSS .form-control').removeClass('border border-danger');
+        $('#lblTitlePAG').text('Update Pag-IBIG Bracket');
+        $('span.error-text').text(''); $('#frmPAG .form-control').removeClass('border border-danger');
         var it = allRows.find(function (r) { return String(r.id) === String(updateID); });
         if (!it) return;
         $('#txtYear').val(it.effective_year);
         $('#txtRangeFrom').val(it.range_from);
         $('#txtRangeTo').val(it.range_to);
-        $('#txtEE').val(it.employee_share);
-        $('#txtER').val(it.employer_share);
-        $('#txtEC').val(it.ec);
-        $('#txtMPF').val(it.mpf);
+        $('#txtEERate').val(it.employee_rate);
+        $('#txtERRate').val(it.employer_rate);
+        $('#txtMaxCredit').val(it.max_salary_credit);
+        $('#txtEEShare').val(it.employee_share);
+        $('#txtERShare').val(it.employer_share);
         $('#txtTotal').val(it.total_contribution);
     });
 
-    // ── Save ───────────────────────────────────────────────────
-    $(document).on('click', '#btnSaveSSS', function () {
-        var formData = new FormData($('#frmSSS')[0]);
+    $(document).on('click', '#btnSavePAG', function () {
+        var formData = new FormData($('#frmPAG')[0]);
         formData.append('formAction', formaction);
         formData.append('updateID', updateID);
 
-        axios.post('/settings/SSS', formData).then(function (res) {
+        axios.post('/settings/Pagibig', formData).then(function (res) {
             var s = res.data.status;
-            $('span.error-text').text(''); $('#frmSSS .form-control').removeClass('border border-danger');
+            $('span.error-text').text(''); $('#frmPAG .form-control').removeClass('border border-danger');
             if (s === 201) {
                 $.each(res.data.error, function (field, val) {
-                    $('#frmSSS [name="' + field + '"]').addClass('border border-danger');
+                    $('#frmPAG [name="' + field + '"]').addClass('border border-danger');
                     $('span.' + field + '_error').text(val[0]);
                 });
                 return;
             }
             if (s === 200) {
-                $('#mdlSSS').modal('hide');
+                $('#mdlPAG').modal('hide');
                 get_all();
                 Swal.fire({ icon: 'success', title: 'Saved', text: res.data.msg, timer: 1600, showConfirmButton: false });
             } else {
@@ -114,16 +110,15 @@ $(document).ready(function () {
         }).catch(function (e) { Swal.fire('Error', String(e), 'error'); });
     });
 
-    // ── Delete ─────────────────────────────────────────────────
     $(document).on('click', '.btnDelete', function () {
         var id = $(this).data('id');
         Swal.fire({
-            title: 'Delete this bracket?', text: 'This salary bracket will be removed from the SSS table.',
+            title: 'Delete this bracket?', text: 'This Pag-IBIG bracket will be removed.',
             icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444', confirmButtonText: 'Delete'
         }).then(function (r) {
             if (!r.isConfirmed) return;
             var fd = new FormData(); fd.append('id', id);
-            axios.post('/deleteSSS', fd).then(function (res) {
+            axios.post('/deletePagibig', fd).then(function (res) {
                 get_all();
                 Swal.fire({ icon: res.data.status === 200 ? 'success' : 'info', title: res.data.msg, timer: 1500, showConfirmButton: false });
             }).catch(function (e) { Swal.fire('Error', String(e), 'error'); });

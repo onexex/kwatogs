@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class LeaveCreditAllocation extends Model
 {
     use HasFactory;
+    use \App\Traits\Auditable;
 
     protected $fillable = [
         'employee_id',

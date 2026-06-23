@@ -106,7 +106,8 @@ class companyCtrl extends Controller
                 $message = 'Company Created Successfully.';
             } else {
                 // Update Existing
-                $query = company::where('id', $request->CompanyID)->update($data);
+                $record = company::where('id', $request->CompanyID)->first();
+                $query = $record ? $record->forceFill($data)->save() : false;
                 $message = 'Company Updated Successfully.';
             }
 
@@ -151,7 +152,8 @@ class companyCtrl extends Controller
         if($role!=1){
             return response()->json(['status'=>200, 'msg'=>'Access Denied. Required superuser access for this request!']);
         }else{
-            $getCompany = company::where('id', $id)->delete();
+            $record = company::where('id', $id)->first();
+            if ($record) $record->delete();
             return response()->json(['status'=>200, 'msg'=>"Company deleted successfully."]);
         }
 

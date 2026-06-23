@@ -74,7 +74,8 @@ class archiveCtrl extends Controller
                 if($request->formAction==1){
                     $query = archive::create($value);
                 }else{
-                    $query = archive::where('id',$request->archiveID)->update($value);
+                    $record = archive::where('id',$request->archiveID)->first();
+                    $query = $record ? $record->forceFill($value)->save() : false;
                 }
             if($query){
                 if($request->formAction==1){

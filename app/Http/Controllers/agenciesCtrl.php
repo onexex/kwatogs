@@ -25,7 +25,8 @@ class agenciesCtrl extends Controller
                 if($request->formAction==1){
                     $insert = agencies::create($values);
                 }else{
-                    $insert = agencies::where('id',$request->agID)->update($values);
+                    $record = agencies::where('id',$request->agID)->first();
+                    $insert = $record ? $record->forceFill($values)->save() : false;
                 }
             if($insert){
                 if($request->formAction==1){

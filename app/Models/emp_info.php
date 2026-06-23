@@ -9,7 +9,7 @@ class emp_info extends Model
 {
     use HasFactory;
     protected $table = 'emp_infos';
-    protected $primaryKey = 'id ';
+    protected $primaryKey = 'id';
     public $timestamps = true;   
 
     protected $fillable = [

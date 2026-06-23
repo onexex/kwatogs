@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class SssContribution extends Model
 {
     use HasFactory;
+    use \App\Traits\Auditable;
 
     protected $table = 'sss_contributions';
 

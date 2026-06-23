@@ -29,7 +29,8 @@ class positionCtrl extends Controller
                         }
                     $insert = position::create($values);
                 }else{
-                    $insert = position::where('id',$request->posID)->update($values);
+                    $record = position::where('id',$request->posID)->first();
+                    $insert = $record ? $record->forceFill($values)->save() : false;
                 }
             if($insert){
                 if($request->formAction==1){
@@ -75,7 +76,8 @@ public function get_all(Request $request)
     {
         try {
             // Find and delete the position using the posID passed from Axios
-            $delete = position::where('id', $request->posID)->delete();
+            $record = position::where('id', $request->posID)->first();
+            $delete = $record ? $record->delete() : false;
 
             if ($delete) {
                 return response()->json([

@@ -211,6 +211,14 @@ class AllowedIpController extends Controller
         $service = new IpImportService();
         $result  = $service->import($request->file('csv_file'), session('LoggedUserEmpID'));
 
+        // Summary audit entry — one row per import (not per record), with file + counts.
+        \App\Models\AuditLog::record('imported', 'AllowedIp', null, [
+            'file'     => $request->file('csv_file')->getClientOriginalName(),
+            'inserted' => $result['inserted'],
+            'updated'  => $result['updated'],
+            'skipped'  => $result['skipped'],
+        ]);
+
         $summary = "Import complete: {$result['inserted']} inserted, {$result['updated']} updated, {$result['skipped']} skipped.";
         $flash   = $result['skipped'] > 0 ? 'error' : 'success';
 

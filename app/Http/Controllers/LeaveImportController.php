@@ -60,6 +60,15 @@ class LeaveImportController extends Controller
         $service = new LeaveImportService(optional($request->user())->id);
         $result = $service->import($rows);
 
+        // Summary audit entry — one row per import (not per record), with file + counts.
+        \App\Models\AuditLog::record('imported', 'Leave', null, [
+            'file'     => $request->file('file')->getClientOriginalName(),
+            'inserted' => $result['inserted'],
+            'updated'  => $result['updated'],
+            'skipped'  => $result['skipped'],
+            'aborted'  => !empty($result['aborted']),
+        ]);
+
         $aborted = !empty($result['aborted']);
         $message = $aborted
             ? "Import canceled — {$result['skipped']} row(s) had errors or duplicates. Fix them and re-upload; nothing was imported."

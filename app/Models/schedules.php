@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class schedules extends Model
 {
     use HasFactory;
+    use \App\Traits\Auditable;
     protected $table = 'schedules';
     protected $primaryKey = 'id';
     public $timestamps = true;

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class liloValidations extends Model
 {
     use HasFactory;
+    use \App\Traits\Auditable;
 
     protected $table = "lilo_validations";
     protected $primaryKey = "id";

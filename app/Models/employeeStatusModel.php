@@ -10,7 +10,7 @@ class employeeStatusModel extends Model
     use HasFactory;
     use \App\Traits\Auditable;
     protected $table = 'emp_status';
-    protected $primaryKey = 'id ';
+    protected $primaryKey = 'id';
     public $timestamps = true;
 
     protected $fillable = [

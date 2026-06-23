@@ -27,7 +27,8 @@ class workTimeCtrl extends Controller
                 if($request->formAction==1){
                     $insert = worktime::create($values);
                 }else{
-                    $insert = worktime::where('id',$request->wtID)->update($values);
+                    $record = worktime::where('id',$request->wtID)->first();
+                    $insert = $record ? $record->forceFill($values)->save() : false;
                 }
             if($insert){
                 if($request->formAction==1){

@@ -27,7 +27,8 @@ class jobleveCtrl extends Controller
                         }
                     $insert = joblevel::create($values);
                 }else{
-                    $insert = joblevel::where('id',$request->jobID)->update($values);
+                    $record = joblevel::where('id',$request->jobID)->first();
+                    $insert = $record ? $record->forceFill($values)->save() : false;
                 }
             if($insert){
                 if($request->formAction==1){

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class archive extends Model
 {
     use HasFactory;
+    use \App\Traits\Auditable;
     protected $table = "archive";
     protected $primaryKey = "id";
     public $timestamps = true;

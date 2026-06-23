@@ -25,19 +25,61 @@
     .act { font-size:.62rem; font-weight:800; padding:3px 9px; border-radius:999px; text-transform:uppercase; }
     .act-created { background:#dcfce7; color:#166534; } .act-updated { background:#dbeafe; color:#1e40af; } .act-deleted { background:#fee2e2; color:#991b1b; }
     .act-login { background:#e0f2fe; color:#075985; } .act-logout { background:#f1f5f9; color:#475569; } .act-failed { background:#fef3c7; color:#92400e; } .act-role { background:#ede9fe; color:#5b21b6; }
+    .act-imported { background:#cffafe; color:#155e75; }
     .chg { font-size:.74rem; color:var(--slate-light); line-height:1.6; }
     .chg b { color:var(--slate); } .chg .from { color:#b91c1c; } .chg .to { color:#047857; }
     .chip { font-size:.7rem; background:#eef2f6; color:var(--slate); border-radius:6px; padding:2px 8px; font-weight:700; }
     .pager a, .pager span { font-size:.78rem; font-weight:700; padding:6px 12px; border-radius:8px; border:1px solid var(--border); color:var(--teal); text-decoration:none; }
     .pager span.disabled { color:var(--muted); }
+
+    /* ── Clickable rows ── */
+    .au-row { cursor:pointer; transition:background .12s; }
+    .au-row:hover { background:var(--teal-light) !important; }
+    .au-row .row-caret { color:var(--muted); font-size:.7rem; opacity:0; transition:opacity .12s; }
+    .au-row:hover .row-caret { opacity:1; }
+
+    /* ── Detail modal ── */
+    #auditDetailModal .modal-content { border:none; border-radius:var(--radius); overflow:hidden; }
+    #auditDetailModal .modal-header { background:var(--teal); color:#fff; border:none; padding:15px 22px; }
+    #auditDetailModal .modal-header .modal-title { color:#fff; font-size:.95rem; font-weight:700; }
+    #auditDetailModal .btn-close { filter:brightness(0) invert(1); }
+    #auditDetailModal .modal-body { background:var(--bg); padding:20px 22px; }
+    .ad-meta { display:grid; grid-template-columns:repeat(2,1fr); gap:10px 18px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:16px; }
+    .ad-meta .k { font-size:.62rem; font-weight:800; color:var(--slate-light); text-transform:uppercase; letter-spacing:.4px; }
+    .ad-meta .v { font-size:.84rem; color:var(--slate); font-weight:600; word-break:break-word; }
+    .ad-diff { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+    .ad-diff table { width:100%; margin:0; border-collapse:collapse; }
+    .ad-diff th { font-size:.62rem; font-weight:800; text-transform:uppercase; letter-spacing:.4px; color:var(--slate-light); background:#f8fafc; padding:9px 14px; border-bottom:2px solid var(--border); text-align:left; }
+    .ad-diff td { font-size:.82rem; color:var(--slate); padding:9px 14px; border-bottom:1px solid #f1f5f9; vertical-align:top; word-break:break-word; }
+    .ad-diff tr:last-child td { border-bottom:none; }
+    .ad-diff .field { font-weight:700; color:var(--slate); width:26%; }
+    .ad-diff .before { color:#b91c1c; background:#fef2f2; width:34%; }
+    .ad-diff .after  { color:#047857; background:#f0fdf4; width:34%; }
+    .ad-diff .arrow { width:6%; text-align:center; color:var(--muted); }
+    .ad-empty { color:var(--slate-light); font-size:.82rem; padding:14px; text-align:center; }
 </style>
 
 @php
     $actBadge = [
         'created'=>'act-created','updated'=>'act-updated','deleted'=>'act-deleted',
         'login'=>'act-login','logout'=>'act-logout','login-failed'=>'act-failed',
-        'role-assigned'=>'act-role','role-removed'=>'act-role',
+        'role-assigned'=>'act-role','role-removed'=>'act-role','imported'=>'act-imported',
     ];
+
+    // Full (untruncated) detail for each visible log, consumed by the click-to-open modal.
+    $auditDetails = [];
+    foreach ($logs as $l) {
+        $auditDetails[$l->id] = [
+            'action'   => $l->action,
+            'model'    => $l->model,
+            'model_id' => $l->model_id,
+            'user'     => $l->user_name ?: 'system',
+            'ip'       => $l->ip,
+            'url'      => $l->url,
+            'when'     => \Carbon\Carbon::parse($l->created_at)->format('M d, Y · h:i A'),
+            'changes'  => $l->changes,
+        ];
+    }
 @endphp
 
 <div class="au-shell">
@@ -58,7 +100,7 @@
                 </div>
                 <div class="col-6 col-md-2"><label class="lbl">Action</label>
                     <select name="action" class="form-select form-select-sm">
-                        @foreach(['all'=>'All','created'=>'Created','updated'=>'Updated','deleted'=>'Deleted','login'=>'Login','logout'=>'Logout','login-failed'=>'Failed Login','role-assigned'=>'Role Assigned','role-removed'=>'Role Removed'] as $k=>$v)
+                        @foreach(['all'=>'All','created'=>'Created','updated'=>'Updated','deleted'=>'Deleted','imported'=>'Imported','login'=>'Login','logout'=>'Logout','login-failed'=>'Failed Login','role-assigned'=>'Role Assigned','role-removed'=>'Role Removed'] as $k=>$v)
                             <option value="{{ $k }}" @selected(request('action',' ')===$k)>{{ $v }}</option>
                         @endforeach
                     </select>
@@ -86,7 +128,7 @@
                 </thead>
                 <tbody>
                     @forelse($logs as $log)
-                    <tr>
+                    <tr class="au-row" data-id="{{ $log->id }}" role="button" tabindex="0" title="Click to view detailed changes">
                         <td class="ps-4 small">{{ \Carbon\Carbon::parse($log->created_at)->format('M d, Y') }}<br><span class="text-muted">{{ \Carbon\Carbon::parse($log->created_at)->format('h:i A') }}</span></td>
                         <td><span class="fw-bold text-capitalize">{{ $log->user_name ?: 'system' }}</span>@if($log->ip)<br><span class="text-muted" style="font-size:.68rem;">{{ $log->ip }}</span>@endif</td>
                         <td><span class="act {{ $actBadge[$log->action] ?? '' }}">{{ $log->action }}</span></td>
@@ -105,13 +147,14 @@
                                         </div>
                                     @endforeach
                                 </div>
-                            @elseif($log->action === 'created' && is_array($c))
+                            @elseif(in_array($log->action, ['created','imported']) && is_array($c))
                                 <div class="chg">
                                     @foreach(array_slice($c, 0, 6, true) as $field => $val)
                                         @if(!is_array($val))<span class="me-2"><b>{{ \Illuminate\Support\Str::headline($field) }}:</b> {{ \Illuminate\Support\Str::limit((string)$val, 30) }}</span>@endif
                                     @endforeach
                                 </div>
                             @else<span class="text-muted">—</span>@endif
+                            <i class="fa fa-chevron-right row-caret float-end mt-1" aria-hidden="true"></i>
                         </td>
                     </tr>
                     @empty
@@ -131,4 +174,118 @@
         @endif
     </div>
 </div>
+
+{{-- ── Detail modal (populated on row click) ── --}}
+<div class="modal fade" id="auditDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title"><i class="fa fa-clipboard-list me-2"></i>Audit Detail</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="ad-meta" id="adMeta"></div>
+                <div class="ad-diff" id="adDiff"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="application/json" id="auditDetailData">@json($auditDetails)</script>
+<script>
+(function () {
+    var DATA = {};
+    try { DATA = JSON.parse(document.getElementById('auditDetailData').textContent || '{}'); } catch (e) { DATA = {}; }
+
+    var ACT_LABEL = {
+        'created':'Created','updated':'Updated','deleted':'Deleted','login':'Login','logout':'Logout',
+        'login-failed':'Failed Login','role-assigned':'Role Assigned','role-removed':'Role Removed','imported':'Imported'
+    };
+    var ACT_CLASS = {
+        'created':'act-created','updated':'act-updated','deleted':'act-deleted','login':'act-login',
+        'logout':'act-logout','login-failed':'act-failed','role-assigned':'act-role','role-removed':'act-role','imported':'act-imported'
+    };
+
+    function esc(v) {
+        if (v === null || v === undefined || v === '') return '—';
+        return String(v).replace(/[&<>"']/g, function (c) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+        });
+    }
+    // Headline: snake/camel -> "Title Case"
+    function headline(s) {
+        return String(s).replace(/[_-]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2')
+            .replace(/\s+/g, ' ').trim().replace(/\b\w/g, function (m) { return m.toUpperCase(); });
+    }
+
+    function renderMeta(d) {
+        var badge = '<span class="act ' + (ACT_CLASS[d.action] || '') + '">' + esc(ACT_LABEL[d.action] || d.action) + '</span>';
+        var rows = [
+            ['Action', badge],
+            ['Record', '<span class="chip">' + esc(d.model) + '</span> <span class="text-muted">#' + esc(d.model_id) + '</span>'],
+            ['Performed by', esc(d.user)],
+            ['When', esc(d.when)],
+            ['IP Address', esc(d.ip)],
+            ['Page', esc(d.url)]
+        ];
+        return rows.map(function (r) {
+            return '<div><div class="k">' + r[0] + '</div><div class="v">' + r[1] + '</div></div>';
+        }).join('');
+    }
+
+    function renderDiff(d) {
+        var c = d.changes;
+        if (d.action === 'deleted') {
+            return '<div class="ad-empty">This record was removed.</div>';
+        }
+        if (!c || typeof c !== 'object' || Object.keys(c).length === 0) {
+            return '<div class="ad-empty">No field-level changes were recorded for this entry.</div>';
+        }
+        // Updated / role / failed-login => {field:{from,to}};  Created => {field: value}
+        var isDiff = Object.keys(c).some(function (k) {
+            var v = c[k]; return v && typeof v === 'object' && ('from' in v || 'to' in v);
+        });
+
+        var body = Object.keys(c).map(function (field) {
+            var v = c[field];
+            var hasDiff = v && typeof v === 'object' && ('from' in v || 'to' in v);
+
+            if (!isDiff) { // created snapshot: single "Value" column (no before/after)
+                return '<tr><td class="field">' + esc(headline(field)) + '</td><td class="after" colspan="3">' + esc(v) + '</td></tr>';
+            }
+            var before = hasDiff ? v.from : null;
+            var after  = hasDiff ? v.to   : v;
+            return '<tr>' +
+                '<td class="field">' + esc(headline(field)) + '</td>' +
+                '<td class="before">' + esc(before) + '</td>' +
+                '<td class="arrow"><i class="fa fa-arrow-right-long"></i></td>' +
+                '<td class="after">' + esc(after) + '</td>' +
+            '</tr>';
+        }).join('');
+
+        var head = isDiff
+            ? '<thead><tr><th>Field</th><th>Before</th><th></th><th>After</th></tr></thead>'
+            : '<thead><tr><th>Field</th><th colspan="3">Value</th></tr></thead>';
+        return '<table>' + head + '<tbody>' + body + '</tbody></table>';
+    }
+
+    var modalEl = document.getElementById('auditDetailModal');
+    var modal = modalEl ? new bootstrap.Modal(modalEl) : null;
+
+    function openDetail(id) {
+        var d = DATA[id];
+        if (!d || !modal) return;
+        document.getElementById('adMeta').innerHTML = renderMeta(d);
+        document.getElementById('adDiff').innerHTML = renderDiff(d);
+        modal.show();
+    }
+
+    document.querySelectorAll('tr.au-row').forEach(function (row) {
+        row.addEventListener('click', function () { openDetail(this.getAttribute('data-id')); });
+        row.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(this.getAttribute('data-id')); }
+        });
+    });
+})();
+</script>
 @endsection

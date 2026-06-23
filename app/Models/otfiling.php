@@ -8,8 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 class otfiling extends Model
 {
     use HasFactory;
+    use \App\Traits\Auditable;
     protected $table = 'otfilings';
-    protected $primaryKey = 'id ';
+    protected $primaryKey = 'id';
     public $timestamps = true;
 
     protected $fillable = [

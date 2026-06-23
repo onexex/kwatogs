@@ -218,7 +218,8 @@ class empSchedulerCtrl extends Controller
              $value =[
                  'wtID' => $request->wtime,
              ];
-             $query=schedules::where('id',$request->empSID)->update($value);
+             $record = schedules::where('id',$request->empSID)->first();
+             $query = $record ? $record->forceFill($value)->save() : false;
              // $IDinserted= $query->id;
              if($query){
                  return response()->json(['stat'=>200]);
@@ -284,7 +285,8 @@ class empSchedulerCtrl extends Controller
                         if(count($myScedule)>1){
                             return response()->json(['stat'=>199,'msg'=>"Schedule Date Already Exist!" ]);
                         }else{
-                            $query=effectivityDate::where('id',$request->id)->update($valueU);
+                            $edRecord = effectivityDate::where('id',$request->id)->first();
+                            $query = $edRecord ? $edRecord->forceFill($valueU)->save() : false;
                             if($query){
                                 return response()->json(['stat'=>200]);
                             }
@@ -295,7 +297,8 @@ class empSchedulerCtrl extends Controller
                              return response()->json(['stat'=>199,'msg'=>"Schedule Date Already Exist!" ]);
 
                         }else{
-                            $query=effectivityDate::where('id',$request->id)->update($valueU);
+                            $edRecord = effectivityDate::where('id',$request->id)->first();
+                            $query = $edRecord ? $edRecord->forceFill($valueU)->save() : false;
                             if($query){
                                 return response()->json(['stat'=>200]);
                             }

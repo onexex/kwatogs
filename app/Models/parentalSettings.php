@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class parentalSettings extends Model
 {
     use HasFactory;
+    use \App\Traits\Auditable;
 
     protected $table = "parental_settings";
     protected $primaryKey = "id";

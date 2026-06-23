@@ -38,7 +38,8 @@ class otfillingCtrl extends Controller
                         }
                     $insert = otfiling::create($values);
                 }else{
-                    $insert = otfiling::where('id',$request->OTFilID)->update($values);
+                    $record = otfiling::where('id',$request->OTFilID)->first();
+                    $insert = $record ? $record->forceFill($values)->save() : false;
                 }
             if($insert){
                 if($request->formAction==1){

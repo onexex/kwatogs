@@ -10,7 +10,7 @@ class position extends Model
     use HasFactory;
     use \App\Traits\Auditable;
     protected $table = 'positions';
-    protected $primaryKey = 'id ';
+    protected $primaryKey = 'id';
     public $timestamps = true;
 
     protected $fillable = [

@@ -53,7 +53,8 @@ class parentalSettingsCtrl extends Controller
                         }
                     $insert = parentalSettings::create($values);
                 }else{
-                    $insert = parentalSettings::where('id',$request->pID)->update($values);
+                    $record = parentalSettings::where('id',$request->pID)->first();
+                    $insert = $record ? $record->forceFill($values)->save() : false;
                 }
             if($insert){
                 if($request->formAction==1){
@@ -69,7 +70,8 @@ class parentalSettingsCtrl extends Controller
 
     public function delete_record (Request $request)
     {
-        $query=parentalSettings::where('id',$request->id)->delete();
+        $record = parentalSettings::where('id',$request->id)->first();
+        $query = $record ? $record->delete() : false;
         if($query){
             return response()->json(['stat'=>200,'msg'=>"Record has been successfully Deleted! "]);
         }

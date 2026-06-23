@@ -45,7 +45,8 @@ class leavevalidationCtrl extends Controller
                         }
                     $insert = leavevalidationModel::create($values);
                 }else{
-                    $insert = leavevalidationModel::where('id',$request->leaveValID)->update($values);
+                    $record = leavevalidationModel::where('id',$request->leaveValID)->first();
+                    $insert = $record ? $record->forceFill($values)->save() : false;
                 }
             if($insert){
                 if($request->formAction==1){

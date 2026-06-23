@@ -30,7 +30,8 @@ class empStatCtrl extends Controller
                         $insert = employeeStatusModel::create($values);
                     }
             }else{
-                $insert = employeeStatusModel::where('id',$request->updateID)->update($values);
+                $record = employeeStatusModel::where('id',$request->updateID)->first();
+                $insert = $record ? $record->forceFill($values)->save() : false;
             }
             if($insert){
                 if($request->formAction==1){

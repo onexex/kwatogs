@@ -26,7 +26,8 @@ class relationshipCtrl extends Controller
                         }
                     $insert = relationship::create($values);
                 }else{
-                    $insert = relationship::where('id',$request->relID)->update($values);
+                    $record = relationship::where('id',$request->relID)->first();
+                    $insert = $record ? $record->forceFill($values)->save() : false;
                 }
             if($insert){
                 if($request->formAction==1){

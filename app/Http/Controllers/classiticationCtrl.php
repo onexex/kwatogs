@@ -40,7 +40,8 @@ class classiticationCtrl extends Controller
             // Action: UPDATE
             else {
                 // Note: Fixed $request->id to match your JS classID if necessary
-                $query = classification::where('id', $request->classID)->update($values);
+                $record = classification::where('id', $request->classID)->first();
+                $query = $record ? $record->forceFill($values)->save() : false;
                 $message = 'Classification Updated.';
             }
 
@@ -85,7 +86,8 @@ class classiticationCtrl extends Controller
         if($role!=1){
             return response()->json(['status'=>200, 'msg'=>'Access Denied. Required superuser access for this request!']);
         }else{
-            $delete = classification::where('id', $id)->delete();
+            $record = classification::where('id', $id)->first();
+            $delete = $record ? $record->delete() : false;
             if($delete){
                 return response()->json(['status'=>200, 'msg'=>"Classification deleted successfully."]);
             }else{

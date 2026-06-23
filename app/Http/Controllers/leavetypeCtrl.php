@@ -33,7 +33,8 @@ class leavetypeCtrl extends Controller
                         }
                     $insert = leavetype::create($values);
                 }else{
-                    $insert = leavetype::where('id',$request->leaveTypeID)->update($values);
+                    $record = leavetype::where('id',$request->leaveTypeID)->first();
+                    $insert = $record ? $record->forceFill($values)->save() : false;
                 }
             if($insert){
                 if($request->formAction==1){

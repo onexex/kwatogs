@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class PagibigContribution extends Model
 {
     use HasFactory;
+    use \App\Traits\Auditable;
 
     protected $table = 'pagibig_contributions';
 

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class PhilhealthContribution extends Model
 {
     use HasFactory;
+    use \App\Traits\Auditable;
 
     protected $table = 'philhealth_contributions';
 

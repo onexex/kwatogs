@@ -10,7 +10,7 @@ class joblevel extends Model
     use HasFactory;
     use \App\Traits\Auditable;
     protected $table = 'joblevels';
-    protected $primaryKey = 'id ';
+    protected $primaryKey = 'id';
     public $timestamps = true;
 
 

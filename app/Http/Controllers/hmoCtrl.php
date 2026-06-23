@@ -33,7 +33,8 @@ class hmoCtrl extends Controller
                         $insert = HMOModel::create($values);
                     }
             }else{
-                $insert = HMOModel::where('id',$request->updateID)->update($values);
+                $record = HMOModel::where('id',$request->updateID)->first();
+                $insert = $record ? $record->forceFill($values)->save() : false;
             }
             if($insert){
                 if($request->formAction==1){

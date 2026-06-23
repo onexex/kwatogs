@@ -10,7 +10,7 @@ class classification extends Model
     use HasFactory;
     use \App\Traits\Auditable;
     protected $table = 'classifications';
-    protected $primaryKey = 'id ';
+    protected $primaryKey = 'id';
     public $timestamps = true;   
 
     protected $fillable = [

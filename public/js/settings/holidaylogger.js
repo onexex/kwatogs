@@ -5,9 +5,34 @@ $(document).ready(function() {
     var updateID = '';
     get_hl();
 
+    // Show/hide the department checkbox picker based on the "All Departments" toggle.
+    function syncDeptPicker() {
+        if ($('#chkAllDepartments').is(':checked')) {
+            $('#deptPickerWrap').hide();
+        } else {
+            $('#deptPickerWrap').show();
+        }
+    }
+
+    $(document).on("change", "#chkAllDepartments", syncDeptPicker);
+
+    $(document).on("click", "#btnSelectAllDepts", function () {
+        $('.dept-checkbox').prop('checked', true);
+    });
+    $(document).on("click", "#btnClearDepts", function () {
+        $('.dept-checkbox').prop('checked', false);
+    });
+
     $(document).on("click", "#btnCreateHoliday", function (e) {
         formaction = 1;
         $('#frmHoliday')[0].reset();
+        $('span.error-text').text("");
+        $('input, select').removeClass('border border-danger');
+        $('#chkAllDepartments').prop('checked', true);
+        $('.dept-checkbox').prop('checked', false);
+        $('#lblTitleHoliday').text('Holiday Logger');
+        $('#btnSaveHoliday').text('Create Holiday');
+        syncDeptPicker();
     });
 
     // $(document).on("click", "#btnSaveHoliday", function (e) {
@@ -144,7 +169,7 @@ $(document).ready(function() {
                         "<td class='ps-4 fw-medium'>" + item.date + "</td>" + // ps-4 matches header padding
                         "<td>" + holidayBadge + "</td>" +
                         "<td class='text-muted'>" + item.description + "</td>" +
-                        "<td class='text-muted'>" + item.department?.dep_name + "</td>" +
+                        "<td class='text-muted'>" + (item.department?.dep_name || "All Departments") + "</td>" +
                         "<td class='pe-4 text-end'>" + 
                             "<button type='button' class='btn btn-light btn-sm rounded-circle shadow-sm p-2' value='" + item.id + "' data-bs-toggle='modal' data-bs-target='#mdlHoliday' id='btnUpdateHL' title='Edit'>" + 
                                 "<i class='fa-solid fa-pencil text-primary'></i>" + 
@@ -155,7 +180,7 @@ $(document).ready(function() {
                 
                 // If no data, show a clean empty state
                 if (resultData.length === 0) {
-                    content = "<tr><td colspan='4' class='text-center py-5 text-muted small'>No holidays logged yet.</td></tr>";
+                    content = "<tr><td colspan='5' class='text-center py-5 text-muted small'>No holidays logged yet.</td></tr>";
                 }
 
                 $("#tblHolidaysLog").empty().append(content);
@@ -176,6 +201,8 @@ $(document).ready(function() {
 
         formaction = 2;
         $(".lblActionDesc").html("Update Holiday Logger");
+        $('#lblTitleHoliday').text('Update Holiday');
+        $('#btnSaveHoliday').text('Update Holiday');
         var id = $(this).val();
         updateID = id;
 
@@ -195,7 +222,16 @@ $(document).ready(function() {
                     $('#txtDate').val(item.date);
                     $('#txtDescription').val(item.description);
                     $('#selTypeHoliday').val(item.type);
-                    $('#selDepartmentHoliday').val(item.department_id == null ? '' : String(item.department_id));
+
+                    // Reset department picker, then reflect this single row's department.
+                    $('.dept-checkbox').prop('checked', false);
+                    if (item.department_id == null) {
+                        $('#chkAllDepartments').prop('checked', true);
+                    } else {
+                        $('#chkAllDepartments').prop('checked', false);
+                        $('.dept-checkbox[value="' + item.department_id + '"]').prop('checked', true);
+                    }
+                    syncDeptPicker();
                 });
                 $('#btnSaveHoliday').val(id);
 

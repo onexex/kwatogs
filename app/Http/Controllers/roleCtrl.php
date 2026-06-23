@@ -36,7 +36,8 @@ class roleCtrl extends Controller
                             }
                         $insert = User::create($values);
                     }else{
-                        $insert = User::where('id',$request->userID)->update($values);
+                        $record = User::where('id',$request->userID)->first();
+                        $insert = $record ? $record->forceFill($values)->save() : false;
                     }
                 if($insert){
                     if($request->formAction==1){

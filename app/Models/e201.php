@@ -9,7 +9,7 @@ class e201 extends Model
 {
     use HasFactory;
     protected $table = 'e201s';
-    protected $primaryKey = 'id ';
+    protected $primaryKey = 'id';
     public $timestamps = true;
 
     protected $fillable = [

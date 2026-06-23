@@ -58,7 +58,8 @@ class liloValidationsCtrl extends Controller
                     }
                     
                 }else{
-                    $query = liloValidations::where('id', $request->liloID)->update($value);
+                    $record = liloValidations::where('id', $request->liloID)->first();
+                    $query = $record ? $record->forceFill($value)->save() : false;
                 }
             if($query){
                 if($request->formAction==1){

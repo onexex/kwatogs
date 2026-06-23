@@ -26,7 +26,8 @@ class departmentCtrl extends Controller
                         }
                     $insert = department::create($values);
                 }else{
-                    $insert = department::where('id',$request->depID)->update($values);
+                    $record = department::where('id',$request->depID)->first();
+                    $insert = $record ? $record->forceFill($values)->save() : false;
                 }
             if($insert){
                 if($request->formAction==1){
@@ -77,7 +78,8 @@ class departmentCtrl extends Controller
     {
         try {
             // Find the department using the depID from the request
-            $delete = department::where('id', $request->depID)->delete();
+            $record = department::where('id', $request->depID)->first();
+            $delete = $record ? $record->delete() : false;
 
             if ($delete) {
                 return response()->json([

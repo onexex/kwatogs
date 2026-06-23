@@ -47,7 +47,8 @@ class obValidationsCtrl extends Controller
             if($request->formAction==1){
                 $query = obValidations::create($value);
             }else{
-                $query = obValidations::where('id',$request->obID)->update( $value);
+                $record = obValidations::where('id',$request->obID)->first();
+                $query = $record ? $record->forceFill($value)->save() : false;
             }
             if($query){
                 if($request->formAction==1){

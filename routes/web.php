@@ -152,7 +152,7 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip']], function () {
     Route::get('/pages/management/userroles',[pageCtrl::class, 'userroles']);
     Route::get('/pages/management/otfiling',[pageCtrl::class, 'otfiling']);
     Route::get('/pages/management/eo',[pageCtrl::class, 'eo']);
-    Route::get('/pages/management/philhealth',[pageCtrl::class, 'philhealth']);
+    Route::get('/pages/management/philhealth',[pageCtrl::class, 'philhealth'])->middleware('can:philhealth');
     Route::get('/pages/management/sil',[pageCtrl::class, 'sil']);
     Route::get('/pages/management/parentalsetting',[pageCtrl::class, 'parental']);
     Route::get('/pages/management/shifts',[pageCtrl::class, 'shifts']);
@@ -195,8 +195,8 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip']], function () {
     Route::get('/pages/management/leavevalidations',[pageCtrl::class, 'leavevalidations']);
     Route::get('/pages/management/holidaylogger',[pageCtrl::class, 'holidaylogger']);
     Route::get('/pages/management/obvalidations',[pageCtrl::class, 'obvalidations']);
-    Route::get('/pages/management/ssscontribution',[pageCtrl::class, 'ssscontribution']);
-    Route::get('/pages/management/pagibigcontribution',[pageCtrl::class, 'pagibigcontribution']);
+    Route::get('/pages/management/ssscontribution',[pageCtrl::class, 'ssscontribution'])->middleware('can:ssscontribution');
+    Route::get('/pages/management/pagibigcontribution',[pageCtrl::class, 'pagibigcontribution'])->middleware('can:pagibigcontribution');
     Route::get('/pages/management/empscheduler',[pageCtrl::class, 'empscheduler']);
     // leave
     Route::get('/pages/management/leavecreditallocations',[LeaveCreditAllocationController::class, 'index']);
@@ -313,17 +313,20 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip']], function () {
     Route::get('/getEOValidation',[eovalidationCtrl::class, 'getall']);
     Route::get('/updateEO',[eovalidationCtrl::class, 'edit']);
 
-    Route::post('/settings/SSS',[sssCtrl::class, 'create_update']);
-    Route::get('/getSSS',[sssCtrl::class, 'getall']);
-    Route::get('/updateSSS',[sssCtrl::class, 'edit']);
+    Route::post('/settings/SSS',[sssCtrl::class, 'create_update'])->middleware('can:ssscontribution');
+    Route::get('/getSSS',[sssCtrl::class, 'getall'])->middleware('can:ssscontribution');
+    Route::get('/updateSSS',[sssCtrl::class, 'edit'])->middleware('can:ssscontribution');
+    Route::post('/deleteSSS',[sssCtrl::class, 'delete'])->middleware('can:ssscontribution');
 
-    Route::post('/settings/Pagibig',[pagibigCtrl::class, 'create_update']);
-    Route::get('/getPagibig',[pagibigCtrl::class, 'getall']);
-    Route::get('/updatePagibig',[pagibigCtrl::class, 'edit']);
+    Route::post('/settings/Pagibig',[pagibigCtrl::class, 'create_update'])->middleware('can:pagibigcontribution');
+    Route::get('/getPagibig',[pagibigCtrl::class, 'getall'])->middleware('can:pagibigcontribution');
+    Route::get('/updatePagibig',[pagibigCtrl::class, 'edit'])->middleware('can:pagibigcontribution');
+    Route::post('/deletePagibig',[pagibigCtrl::class, 'delete'])->middleware('can:pagibigcontribution');
 
-    Route::post('/settings/Philhealth',[philhealthCtrl::class, 'create_update']);
-    Route::get('/getPhilhealth',[philhealthCtrl::class, 'getall']);
-    Route::get('/updatePhilhealth',[philhealthCtrl::class, 'edit']);
+    Route::post('/settings/Philhealth',[philhealthCtrl::class, 'create_update'])->middleware('can:philhealth');
+    Route::get('/getPhilhealth',[philhealthCtrl::class, 'getall'])->middleware('can:philhealth');
+    Route::get('/updatePhilhealth',[philhealthCtrl::class, 'edit'])->middleware('can:philhealth');
+    Route::post('/deletePhilhealth',[philhealthCtrl::class, 'delete'])->middleware('can:philhealth');
 
     //enrolment
     // Route::resource('enrolment', registerCtrl::class);

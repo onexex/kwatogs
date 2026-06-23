@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class PayrollPeriod extends Model
 {
     use HasFactory;
+    use \App\Traits\Auditable;
 
     protected $table = 'payroll_periods';
 

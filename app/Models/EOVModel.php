@@ -8,8 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 class EOVModel extends Model
 {
     use HasFactory;
+    use \App\Traits\Auditable;
     protected $table = 'EO_Validation';
-    protected $primaryKey = 'id ';
+    protected $primaryKey = 'id';
     public $timestamps = true;
 
     protected $fillable = [
