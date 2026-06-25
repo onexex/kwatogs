@@ -8,33 +8,69 @@ use Illuminate\Http\Request;
 
 class PayAdjustmentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $adjustments = PayAdjustment::with('employee')->latest()->get();
-        $employees   = User::select('empID', 'lname', 'fname')->orderBy('fname')->get();
+        $search   = trim((string) $request->input('search', ''));
+        $kind     = $request->input('kind', '');
+        $applyTo  = $request->input('apply_to', '');
+        $payDate  = $request->input('pay_date', '');
 
-        return view('pages.modules.pay_adjustments', compact('adjustments', 'employees'));
+        $adjustments = PayAdjustment::with('employee')
+            ->when($search !== '', function ($q) use ($search) {
+                $q->whereHas('employee', function ($e) use ($search) {
+                    $e->where('fname', 'like', "%{$search}%")
+                      ->orWhere('lname', 'like', "%{$search}%");
+                });
+            })
+            ->when($kind !== '', fn ($q) => $q->where('kind', $kind))
+            ->when($applyTo !== '', fn ($q) => $q->where('apply_to', $applyTo))
+            ->when($payDate !== '', fn ($q) => $q->whereDate('pay_date', $payDate))
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        $employees = User::select('empID', 'lname', 'fname')->orderBy('fname')->get();
+
+        return view('pages.modules.pay_adjustments', compact(
+            'adjustments', 'employees', 'search', 'kind', 'applyTo', 'payDate'
+        ));
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
-            'employee_id' => 'required',
-            'pay_date'    => 'required|date',
-            'label'       => 'required|string|max:255',
-            'kind'        => 'required|in:addition,deduction',
-            'apply_to'    => 'required|in:gross,net',
-            'amount'      => 'required|numeric|min:0.01',
-            'remarks'     => 'nullable|string|max:255',
+            'employee_ids'   => 'required|array|min:1',
+            'employee_ids.*' => 'required',
+            'pay_date'       => 'required|date',
+            'label'          => 'required|string|max:255',
+            'kind'           => 'required|in:addition,deduction',
+            'apply_to'       => 'required|in:gross,net',
+            'amount'         => 'required|numeric|min:0.01',
+            'remarks'        => 'nullable|string|max:255',
         ]);
 
         if ($locked = $this->lockResponse($request, $data['pay_date'])) { return $locked; }
 
-        $data['created_by'] = optional($request->user())->empID ?? optional($request->user())->fname;
+        $createdBy = optional($request->user())->empID ?? optional($request->user())->fname;
 
-        PayAdjustment::create($data);
+        // Bulk create: one entry per selected employee, same adjustment details
+        foreach ($data['employee_ids'] as $employeeId) {
+            PayAdjustment::create([
+                'employee_id' => $employeeId,
+                'pay_date'    => $data['pay_date'],
+                'label'       => $data['label'],
+                'kind'        => $data['kind'],
+                'apply_to'    => $data['apply_to'],
+                'amount'      => $data['amount'],
+                'remarks'     => $data['remarks'] ?? null,
+                'created_by'  => $createdBy,
+            ]);
+        }
 
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'count'   => count($data['employee_ids']),
+        ]);
     }
 
     public function update(Request $request)

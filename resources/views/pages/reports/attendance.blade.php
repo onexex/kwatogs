@@ -267,6 +267,7 @@
                         <th scope="col" class="ps-4">No</th>
                         <th scope="col">Employee Name</th>
                         <th scope="col">Date</th>
+                        <th scope="col">Schedule</th>
                         <th scope="col" class="text-primary">Time-in</th>
                         <th scope="col" class="text-danger">Time-out</th>
                         <th scope="col">Duration (Gross)</th>

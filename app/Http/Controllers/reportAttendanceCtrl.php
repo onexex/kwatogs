@@ -73,14 +73,36 @@ class reportAttendanceCtrl extends Controller
             ->get()
             ->groupBy(['employee_id', fn($log) => $log->attendance_date->format('Y-m-d')]);
 
-        
-        $summaries->each(function ($summary) use ($logs) {
+        // Assigned shift(s) covering the range — used to show each day's actual schedule.
+        // Bulk-fetched once (no N+1), then matched per summary by date span.
+        $schedules = \App\Models\EmployeeSchedule::when($empId !== 'All', fn($q) => $q->where('employee_id', $empId))
+            ->whereDate('sched_start_date', '<=', $dateTo)
+            ->whereDate('sched_end_date', '>=', $dateFrom)
+            ->orderBy('sched_start_date', 'desc')
+            ->get()
+            ->groupBy('employee_id');
+
+        $summaries->each(function ($summary) use ($logs, $schedules) {
             $emp = $summary->employee_id;
             $date = $summary->attendance_date->format('Y-m-d');
-            
-           
+
             $summary->logs = $logs[$emp][$date] ?? collect([]);
             $summary->formatted_date = $date;
+
+            // Schedule valid for this attendance date (start <= date <= end)
+            $sched = optional($schedules->get($emp))->first(function ($s) use ($date) {
+                $start = \Carbon\Carbon::parse($s->sched_start_date)->format('Y-m-d');
+                $end   = \Carbon\Carbon::parse($s->sched_end_date)->format('Y-m-d');
+                return $start <= $date && $date <= $end;
+            });
+
+            $summary->schedule = $sched ? [
+                'sched_in'    => $sched->sched_in,
+                'sched_out'   => $sched->sched_out,
+                'break_start' => $sched->break_start,
+                'break_end'   => $sched->break_end,
+                'shift_type'  => $sched->shift_type,
+            ] : null;
         });
 
         return response()->json([

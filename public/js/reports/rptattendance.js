@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const to = dateTo.val();
 
         // Updated colspan to 13 to match the new columns
-        tableBody.html(`<tr><td colspan="13" class="text-center"><div class="spinner-border spinner-border-sm"></div> Loading...</td></tr>`);
+        tableBody.html(`<tr><td colspan="14" class="text-center"><div class="spinner-border spinner-border-sm"></div> Loading...</td></tr>`);
 
         axios.post("/attendance/fetch", {
             empID: empID,
@@ -126,18 +126,18 @@ document.addEventListener('DOMContentLoaded', function () {
             if (res.status === "success") {
                 renderTable(res.data);
             } else {
-                tableBody.html(`<tr><td colspan="13" class="text-center text-danger">No records found</td></tr>`);
+                tableBody.html(`<tr><td colspan="14" class="text-center text-danger">No records found</td></tr>`);
             }
         })
         .catch(error => {
             console.error(error);
-            tableBody.html(`<tr><td colspan="13" class="text-center text-danger">Error fetching data</td></tr>`);
+            tableBody.html(`<tr><td colspan="14" class="text-center text-danger">Error fetching data</td></tr>`);
         });
     }
 
     function renderTable(data) {
         if (!data.length) {
-            tableBody.html(`<tr><td colspan="13" class="text-center">No records found</td></tr>`);
+            tableBody.html(`<tr><td colspan="14" class="text-center">No records found</td></tr>`);
             return;
         }
 
@@ -175,6 +175,21 @@ document.addEventListener('DOMContentLoaded', function () {
                     logRows = item.logs.map(log => `${formatTime(log.time_in)} - ${formatTime(log.time_out)}`).join("<br>");
                 }
 
+                // Assigned shift for this day (actual schedule)
+                let schedCell = '<span class="text-muted">—</span>';
+                if (item.schedule && item.schedule.sched_in && item.schedule.sched_out) {
+                    const s = item.schedule;
+                    let sched = `${formatClock(s.sched_in)} - ${formatClock(s.sched_out)}`;
+                    let extra = '';
+                    if (s.break_start && s.break_end) {
+                        extra += `<div class="text-muted" style="font-size:.68rem;">Break ${formatClock(s.break_start)}-${formatClock(s.break_end)}</div>`;
+                    }
+                    if (s.shift_type) {
+                        extra += `<div class="text-muted text-uppercase" style="font-size:.62rem;letter-spacing:.4px;">${s.shift_type}</div>`;
+                    }
+                    schedCell = `<span class="badge-soft-primary px-2 py-1 rounded" style="font-size:.72rem;font-weight:600;">${sched}</span>${extra}`;
+                }
+
                 const late = parseInt(item.mins_late ?? 0);
                 const ut   = parseInt(item.mins_undertime ?? 0);
                 const nd   = parseInt(item.mins_night_diff ?? 0);
@@ -190,6 +205,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <td>${no}</td>
                         <td class="text-start text-capitalize">${capitalizeName(empName)}</td>
                         <td>${item.formatted_date ?? '-'}</td>
+                        <td>${schedCell}</td>
                         <td colspan="2">${logRows}</td>
                         <td class="fw-bold">${grossHours.toFixed(2)}</td>
                         <td class="text-danger fw-bold">${totalDeductedMins > 0 ? totalDeductedMins + 'm' : '-'}</td>
@@ -206,7 +222,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Per-employee TOTAL row (totals start from the Duration column)
             rows += `
                 <tr class="fw-bold" style="background:#eef6f6;">
-                    <td colspan="5" class="text-end">TOTAL &mdash; ${capitalizeName(empName)} <span style="font-weight:normal;color:#6b7280;">(${items.length} day${items.length > 1 ? 's' : ''} attended)</span></td>
+                    <td colspan="6" class="text-end">TOTAL &mdash; ${capitalizeName(empName)} <span style="font-weight:normal;color:#6b7280;">(${items.length} day${items.length > 1 ? 's' : ''} attended)</span></td>
                     <td>${sub.gross.toFixed(2)}</td>
                     <td class="text-danger">${sub.ded}m</td>
                     <td class="text-primary">${sub.net.toFixed(2)}</td>
@@ -226,7 +242,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (groups.size > 1) {
             rows += `
                 <tr class="fw-bold" style="background:#dfeeee;border-top:2px solid #008080;">
-                    <td colspan="5" class="text-end">GRAND TOTAL <span style="font-weight:normal;color:#6b7280;">(${data.length} total attendance)</span></td>
+                    <td colspan="6" class="text-end">GRAND TOTAL <span style="font-weight:normal;color:#6b7280;">(${data.length} total attendance)</span></td>
                     <td>${grand.gross.toFixed(2)}</td>
                     <td class="text-danger">${grand.ded}m</td>
                     <td class="text-primary">${grand.net.toFixed(2)}</td>
@@ -250,6 +266,19 @@ document.addEventListener('DOMContentLoaded', function () {
             minute: "2-digit",
             hour12: true,
         });
+    }
+
+    // Format a plain "HH:MM" / "HH:MM:SS" schedule time into 12-hour clock.
+    function formatClock(t) {
+        if (!t) return "-";
+        const parts = String(t).split(":");
+        if (parts.length < 2) return t;
+        let h = parseInt(parts[0], 10);
+        const min = parts[1].padStart(2, "0");
+        if (isNaN(h)) return t;
+        const ampm = h >= 12 ? "PM" : "AM";
+        h = h % 12 || 12;
+        return `${h}:${min} ${ampm}`;
     }
 
     fetchAttendance();
