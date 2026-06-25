@@ -420,13 +420,36 @@
         border-radius: var(--radius-input);
         padding: 12px 14px;
     }
-    .recurring-card .form-check-input { accent-color: var(--teal); cursor: pointer; }
+    /* Lay the switch + label side-by-side with a gap instead of relying on
+       Bootstrap's negative-margin trick (which was overlapping the label). */
+    .recurring-card .form-switch {
+        display: flex;
+        align-items: center;
+        gap: .6em;
+        padding-left: 0;
+        min-height: auto;
+        margin: 0;
+    }
+    .recurring-card .form-switch .form-check-input {
+        position: static; /* global app.css forces position:absolute, which made the switch overlap the caption */
+        margin: 0;
+        flex-shrink: 0;
+        width: 2.4em;
+        height: 1.25em;
+        cursor: pointer;
+    }
     .recurring-card .form-check-input:checked { background-color: var(--teal); border-color: var(--teal); }
-    .recurring-card .form-check-label { color: var(--slate); font-size: .85rem; cursor: pointer; }
+    .recurring-card .form-check-label { color: var(--slate); font-size: .85rem; cursor: pointer; margin: 0; }
     .recurring-hint { font-size: .74rem; color: var(--slate-light); margin: 8px 0 0; line-height: 1.4; }
 
-    .loan-toggle-wrap { display: inline-flex; align-items: center; gap: 8px; padding-left: 2.4em; }
-    .loan-toggle-wrap .form-check-input { cursor: pointer; }
+    .loan-toggle-wrap.form-switch {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding-left: 0;
+        min-height: auto;
+    }
+    .loan-toggle-wrap .form-check-input { position: static; margin: 0; flex-shrink: 0; cursor: pointer; }
     .loan-toggle-wrap .form-check-input:checked { background-color: var(--success); border-color: var(--success); }
     .loan-toggle-label { font-size: .72rem; font-weight: 700; color: var(--slate-light); }
 </style>
