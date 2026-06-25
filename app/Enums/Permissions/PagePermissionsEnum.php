@@ -76,5 +76,7 @@ enum PagePermissionsEnum: string
     case allowedips = 'IP Restriction Management';
     case allowedipslogs = 'IP Access Logs';
     case bypass_ip_restriction = 'Bypass IP Restriction';
+    case maintenancemode = 'Maintenance Mode';
+    case maintenancebypass = 'Maintenance Mode Bypass';
 
 }

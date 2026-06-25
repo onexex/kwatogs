@@ -9,6 +9,7 @@ use App\Http\Controllers\companyCtrl;
 use App\Http\Controllers\PayrollPeriodController;
 use App\Http\Controllers\DatabaseBackupController;
 use App\Http\Controllers\MailIntegrationController;
+use App\Http\Controllers\MaintenanceModeController;
 use App\Http\Controllers\PayslipEmailController;
 use App\Http\Controllers\departmentCtrl;
 use App\Http\Controllers\earlyoutCtrl;
@@ -85,7 +86,7 @@ Route::get('/logoutSystem',[loginCtrl::class, 'logoutSystem']);
 // Route::get('/', function () {return view('home');});
 
 
-Route::group(['middleware' => ['AuthCheck', 'check.employee.ip']], function () {
+Route::group(['middleware' => ['AuthCheck', 'check.employee.ip', 'check.maintenance']], function () {
 
     ##
 
@@ -189,6 +190,9 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip']], function () {
     Route::post('/pages/management/mailintegration/{mailIntegration}/test',[MailIntegrationController::class, 'test'])->name('mail-integration.test')->middleware('can:mailintegration');
     Route::post('/pages/management/mailintegration/{mailIntegration}/activate',[MailIntegrationController::class, 'activate'])->name('mail-integration.activate')->middleware('can:mailintegration');
     Route::delete('/pages/management/mailintegration/{mailIntegration}',[MailIntegrationController::class, 'destroy'])->name('mail-integration.destroy')->middleware('can:mailintegration');
+
+    Route::get('/pages/management/maintenancemode',[MaintenanceModeController::class, 'index'])->name('maintenance-mode.index')->middleware('can:maintenancemode');
+    Route::post('/pages/management/maintenancemode',[MaintenanceModeController::class, 'update'])->name('maintenance-mode.update')->middleware('can:maintenancemode');
 
     Route::get('/pages/management/departments',[pageCtrl::class, 'departments']);
     Route::get('/pages/management/relationship',[pageCtrl::class, 'relationship']);

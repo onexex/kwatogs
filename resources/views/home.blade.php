@@ -417,109 +417,6 @@
         </div>
         @endcan
 
-        {{-- ── Quick Actions FAB (OT / Leave) ── --}}
-        @if(auth()->user()->canAny(['overtime', 'leaveapplication']))
-        @php $qaBottom = auth()->user()->can('createschedulechange') ? '80px' : '24px'; $qaPopBottom = auth()->user()->can('createschedulechange') ? '144px' : '84px'; @endphp
-        <style>
-            #qaFab { position:fixed; right:24px; bottom:{{ $qaBottom }}; z-index:1050;
-                background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff;
-                border-radius:999px; padding:12px 18px; box-shadow:0 10px 26px rgba(245,158,11,.4);
-                cursor:pointer; display:flex; align-items:center; gap:8px;
-                font-weight:700; font-size:.85rem; transition:transform .15s, box-shadow .15s; border:none; }
-            #qaFab:hover { transform:translateY(-2px); box-shadow:0 14px 32px rgba(245,158,11,.5); }
-            #qaFab .qaFab-dot { width:8px; height:8px; border-radius:50%; background:#fff; box-shadow:0 0 0 3px rgba(255,255,255,.35); }
-            .qa-pop { position:fixed; right:24px; bottom:{{ $qaPopBottom }}; z-index:1051;
-                width:370px; max-width:calc(100vw - 32px); background:#fff;
-                border:1px solid var(--border,#e2e8f0); border-radius:16px;
-                box-shadow:0 20px 55px rgba(0,0,0,.2); overflow:hidden; display:none; }
-            .qa-pop.open { display:block; animation:saPop .18s ease; }
-            .qa-pop-head { background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff;
-                padding:12px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
-            .qa-pop-avatar { width:34px; height:34px; border-radius:50%; background:rgba(255,255,255,.22);
-                display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-            .qa-pop-title { font-weight:800; font-size:.9rem; line-height:1.1; }
-            .qa-pop-sub { font-size:.66rem; opacity:.9; }
-            .qa-pop-close { background:none; border:none; color:#fff; font-size:1.4rem; line-height:1; cursor:pointer; opacity:.85; }
-            .qa-pop-close:hover { opacity:1; }
-            .qa-pop-body { padding:16px; max-height:62vh; overflow:auto; }
-            .qa-card { border:1px solid var(--border,#e2e8f0); border-radius:10px; padding:14px 16px; margin-bottom:12px; background:#fafcff; }
-            .qa-card:last-child { margin-bottom:0; }
-            .qa-card-title { font-size:.84rem; font-weight:800; color:var(--slate,#334155);
-                margin-bottom:8px; display:flex; align-items:center; gap:8px; }
-            .qa-card-title i { width:18px; text-align:center; }
-            .qa-steps { font-size:.78rem; color:var(--slate-light,#64748b); line-height:1.9;
-                padding-left:0; list-style:none; margin:0 0 10px; }
-            .qa-steps li { display:flex; align-items:flex-start; gap:7px; }
-            .qa-step-num { display:inline-flex; align-items:center; justify-content:center;
-                width:17px; height:17px; border-radius:50%; font-size:.62rem; font-weight:800;
-                flex-shrink:0; margin-top:2px; }
-            .qa-step-num.ot { background:#fef3c7; color:#92400e; }
-            .qa-step-num.lv { background:var(--teal-light,#e0f2f1); color:var(--teal-dark,#006666); }
-            .btn-qa-go { display:flex; align-items:center; justify-content:center; gap:6px;
-                width:100%; padding:8px 12px; border-radius:8px; font-size:.78rem;
-                font-weight:700; border:none; cursor:pointer; transition:all .15s; text-decoration:none; }
-            .btn-qa-go.ot { background:linear-gradient(135deg,#f59e0b,#d97706); color:#fff; }
-            .btn-qa-go.ot:hover { background:linear-gradient(135deg,#d97706,#b45309); color:#fff; }
-            .btn-qa-go.lv { background:linear-gradient(135deg,var(--teal,#008080),var(--teal-dark,#006666)); color:#fff; }
-            .btn-qa-go.lv:hover { background:linear-gradient(135deg,var(--teal-dark,#006666),#004d4d); color:#fff; }
-        </style>
-
-        <button id="qaFab" title="Quick Actions — file OT or Leave">
-            <span class="qaFab-dot"></span><i class="fa-solid fa-bolt"></i> Quick Actions
-        </button>
-
-        <div id="qaCard" class="qa-pop">
-            <div class="qa-pop-head">
-                <div class="d-flex align-items-center gap-2" style="min-width:0;">
-                    <div class="qa-pop-avatar"><i class="fa-solid fa-bolt"></i></div>
-                    <div style="min-width:0;">
-                        <div class="qa-pop-title">Quick Actions</div>
-                        <div class="qa-pop-sub">File OT or Leave in a few steps</div>
-                    </div>
-                </div>
-                <button id="qaClose" class="qa-pop-close" type="button">&times;</button>
-            </div>
-            <div class="qa-pop-body">
-
-                @can('overtime')
-                <div class="qa-card">
-                    <div class="qa-card-title" style="color:#d97706;">
-                        <i class="fa-solid fa-user-clock"></i> How to File Overtime
-                    </div>
-                    <ul class="qa-steps">
-                        <li><span class="qa-step-num ot">1</span><span>Go to <b>Workforce → Overtime</b> in the sidebar.</span></li>
-                        <li><span class="qa-step-num ot">2</span><span>Click <b>"Overtime Filing Form"</b>.</span></li>
-                        <li><span class="qa-step-num ot">3</span><span>Set <b>OT Date From / Time From</b> and <b>OT Date To / Time To</b>.</span></li>
-                        <li><span class="qa-step-num ot">4</span><span>Fill in the <b>Purpose</b> and click <b>Submit</b>.</span></li>
-                    </ul>
-                    <a href="{{ url('/pages/modules/overtime') }}" class="btn-qa-go ot">
-                        <i class="fa-solid fa-arrow-right"></i> Go to Overtime Page
-                    </a>
-                </div>
-                @endcan
-
-                @can('leaveapplication')
-                <div class="qa-card">
-                    <div class="qa-card-title" style="color:var(--teal,#008080);">
-                        <i class="fa-solid fa-calendar-day"></i> How to File a Leave
-                    </div>
-                    <ul class="qa-steps">
-                        <li><span class="qa-step-num lv">1</span><span>Go to <b>Workforce → Leave Application</b>.</span></li>
-                        <li><span class="qa-step-num lv">2</span><span>Click <b>"Leave Application Form"</b>.</span></li>
-                        <li><span class="qa-step-num lv">3</span><span>Choose <b>Leave Kind</b> and <b>Leave Type</b>.</span></li>
-                        <li><span class="qa-step-num lv">4</span><span>Set <b>Date From / To</b>, tick <b>Half Day</b> if needed.</span></li>
-                        <li><span class="qa-step-num lv">5</span><span>Add an <b>Explanation</b> and click <b>Submit</b>.</span></li>
-                    </ul>
-                    <a href="{{ url('/pages/modules/leaveApplication') }}" class="btn-qa-go lv">
-                        <i class="fa-solid fa-arrow-right"></i> Go to Leave Application Page
-                    </a>
-                </div>
-                @endcan
-
-            </div>
-        </div>
-        @endif
-
         {{-- ── Attendance log ── --}}
         <div class="sc">
             <div class="sc-head">
@@ -907,16 +804,9 @@
     </script>
 <script>
 $(function () {
-    // Quick Actions FAB
-    const $qaCard = $('#qaCard');
-    if ($qaCard.length) {
-        $('#qaFab').on('click', () => { $qaCard.toggleClass('open'); $('#schedAssistCard').removeClass('open'); });
-        $('#qaClose').on('click', () => $qaCard.removeClass('open'));
-    }
-
     const $card = $('#schedAssistCard');
     if (!$card.length) return;
-    $('#saFab').on('click', () => { $card.toggleClass('open'); $qaCard.removeClass('open'); });
+    $('#saFab').on('click', () => { $card.toggleClass('open'); });
     $('#saClose').on('click', () => $card.removeClass('open'));
     let step = 1; const maxStep = 4;
     const sw = (cond, msg, title) => { if (!cond) { (window.Swal ? Swal.fire(title || 'Notice', msg, 'warning') : alert(msg)); return false; } return true; };
@@ -1104,19 +994,6 @@ $(function () {
                 }
             },
         ];
-
-        @if(auth()->user()->canAny(['overtime', 'leaveapplication']))
-        if (document.getElementById('qaFab')) {
-            steps.push({
-                element: '#qaFab',
-                popover: {
-                    title: '⚡ Quick Actions',
-                    description: 'Click this button to open a popup with step-by-step guides for filing Overtime and Leave — plus direct links to each page. Only visible if your role has access to those modules.',
-                    side: 'top', align: 'end'
-                }
-            });
-        }
-        @endif
 
         // Only add the Kuya Kwatogs step if the FAB exists (permission-gated)
         if (document.getElementById('saFab')) {

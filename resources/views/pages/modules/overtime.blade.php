@@ -6,11 +6,7 @@
 @endpush
 @section('content')
 <link rel="stylesheet" href="{{ asset('css/driver.css') }}">
-<style>
-    /* Allow driver.js overlay to sit below Bootstrap modals so modal content stays visible */
-    .driver-overlay { z-index: 1049 !important; }
-    .driver-popover { z-index: 1075 !important; }
-</style>
+<link rel="stylesheet" href="{{ asset('css/driver-theme.css') }}">
 
 <!--SHAIRA-->
 <style>
@@ -754,14 +750,17 @@
 
         const driver = window.driver.js.driver;
         driverObj = driver({
+            popoverClass: 'kwatogs-tour',
             showProgress: true,
             progressText: 'Step __current__ of __total__',
             nextBtnText: 'Next →',
             prevBtnText: '← Back',
             doneBtnText: 'Done ✓',
             allowClose: true,
-            overlayColor: '#000',
-            overlayOpacity: 0.55,
+            stagePadding: 6,
+            stageRadius: 10,
+            overlayColor: '#0f172a',
+            overlayOpacity: 0.6,
             smoothScroll: true,
             onDestroyStarted: () => {
                 localStorage.setItem(TOUR_KEY, '1');

@@ -1,0 +1,242 @@
+/* =====================================================================
+   KwaToGS — Branded Driver.js Tour Theme
+   Scoped via popoverClass: 'kwatogs-tour' so it never leaks onto
+   anything else. Matches the teal HRIS design tokens.
+   Used by: Overtime Filing, Leave Application (and any future tour).
+   ===================================================================== */
+
+:root {
+    --tour-teal:        #008080;
+    --tour-teal-dark:   #006666;
+    --tour-teal-mid:    #4db6ac;
+    --tour-teal-light:  #e0f2f1;
+    --tour-slate:       #334155;
+    --tour-slate-light: #64748b;
+    --tour-border:      #e2e8f0;
+}
+
+/* ── Layering: keep overlay below Bootstrap modals so the modal
+      content the tour points at stays visible ── */
+.driver-overlay        { z-index: 1049 !important; }
+.driver-popover        { z-index: 1075 !important; }
+
+/* =====================================================================
+   POPOVER SHELL
+   ===================================================================== */
+.driver-popover.kwatogs-tour {
+    all: unset;
+    box-sizing: border-box;
+    position: fixed;
+    top: 0;
+    right: 0;
+    min-width: 300px;
+    max-width: 360px;
+    padding: 0;
+    background: #ffffff;
+    border: 1px solid var(--tour-border);
+    border-radius: 18px;
+    box-shadow:
+        0 18px 48px -12px rgba(15, 23, 42, 0.38),
+        0 6px 16px -8px rgba(0, 128, 128, 0.25);
+    overflow: hidden;
+    animation: kwatogs-pop-in 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Gradient accent bar across the very top of the card */
+.driver-popover.kwatogs-tour::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, var(--tour-teal) 0%, var(--tour-teal-mid) 60%, var(--tour-teal-light) 100%);
+    background-size: 200% 100%;
+    animation: kwatogs-shimmer 3s linear infinite;
+}
+
+@keyframes kwatogs-pop-in {
+    0%   { opacity: 0; transform: translateY(8px) scale(0.96); }
+    100% { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+@keyframes kwatogs-shimmer {
+    0%   { background-position: 0%   0; }
+    100% { background-position: 200% 0; }
+}
+
+/* =====================================================================
+   TITLE
+   ===================================================================== */
+.driver-popover.kwatogs-tour .driver-popover-title {
+    display: block;
+    margin: 0;
+    padding: 20px 22px 0 22px;
+    font: 800 18px/1.35 "Inter", "Helvetica Neue", Arial, sans-serif;
+    letter-spacing: -0.01em;
+    color: var(--tour-teal-dark);
+}
+
+.driver-popover.kwatogs-tour .driver-popover-title[style*="block"]
+    + .driver-popover-description {
+    margin-top: 0;
+}
+
+/* =====================================================================
+   DESCRIPTION
+   ===================================================================== */
+.driver-popover.kwatogs-tour .driver-popover-description {
+    margin: 0;
+    padding: 9px 22px 4px 22px;
+    font: 400 13.5px/1.6 "Inter", "Helvetica Neue", Arial, sans-serif;
+    color: var(--tour-slate);
+}
+
+.driver-popover.kwatogs-tour .driver-popover-description b {
+    color: var(--tour-teal-dark);
+    font-weight: 700;
+}
+
+.driver-popover.kwatogs-tour .driver-popover-description em {
+    font-style: normal;
+    font-weight: 600;
+    color: var(--tour-teal);
+    background: var(--tour-teal-light);
+    padding: 0 5px;
+    border-radius: 5px;
+}
+
+/* =====================================================================
+   CLOSE BUTTON
+   ===================================================================== */
+.driver-popover.kwatogs-tour .driver-popover-close-btn {
+    all: unset;
+    cursor: pointer;
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 24px;
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--tour-slate-light);
+    background: #f1f5f9;
+    transition: all 0.18s ease;
+}
+
+.driver-popover.kwatogs-tour .driver-popover-close-btn:hover,
+.driver-popover.kwatogs-tour .driver-popover-close-btn:focus {
+    color: #ffffff;
+    background: var(--tour-teal);
+    transform: rotate(90deg);
+}
+
+/* =====================================================================
+   FOOTER  (progress text + nav buttons)
+   ===================================================================== */
+.driver-popover.kwatogs-tour .driver-popover-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin: 14px 0 0 0;
+    padding: 14px 18px 16px 18px;
+    background: #f8fafc;
+    border-top: 1px solid var(--tour-border);
+}
+
+/* Progress text styled as a soft pill */
+.driver-popover.kwatogs-tour .driver-popover-progress-text {
+    font: 600 11.5px/1 "Inter", "Helvetica Neue", Arial, sans-serif;
+    color: var(--tour-teal-dark);
+    background: var(--tour-teal-light);
+    padding: 5px 11px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.driver-popover.kwatogs-tour .driver-popover-navigation-btns {
+    display: flex;
+    gap: 8px;
+    flex-grow: 0;
+}
+
+/* Shared button base */
+.driver-popover.kwatogs-tour .driver-popover-footer button {
+    all: unset;
+    box-sizing: border-box;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font: 700 12.5px/1 "Inter", "Helvetica Neue", Arial, sans-serif;
+    transition: all 0.18s ease;
+    text-decoration: none;
+}
+
+/* Prev / Back — ghost button */
+.driver-popover.kwatogs-tour .driver-popover-prev-btn {
+    color: var(--tour-slate-light);
+    background: #ffffff;
+    border: 1.5px solid var(--tour-border);
+}
+
+.driver-popover.kwatogs-tour .driver-popover-prev-btn:hover {
+    color: var(--tour-teal-dark);
+    border-color: var(--tour-teal-mid);
+    background: var(--tour-teal-light);
+}
+
+/* Next / Done — solid teal gradient */
+.driver-popover.kwatogs-tour .driver-popover-next-btn {
+    color: #ffffff;
+    background: linear-gradient(135deg, var(--tour-teal) 0%, var(--tour-teal-dark) 100%);
+    box-shadow: 0 4px 12px -2px rgba(0, 128, 128, 0.45);
+}
+
+.driver-popover.kwatogs-tour .driver-popover-next-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 7px 16px -3px rgba(0, 128, 128, 0.55);
+    filter: brightness(1.06);
+}
+
+.driver-popover.kwatogs-tour .driver-popover-next-btn:active {
+    transform: translateY(0);
+}
+
+.driver-popover.kwatogs-tour .driver-popover-footer
+    .driver-popover-btn-disabled {
+    opacity: 0.45;
+    pointer-events: none;
+    box-shadow: none;
+}
+
+/* =====================================================================
+   ARROW — tint to match the card
+   ===================================================================== */
+.driver-popover.kwatogs-tour .driver-popover-arrow {
+    border-width: 7px;
+}
+.driver-popover.kwatogs-tour .driver-popover-arrow-side-left   { border-left-color:   #ffffff; }
+.driver-popover.kwatogs-tour .driver-popover-arrow-side-right  { border-right-color:  #ffffff; }
+.driver-popover.kwatogs-tour .driver-popover-arrow-side-top    { border-top-color:    #ffffff; }
+/* bottom arrow sits over the gray footer */
+.driver-popover.kwatogs-tour .driver-popover-arrow-side-bottom { border-bottom-color: #f8fafc; }
+
+/* =====================================================================
+   HIGHLIGHTED ELEMENT — soft pulsing ring
+   ===================================================================== */
+.driver-active-element {
+    border-radius: 10px;
+    animation: kwatogs-ring 1.9s ease-in-out infinite;
+}
+
+@keyframes kwatogs-ring {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(77, 182, 172, 0.0); }
+    50%      { box-shadow: 0 0 0 5px rgba(77, 182, 172, 0.55); }
+}

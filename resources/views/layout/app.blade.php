@@ -319,6 +319,7 @@
                     'leavevalidations'    => ['name' => 'Leave Valid.', 'url' => '/pages/management/leavevalidations', 'icon' => 'fa-calendar-check'],
                     'lilovalidations'     => ['name' => 'Lilo Valid.', 'url' => '/pages/management/lilovalidations', 'icon' => 'fa-clock-rotate-left'],
                     'mailintegration'     => ['name' => 'Mail Integration', 'url' => '/pages/management/mailintegration', 'icon' => 'fa-paper-plane'],
+                    'maintenancemode'     => ['name' => 'Maintenance Mode', 'url' => '/pages/management/maintenancemode', 'icon' => 'fa-screwdriver-wrench'],
                     'obvalidations'       => ['name' => 'OB Valid.', 'url' => '/pages/management/obvalidations', 'icon' => 'fa-map-check'],
                     'otfiling'            => ['name' => 'OT Maintenance', 'url' => '/pages/management/otfiling', 'icon' => 'fa-wrench'],
                     'pagibigcontribution' => ['name' => 'Pagibig Contri.', 'url' => '/pages/management/pagibigcontribution', 'icon' => 'fa-piggy-bank'],
@@ -440,7 +441,8 @@
                             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" data-bs-toggle="dropdown">
                                 <div class="d-flex flex-column text-end me-3 d-none d-lg-flex">
                                     <span class="text-dark small fw-bold">{{ session()->get('loggedEmployee') }}</span>
-                                    <span class="text-muted" style="font-size: 0.6rem;">System Administrator</span>
+                                    {{-- Real job designation from the employee record (positions.pos_desc), not a fixed label --}}
+                                    <span class="text-muted" style="font-size: 0.6rem;">{{ optional(optional(auth()->user()?->empDetail)->position)->pos_desc ?: 'Employee' }}</span>
                                 </div>
                                 <img class="img-profile rounded-circle border shadow-sm" src="{{ URL::asset('/img/undraw_profile.svg') }}" width="35">
                             </a>

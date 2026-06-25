@@ -89,6 +89,18 @@
     #kuboScroll { overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
     #kuboScroll::-webkit-scrollbar { width: 8px; }
     #kuboScroll::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+
+    /* Because KuBo locks the page (body overflow hidden) so only the feed
+       scrolls, the left menu would otherwise be frozen and its lower items
+       unreachable. Give the sidebar its own internal scroll while on KuBo. */
+    body.kubo-page #accordionSidebar {
+        height: 100vh;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    body.kubo-page #accordionSidebar::-webkit-scrollbar { width: 8px; }
+    body.kubo-page #accordionSidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.25); border-radius: 4px; }
+    body.kubo-page #accordionSidebar::-webkit-scrollbar-track { background: transparent; }
 </style>
 
 <script src="{{ asset('js/kubo/kubo.js') }}?v={{ time() }}"></script>
@@ -98,6 +110,10 @@
     (function () {
         var scroll = document.getElementById('kuboScroll');
         if (!scroll) return;
+
+        // Marks the page so the sidebar gets its own scroll (see CSS above) —
+        // the locked body would otherwise freeze the left menu.
+        document.body.classList.add('kubo-page');
 
         function sizeFeed() {
             document.documentElement.style.overflow = 'hidden';
