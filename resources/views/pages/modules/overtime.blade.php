@@ -1,7 +1,16 @@
 @extends('layout.app', [
     'title' => 'Overtime Filing'
 ])
+@push('scripts')
+<script src="{{ asset('js/vendor/driver.iife.js') }}"></script>
+@endpush
 @section('content')
+<link rel="stylesheet" href="{{ asset('css/driver.css') }}">
+<style>
+    /* Allow driver.js overlay to sit below Bootstrap modals so modal content stays visible */
+    .driver-overlay { z-index: 1049 !important; }
+    .driver-popover { z-index: 1075 !important; }
+</style>
 
 <!--SHAIRA-->
 <style>
@@ -271,11 +280,18 @@
             <p class="page-title">Overtime Filing System</p>
             <p class="page-sub">File and track your overtime requests</p>
         </div>
-        @can('createovertime')
-            <button class="btn-add-ot" name="btnCreateOTModal" id="btnCreateOTModal" data-bs-toggle="modal" data-bs-target="#mdlOvertime">
-                <i class="fa fa-plus"></i> Overtime Filing Form
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <button type="button" id="btnStartOtTour"
+                class="btn btn-sm fw-semibold d-flex align-items-center gap-2"
+                style="background:var(--teal-light);color:var(--teal-dark);border:1.5px solid var(--teal-mid);border-radius:20px;padding:6px 14px;">
+                <i class="fa-solid fa-map"></i> Take a Tour
             </button>
-        @endcan
+            @can('createovertime')
+                <button class="btn-add-ot" name="btnCreateOTModal" id="btnCreateOTModal" data-bs-toggle="modal" data-bs-target="#mdlOvertime">
+                    <i class="fa fa-plus"></i> Overtime Filing Form
+                </button>
+            @endcan
+        </div>
     </div>
 
     {{-- ── Filters ── --}}
@@ -624,5 +640,150 @@
             });
         });
     </script>
+
+<script>
+(function () {
+    const TOUR_KEY = 'kwatogs_ot_tour_done_{{ auth()->id() }}';
+    const canCreate = {{ auth()->user()->can('createovertime') ? 'true' : 'false' }};
+
+    function buildSteps(driverRef) {
+        const steps = [
+            {
+                element: '.ot-topbar',
+                popover: {
+                    title: '👋 Welcome to Overtime Filing!',
+                    description: 'This page lets you file overtime requests and track their approval status. Let\'s walk through each section.',
+                    side: 'bottom', align: 'start'
+                }
+            },
+            {
+                element: '.ot-shell > .sc:first-of-type',
+                popover: {
+                    title: '📅 Date Range Filter',
+                    description: 'Use the From and To date fields to filter the overtime history table below. Change the dates and the table reloads automatically.',
+                    side: 'bottom', align: 'start'
+                }
+            },
+            {
+                element: '.ot-shell > .sc:nth-of-type(2)',
+                popover: {
+                    title: '📋 Overtime History',
+                    description: 'All your overtime requests appear here. Each row shows the filing date, OT time in/out, purpose, duration, and current approval status (For Approval → Approved by COO → Approved by CFO).',
+                    side: 'top', align: 'start'
+                }
+            },
+        ];
+
+        if (canCreate) {
+            steps.push({
+                element: '#btnCreateOTModal',
+                popover: {
+                    title: '➕ File an Overtime Request',
+                    description: 'Click this button to open the overtime filing form. Click <b>Next</b> to see the form fields in detail.',
+                    side: 'bottom', align: 'end',
+                    onNextClick: () => {
+                        const modal = new bootstrap.Modal(document.getElementById('mdlOvertime'), { backdrop: false });
+                        modal.show();
+                        setTimeout(() => driverRef.moveNext(), 450);
+                    }
+                }
+            });
+
+            steps.push({
+                element: '#frmOvertimeForm .sub-divider:first-of-type',
+                popover: {
+                    title: '👤 Personnel Details',
+                    description: 'Your name, company, department, and designation are automatically filled in from your employee profile — you don\'t need to type these.',
+                    side: 'bottom', align: 'start'
+                }
+            });
+
+            steps.push({
+                element: '#txtPurposeRem',
+                popover: {
+                    title: '📝 Purpose',
+                    description: 'Briefly describe why you are filing overtime (e.g. "Month-end closing reports"). Your approver will see this.',
+                    side: 'top', align: 'start'
+                }
+            });
+
+            steps.push({
+                element: '#txtOTDateFrom',
+                popover: {
+                    title: '📆 OT Date & Time From',
+                    description: 'Enter the date and exact start time of your overtime work.',
+                    side: 'bottom', align: 'start'
+                }
+            });
+
+            steps.push({
+                element: '#txtOTDateTo',
+                popover: {
+                    title: '📆 OT Date & Time To',
+                    description: 'Enter the date and exact end time of your overtime work. The system will compute the total duration automatically.',
+                    side: 'bottom', align: 'start'
+                }
+            });
+
+            steps.push({
+                element: '#btnSaveOT',
+                popover: {
+                    title: '✅ Submit',
+                    description: 'Once all fields are filled, click <b>Submit</b>. Your request goes to status <em>For Approval</em> and is queued for your approver. You can track the status in the history table.',
+                    side: 'top', align: 'end'
+                }
+            });
+        }
+
+        steps.push({
+            popover: {
+                title: '🎉 All done!',
+                description: 'You now know how to file an overtime request. Remember: submit your OT request <b>before</b> rendering overtime whenever possible. Click <b>Take a Tour</b> anytime to replay this guide.'
+            }
+        });
+
+        return steps;
+    }
+
+    let driverObj = null;
+
+    function startTour() {
+        // Close any open modal before starting fresh
+        const existing = bootstrap.Modal.getInstance(document.getElementById('mdlOvertime'));
+        if (existing) existing.hide();
+
+        const driver = window.driver.js.driver;
+        driverObj = driver({
+            showProgress: true,
+            progressText: 'Step __current__ of __total__',
+            nextBtnText: 'Next →',
+            prevBtnText: '← Back',
+            doneBtnText: 'Done ✓',
+            allowClose: true,
+            overlayColor: '#000',
+            overlayOpacity: 0.55,
+            smoothScroll: true,
+            onDestroyStarted: () => {
+                localStorage.setItem(TOUR_KEY, '1');
+                const m = bootstrap.Modal.getInstance(document.getElementById('mdlOvertime'));
+                if (m) m.hide();
+                driverObj.destroy();
+            },
+            steps: []
+        });
+        driverObj.setSteps(buildSteps(driverObj));
+        driverObj.drive();
+    }
+
+    if (!localStorage.getItem(TOUR_KEY)) {
+        setTimeout(startTour, 800);
+    }
+
+    document.getElementById('btnStartOtTour').addEventListener('click', function () {
+        localStorage.removeItem(TOUR_KEY);
+        startTour();
+    });
+})();
+</script>
 
 @endsection
