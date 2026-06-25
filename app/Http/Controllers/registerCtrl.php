@@ -115,7 +115,7 @@ class registerCtrl extends Controller
        
         $defaultpass = "123456";
         $current_date_time = now();
-        // dd($request->path->getClientOriginalName());
+        // dd($request->path->getClientOriginalName()); sdsd
 
         $validator = Validator::make($request->all(), [
             'email' => 'required|unique:users',
