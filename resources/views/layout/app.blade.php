@@ -4,8 +4,26 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ config('app.name') }} - {{ $title ?? 'Dashboard' }}</title>
-    
+    @php
+        // Fall back to a humanized route name when a page doesn't pass an explicit $title,
+        // so the tab isn't labeled "Dashboard" everywhere. Strips trailing action segments
+        // (index/show/edit/...) and turns "mail-integration.index" -> "Mail Integration".
+        $routeName = \Illuminate\Support\Facades\Route::currentRouteName();
+        $derivedTitle = $routeName
+            ? \Illuminate\Support\Str::of($routeName)
+                ->replaceMatches('/\.(index|show|edit|create|store|update|destroy|view|list)$/', '')
+                ->replace('.', ' ')
+                ->headline()
+            : null;
+        $pageTitle = $title ?? ($derivedTitle ?: 'Dashboard');
+    @endphp
+    <title>{{ config('app.name') }} - {{ $pageTitle }}</title>
+
+    {{-- Brand favicon (public/favicon.ico was empty; use the square 960x960 logo) --}}
+    <link rel="icon" type="image/png" href="{{ asset('img/kwatogslogo.png') }}">
+    <link rel="shortcut icon" type="image/png" href="{{ asset('img/kwatogslogo.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('img/kwatogslogo.png') }}">
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/js/bootstrap.bundle.min.js"></script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
