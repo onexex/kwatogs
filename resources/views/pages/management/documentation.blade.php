@@ -98,6 +98,7 @@
         <nav class="doc-toc">
             <h6>On this page</h6>
             <a href="#overview">Overview</a>
+            <a href="#homepage">Home Page Guide</a>
             <a href="#pinned">Top Menu <span class="chip">2</span></a>
             <a href="#workforce">Workforce <span class="chip">20</span></a>
             <a href="#settings">Settings <span class="chip">28</span></a>
@@ -119,6 +120,129 @@
                     <p>The left sidebar is the main way to move around the system. It has two pinned shortcuts at the top (Home and Registration) followed by three collapsible groups: <b>Workforce</b> (day-to-day operations), <b>Settings</b> (master data and system management), and <b>Reports</b> (analysis and exports).</p>
                     <p>Each menu item is tied to a permission. You only see an item if your assigned role has the matching permission, so two users can see very different menus. A group heading (Workforce, Settings, Reports) only appears if you can access at least one item inside it. Roles and permissions are managed from <b>Settings → Employee Role</b> and <b>Settings → User Roles</b>.</p>
                     <p>The tables below list every menu item, the page it opens, the permission key behind it, and a short description of what it does.</p>
+                </div>
+            </section>
+
+            {{-- ── Home Page Guide ── --}}
+            <section class="sc" id="homepage">
+                <div class="sc-head">
+                    <div class="sc-icon"><i class="fa-solid fa-house"></i></div>
+                    <div>
+                        <h5 class="sc-title">Home Page Guide</h5>
+                        <p class="sc-sub">Attendance dashboard, Time In/Out steps, and button reference</p>
+                    </div>
+                </div>
+
+                {{-- Time In / Time Out Steps --}}
+                <div class="sc-body prose" style="border-bottom:1px solid var(--border);">
+                    <p style="font-weight:800;color:var(--slate);font-size:.9rem;margin-bottom:10px;">
+                        <i class="fa-solid fa-list-ol me-2" style="color:var(--teal)"></i>How to Time In and Time Out
+                    </p>
+
+                    <p style="font-weight:700;color:var(--slate);margin:0 0 6px;">Logging your Time In</p>
+                    <ol style="font-size:.86rem;color:var(--slate);line-height:1.8;padding-left:1.4rem;margin-bottom:14px;">
+                        <li>From the sidebar, click <b>Home</b> (or navigate to <code class="kk">/</code>).</li>
+                        <li>At the bottom-right of the page, locate the <b style="color:var(--teal)">Time In</b> button (teal/green, pill-shaped).</li>
+                        <li>Click <b>Time In</b>. A confirmation dialog will appear asking <em>"Ready to log your attendance?"</em></li>
+                        <li>Click <b>Yes, Time In</b> to confirm. The system records the current timestamp as your time-in entry.</li>
+                        <li>A success notification appears briefly. The <b>Attendance Log</b> table refreshes automatically showing your new entry.</li>
+                    </ol>
+
+                    <p style="font-weight:700;color:var(--slate);margin:0 0 6px;">Logging your Time Out</p>
+                    <ol style="font-size:.86rem;color:var(--slate);line-height:1.8;padding-left:1.4rem;margin-bottom:14px;">
+                        <li>At the end of your shift, return to the <b>Home</b> page.</li>
+                        <li>At the bottom-right, locate the <b style="color:#ef4444">Time Out</b> button (red, pill-shaped).</li>
+                        <li>Click <b>Time Out</b>. A confirmation dialog appears: <em>"End your shift for the day?"</em></li>
+                        <li>Click <b>Yes, Time Out</b> to confirm. The system stamps the current time as your time-out.</li>
+                        <li>The table refreshes. The <b>Daily Summary</b> row for today will now show your total hours worked, any late deductions, and your attendance status.</li>
+                    </ol>
+
+                    <div class="note" style="margin:0 0 6px;">
+                        <b>Important:</b> Always Time In at the start of your shift and Time Out at the end. Missed punches result in an <em>Incomplete</em> status on the daily log. If you forget, ask HR to correct the entry via <b>Workforce → Adjustment Time</b>.
+                    </div>
+                </div>
+
+                {{-- Home Page Buttons --}}
+                <div class="sc-body" style="padding:18px 22px 4px;">
+                    <p style="font-weight:800;color:var(--slate);font-size:.9rem;margin-bottom:10px;">
+                        <i class="fa-solid fa-computer-mouse me-2" style="color:var(--teal)"></i>All Buttons &amp; Controls on the Home Page
+                    </p>
+                </div>
+                <div class="sc-body">
+                    <table class="doc-table">
+                        <thead><tr><th>Button / Control</th><th>Location</th><th>What it does</th></tr></thead>
+                        <tbody>
+                            <tr>
+                                <td class="item-name"><i class="fa-solid fa-clock"></i>Time In</td>
+                                <td>Bottom-right corner (teal pill button)</td>
+                                <td>Opens a confirmation dialog and records your time-in for the current moment. The attendance table auto-refreshes after a successful punch.</td>
+                            </tr>
+                            <tr>
+                                <td class="item-name"><i class="fa-solid fa-right-from-bracket"></i>Time Out</td>
+                                <td>Bottom-right corner (red pill button)</td>
+                                <td>Opens a confirmation dialog and records your time-out for the current moment. The daily summary row updates with hours worked, late minutes, and status.</td>
+                            </tr>
+                            <tr>
+                                <td class="item-name"><i class="fa-solid fa-rotate"></i>Refresh (↺)</td>
+                                <td>Top-right date range bar (teal icon button)</td>
+                                <td>Reloads the attendance log table for the selected date range without reloading the full page. Use this after an HR adjustment to see updated data.</td>
+                            </tr>
+                            <tr>
+                                <td class="item-name"><i class="fa-solid fa-calendar"></i>Date From / Date To</td>
+                                <td>Top-right date range bar</td>
+                                <td>Set the start and end dates of the attendance period you want to view. Defaults to the last 10 days through today. Change the dates then click <b>Refresh</b> to reload.</td>
+                            </tr>
+                            <tr>
+                                <td class="item-name"><i class="fa-solid fa-wand-magic-sparkles"></i>Kuya Kwatogs (floating button)</td>
+                                <td>Fixed bottom-right corner (teal pill, above Time In/Out)</td>
+                                <td>Opens the <b>Schedule Change Assistant</b> — a guided chatbot-style form to file a schedule adjustment request (change your shift time for a specific day). Only visible if your role has the <code class="kk">createschedulechange</code> permission.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                {{-- Summary Cards --}}
+                <div class="sc-body" style="padding:18px 22px 4px;">
+                    <p style="font-weight:800;color:var(--slate);font-size:.9rem;margin-bottom:10px;">
+                        <i class="fa-solid fa-chart-simple me-2" style="color:var(--teal)"></i>Summary Cards (top of Home page)
+                    </p>
+                </div>
+                <div class="sc-body">
+                    <table class="doc-table">
+                        <thead><tr><th>Card</th><th>Shows</th><th>Notes</th></tr></thead>
+                        <tbody>
+                            <tr>
+                                <td class="item-name"><i class="fa-solid fa-clock"></i>Total Hours</td>
+                                <td>Sum of all work hours logged in the selected date range.</td>
+                                <td>Updates each time the table reloads.</td>
+                            </tr>
+                            <tr>
+                                <td class="item-name"><i class="fa-solid fa-hourglass-half"></i>Late Deductions</td>
+                                <td>Total accumulated late minutes across all days in the selected range.</td>
+                                <td>Displayed in minutes. Computed from each day's daily summary row.</td>
+                            </tr>
+                            <tr>
+                                <td class="item-name"><i class="fa-solid fa-circle-check"></i>Period Status</td>
+                                <td>An overall status label for the selected period.</td>
+                                <td><b>Perfect Attendance</b> — no lates and no incomplete logs. <b>Active (With Lates)</b> — all punches complete but some lates exist. <b>Needs Action</b> — at least one day has an Incomplete or Missing log; contact HR.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                {{-- Kuya Kwatogs assistant --}}
+                <div class="sc-body prose" style="border-top:1px solid var(--border);">
+                    <p style="font-weight:800;color:var(--slate);font-size:.9rem;margin-bottom:6px;">
+                        <i class="fa-solid fa-robot me-2" style="color:var(--teal)"></i>Kuya Kwatogs — Schedule Change Assistant
+                    </p>
+                    <p>Click the floating <b>Kuya Kwatogs</b> button to open the assistant panel. You can use the <b>Guided</b> mode (step-by-step questions) or switch to <b>Quick Form</b> mode using the toggle in the panel header.</p>
+                    <ol style="font-size:.86rem;color:var(--slate);line-height:1.8;padding-left:1.4rem;margin-bottom:0;">
+                        <li>Choose the <b>date</b> you need to adjust (today or a future date).</li>
+                        <li>Enter the <b>new time in</b> and <b>new time out</b> for that day.</li>
+                        <li>Type a short <b>reason</b> — your approver will see this.</li>
+                        <li>Review the summary and click <b>Submit</b>.</li>
+                        <li>Your request appears in the <em>My recent requests</em> list at the bottom of the panel with a status of <b>For Approval</b>. An authorized approver (Settings → Pending Schedule Requests) will act on it.</li>
+                    </ol>
                 </div>
             </section>
 

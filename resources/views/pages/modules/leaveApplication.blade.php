@@ -1,7 +1,15 @@
 @extends('layout.app', [
     'title' => 'Leave Application'
 ])
+@push('scripts')
+<script src="{{ asset('js/vendor/driver.iife.js') }}"></script>
+@endpush
 @section('content')
+<link rel="stylesheet" href="{{ asset('css/driver.css') }}">
+<style>
+    .driver-overlay { z-index: 1049 !important; }
+    .driver-popover { z-index: 1075 !important; }
+</style>
 
 <style>
     /* ── Design tokens (shared with Edit Employee / Attendance Viewer) ── */
@@ -315,9 +323,16 @@
                 </ol>
             </nav>
         </div>
-        <button class="btn btn-teal rounded-pill px-4 fw-bold shadow-sm" name="btnCreateLeaveModal" id="btnCreateLeaveModal" data-bs-toggle="modal" data-bs-target="#mdlLeaveApp">
-            <i class="fa fa-plus me-2"></i> Leave Application Form
-        </button>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <button type="button" id="btnStartLeaveTour"
+                class="btn btn-sm fw-semibold d-flex align-items-center gap-2"
+                style="background:var(--teal-light);color:var(--teal-dark);border:1.5px solid var(--teal-mid);border-radius:20px;padding:6px 14px;">
+                <i class="fa-solid fa-map"></i> Take a Tour
+            </button>
+            <button class="btn btn-teal rounded-pill px-4 fw-bold shadow-sm" name="btnCreateLeaveModal" id="btnCreateLeaveModal" data-bs-toggle="modal" data-bs-target="#mdlLeaveApp">
+                <i class="fa fa-plus me-2"></i> Leave Application Form
+            </button>
+        </div>
     </div>
 
     {{-- ── Search / filter card (matches Attendance Viewer) ── --}}
@@ -669,4 +684,161 @@
         }
     })
 </script>
+
+<script>
+(function () {
+    const TOUR_KEY = 'kwatogs_leave_tour_done_{{ auth()->id() }}';
+
+    function buildSteps(driverRef) {
+        return [
+            {
+                element: '.home-topbar',
+                popover: {
+                    title: '👋 Welcome to Leave Application!',
+                    description: 'Here you can file leave requests and view your leave history. Let\'s walk through the page.',
+                    side: 'bottom', align: 'start'
+                }
+            },
+            {
+                element: '.home-shell > .sc:first-of-type',
+                popover: {
+                    title: '🔍 Search Filters',
+                    description: 'Filter your leave history by date range. Set From and To dates, then click <b>Refresh</b> to reload the table.',
+                    side: 'bottom', align: 'start'
+                }
+            },
+            {
+                element: '.home-shell > .sc:nth-of-type(2)',
+                popover: {
+                    title: '📋 Leave History',
+                    description: 'All your filed leave requests appear here — showing leave type, filing date, date range, duration, purpose, kind (Paid/Unpaid), and current status. Requests still <em>For Approval</em> have a Delete button if you need to cancel.',
+                    side: 'top', align: 'start'
+                }
+            },
+            {
+                element: '#btnCreateLeaveModal',
+                popover: {
+                    title: '📝 File a Leave Request',
+                    description: 'Click this to open the leave application form. Click <b>Next</b> to explore the form fields.',
+                    side: 'bottom', align: 'end',
+                    onNextClick: () => {
+                        const modal = new bootstrap.Modal(document.getElementById('mdlLeaveApp'), { backdrop: false });
+                        modal.show();
+                        setTimeout(() => driverRef.moveNext(), 450);
+                    }
+                }
+            },
+            {
+                element: '#selLeaveKind',
+                popover: {
+                    title: '💰 Leave Kind',
+                    description: 'Choose <b>Paid</b> if this leave should consume your leave credits, or <b>Unpaid</b> if it should be deducted from your salary instead.',
+                    side: 'bottom', align: 'start'
+                }
+            },
+            {
+                element: '#selLeaveType',
+                popover: {
+                    title: '🏷 Leave Type',
+                    description: 'Select the type of leave you are filing (e.g. Vacation Leave, Sick Leave, Emergency Leave). The available types are configured by HR.',
+                    side: 'bottom', align: 'start'
+                }
+            },
+            {
+                element: '#txtLeaveCredits',
+                popover: {
+                    title: '📊 Leave Credits',
+                    description: 'Shows your remaining credits for the selected leave type. This updates automatically when you choose a leave type. Make sure you have enough credits for paid leave.',
+                    side: 'bottom', align: 'start'
+                }
+            },
+            {
+                element: '#date_from',
+                popover: {
+                    title: '📆 Leave Date From',
+                    description: 'Enter the first day of your leave.',
+                    side: 'bottom', align: 'start'
+                }
+            },
+            {
+                element: '#date_to',
+                popover: {
+                    title: '📆 Leave Date To',
+                    description: 'Enter the last day of your leave. For a single day, set From and To to the same date.',
+                    side: 'bottom', align: 'start'
+                }
+            },
+            {
+                element: '#chkHalfDay',
+                popover: {
+                    title: '🕐 Half Day?',
+                    description: 'Tick this if you are only taking half a day of leave. The duration will be adjusted to 0.5 days.',
+                    side: 'top', align: 'start'
+                }
+            },
+            {
+                element: '#txtPurposeRem',
+                popover: {
+                    title: '📝 Explanation / Purpose',
+                    description: 'Briefly explain the reason for your leave. Your approver will see this when reviewing the request.',
+                    side: 'top', align: 'start'
+                }
+            },
+            {
+                element: '#btnSaveLeave',
+                popover: {
+                    title: '✅ Submit',
+                    description: 'Click <b>Submit</b> to send your leave request for approval. It will appear in your Leave History with status <em>For Approval</em>. You can delete it before it is approved if you need to cancel.',
+                    side: 'top', align: 'end'
+                }
+            },
+            {
+                popover: {
+                    title: '🎉 You\'re all set!',
+                    description: 'You now know how to file a leave application. Remember to file in advance whenever possible. Click <b>Take a Tour</b> anytime to replay this guide.'
+                }
+            },
+        ];
+    }
+
+    let driverObj = null;
+
+    function startTour() {
+        const existing = bootstrap.Modal.getInstance(document.getElementById('mdlLeaveApp'));
+        if (existing) existing.hide();
+
+        const driver = window.driver.js.driver;
+        driverObj = driver({
+            showProgress: true,
+            progressText: 'Step __current__ of __total__',
+            nextBtnText: 'Next →',
+            prevBtnText: '← Back',
+            doneBtnText: 'Done ✓',
+            allowClose: true,
+            overlayColor: '#000',
+            overlayOpacity: 0.55,
+            smoothScroll: true,
+            onDestroyStarted: () => {
+                localStorage.setItem(TOUR_KEY, '1');
+                const m = bootstrap.Modal.getInstance(document.getElementById('mdlLeaveApp'));
+                if (m) m.hide();
+                driverObj.destroy();
+            },
+            steps: []
+        });
+        driverObj.setSteps(buildSteps(driverObj));
+        driverObj.drive();
+    }
+
+    if (!localStorage.getItem(TOUR_KEY)) {
+        setTimeout(startTour, 800);
+    }
+
+    document.getElementById('btnStartLeaveTour').addEventListener('click', function () {
+        localStorage.removeItem(TOUR_KEY);
+        startTour();
+    });
+})();
+</script>
+
 @endsection
