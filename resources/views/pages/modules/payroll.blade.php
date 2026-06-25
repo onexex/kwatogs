@@ -594,7 +594,7 @@
                                 <th rowspan="2">Tax</th>
                                 <th rowspan="2">Allowances</th>
                                 <th rowspan="2">Adjustments</th>
-                                <th rowspan="2">Charges</th>
+                                <th rowspan="2">Charges/Others</th>
                                 <th rowspan="2">Company Loan</th>
                                 <th rowspan="2">Cash Adv</th>
                                 <th rowspan="2" class="bg-light fw-bold">Net Pay</th>

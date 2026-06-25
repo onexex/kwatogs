@@ -468,6 +468,7 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip']], function () {
     Route::get('pages/modules/loanManagement', [LoanController::class, 'index'])->name('loans.index');
     Route::post('/loans/store', [LoanController::class, 'store'])->name('loans.store');
     Route::post('/loans/update', [LoanController::class, 'update'])->name('loans.update');
+    Route::post('/loans/{id}/toggle', [LoanController::class, 'toggleStatus'])->name('loans.toggle');
     Route::delete('/loans/delete/{id}', [LoanController::class, 'destroy'])->name('loans.delete');
 
     // Pay Adjustments (HR additions/deductions per pay date)

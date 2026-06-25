@@ -262,7 +262,9 @@ class PayrollController extends Controller
                 $loanPayments = LoanPayment::where('payroll_id', $oldPayroll->id)->get();
                 foreach ($loanPayments as $payment) {
                     $loan = Loan::find($payment->loan_id);
-                    if ($loan) {
+                    // Recurring charges never tracked a balance, so there is nothing to
+                    // restore — only finite loans get their balance/status rolled back.
+                    if ($loan && !$loan->is_recurring) {
                         $loan->balance += $payment->amount_paid;
                         if ($loan->balance > 0) $loan->status = 'active';
                         $loan->save();
@@ -759,7 +761,8 @@ class PayrollController extends Controller
                     $employeeClass,
                     $isEndOfMonth,
                     $emp->empID,
-                    $duesFlags
+                    $duesFlags,
+                    $payDate
                 );
 
                 //  Extract loan deductions
@@ -975,10 +978,14 @@ class PayrollController extends Controller
                             'remarks' => 'Auto payroll deduction',
                         ]);
 
-                        Loan::where('id', $loan['loan_id'])->update([
-                            'balance' => $loan['new_balance'],
-                            'status'  => $loan['new_balance'] <= 0 ? 'paid' : 'active'
-                        ]);
+                        // Recurring charges keep their balance/status untouched so they
+                        // continue every month; the LoanPayment above is still logged.
+                        if (empty($loan['is_recurring'])) {
+                            Loan::where('id', $loan['loan_id'])->update([
+                                'balance' => $loan['new_balance'],
+                                'status'  => $loan['new_balance'] <= 0 ? 'paid' : 'active'
+                            ]);
+                        }
                     }
                 }
 

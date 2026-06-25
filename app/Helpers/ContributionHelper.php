@@ -18,7 +18,7 @@ class ContributionHelper
      *        A false flag zeroes that contribution (both employee & employer
      *        share) and removes it from the taxable-income deduction.
      */
-    public static function computeAll($monthlyGross, $employeeClass, $isEndOfMonth = false, $employeeId = null, array $duesFlags = [])
+    public static function computeAll($monthlyGross, $employeeClass, $isEndOfMonth = false, $employeeId = null, array $duesFlags = [], $payDate = null)
     {
         // If NOT end of month or employee is trainee → no deductions
         if (!$isEndOfMonth || $employeeClass === 'TRN') {
@@ -76,14 +76,26 @@ class ContributionHelper
         $loans = [];
 
         if ($isEndOfMonth && $employeeClass !== 'TRN' && $employeeId) {
-            // Get active loans
+            // Get active loans. Finite loans only count while they still have a
+            // balance; recurring charges (rent etc.) are picked up regardless of
+            // balance and keep deducting every month until switched off.
+            // A charge only deducts on/after its start date — a future-dated charge
+            // is skipped until its start month (gated only when a pay date is given).
             $loans = Loan::where('employee_id', $employeeId)
                 ->where('status', 'active')
-                ->where('balance', '>', 0)
+                ->where(fn($q) => $q->where('is_recurring', true)->orWhere('balance', '>', 0))
+                ->when($payDate, fn($q) => $q->where('start_date', '<=', $payDate))
                 ->get();
 
             foreach ($loans as $loan) {
-                $amount = min($loan->monthly_amortization, $loan->balance);
+                if ($loan->is_recurring) {
+                    // Continuous monthly charge: deduct the full amount, no balance tracking.
+                    $amount = $loan->monthly_amortization;
+                    $newBalance = null;
+                } else {
+                    $amount = min($loan->monthly_amortization, $loan->balance);
+                    $newBalance = $loan->balance - $amount;
+                }
 
                 // Categorize loans
                 switch ($loan->loan_type) {
@@ -108,7 +120,8 @@ class ContributionHelper
                 $loanDetails[] = [
                     'loan_id' => $loan->id,
                     'deducted_amount' => $amount,
-                    'new_balance' => $loan->balance - $amount,
+                    'new_balance' => $newBalance,           // null for recurring
+                    'is_recurring' => (bool) $loan->is_recurring,
                 ];
             }
         }

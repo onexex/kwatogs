@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Leave;
 use App\Observers\LeaveStatusObserver;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -26,5 +27,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
         Leave::observe(LeaveStatusObserver::class);
+
+        Paginator::useBootstrapFive();
     }
 }

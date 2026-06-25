@@ -677,7 +677,7 @@ $(document).ready(function () {
                     return;
                 }
 
-                const sumFields = ['basic_salary','basicPay','abs_ut_deduction','holiday_pay','overtime_pay','night_diff_pay','gross_pay','sss_contribution','sss_loan','pagibig_contribution','pagibig_loan','philhealth_contribution','taxable_income','withholding_tax','allowances','adjustment_amount','penalty_amount','company_loan','cash_advance','net_pay','pay_rec'];
+                const sumFields = ['basic_salary','basicPay','abs_ut_deduction','holiday_pay','overtime_pay','night_diff_pay','gross_pay','sss_contribution','sss_loan','pagibig_contribution','pagibig_loan','philhealth_contribution','taxable_income','withholding_tax','allowances','adjustment_amount','penalty_amount','other_deduction','company_loan','cash_advance','net_pay','pay_rec'];
                 const totals = {};
                 sumFields.forEach((fld) => { totals[fld] = 0; });
 
@@ -716,7 +716,7 @@ $(document).ready(function () {
                             <td>${formatNumber(payroll.allowances || 0)}</td>
                             <td>${formatNumber(payroll.adjustment_amount || 0)}</td>
 
-                            <td>${formatNumber(payroll.penalty_amount || 0)}</td>
+                            <td>${formatNumber((Number(payroll.penalty_amount) || 0) + (Number(payroll.other_deduction) || 0))}</td>
                             <td>${formatNumber(payroll.company_loan || 0)}</td>
                             <td>${formatNumber(payroll.cash_advance || 0)}</td>
                             <td class="bg-light fw-bold">${formatNumber(payroll.net_pay || 0)}</td>
@@ -747,7 +747,7 @@ $(document).ready(function () {
                         <td>${formatNumber(totals.withholding_tax)}</td>
                         <td>${formatNumber(totals.allowances)}</td>
                         <td>${formatNumber(totals.adjustment_amount)}</td>
-                        <td>${formatNumber(totals.penalty_amount)}</td>
+                        <td>${formatNumber(totals.penalty_amount + totals.other_deduction)}</td>
                         <td>${formatNumber(totals.company_loan)}</td>
                         <td>${formatNumber(totals.cash_advance)}</td>
                         <td>${formatNumber(totals.net_pay)}</td>

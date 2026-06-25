@@ -213,7 +213,7 @@
                     <img src="{{ $emp->path ?? URL::asset('/img/undraw_profile.svg') }}"
                          alt="profile" class="rounded-circle profile-img-container shadow-lg">
                 </div>
-                <div class="col-lg-7 text-center text-lg-start">
+                <div class="col-lg-10 text-center text-lg-start">
                     <div class="d-flex align-items-center justify-content-center justify-content-lg-start mb-2 flex-wrap gap-2">
                         <h1 class="fw-bold mb-0 me-1 text-capitalize">
                             {{ $user->fname ?? 'Select' }} {{ $user->mname ?? '' }} {{ $user->lname ?? 'Employee' }} {{ $user->suffix ?? '' }}
@@ -226,14 +226,8 @@
                     </div>
                     <p class="fs-5 opacity-75 mb-3">{{ $emp->position->pos_desc ?? 'Position' }} <span class="mx-2">|</span> {{ $emp->department->dep_name ?? 'Department' }}</p>
                     <div class="d-flex flex-wrap justify-content-center justify-content-lg-start gap-2">
-                        <span class="badge bg-white bg-opacity-20 rounded-pill px-3 py-2"><i class="fa-solid fa-id-card me-1"></i> {{ $emp->empID ?? '---' }}</span>
-                        <span class="badge bg-white bg-opacity-20 rounded-pill px-3 py-2"><i class="fa-solid fa-envelope me-1"></i> {{ $user->email ?? '---' }}</span>
-                    </div>
-                </div>
-                <div class="col-lg-3 text-center text-lg-end">
-                    <div class="btn-group shadow-sm">
-                        <button class="btn btn-hero" title="Print Resume"><i class="fa-solid fa-file-pdf"></i></button>
-                        <button class="btn btn-hero" title="Edit Record"><i class="fa-solid fa-user-pen"></i></button>
+                        <span class="badge rounded-pill px-3 py-2" style="background:#ffffff; color: var(--teal-dark); font-weight:600;"><i class="fa-solid fa-id-card me-1"></i> {{ $emp->empID ?? '---' }}</span>
+                        <span class="badge rounded-pill px-3 py-2" style="background:#ffffff; color: var(--teal-dark); font-weight:600;"><i class="fa-solid fa-envelope me-1"></i> {{ $user->email ?? '---' }}</span>
                     </div>
                 </div>
             </div>
@@ -368,14 +362,6 @@
                                 <div class="col-md-6">
                                     <span class="field-label">Date Hired</span>
                                     <div class="field-value fw-bold" style="color: var(--teal);">{{ isset($emp->empDateHired) ? date('M d, Y', strtotime($emp->empDateHired)) : '---' }}</div>
-                                </div>
-                                <div class="col-md-6">
-                                    <span class="field-label">Job Level / Classification</span>
-                                    <div class="field-value">{{ $emp->jobLevel->job_desc ?? '---' }} / {{ $emp->empClassification ?? '---' }}</div>
-                                </div>
-                                <div class="col-md-6">
-                                    <span class="field-label">HMO Provider / No.</span>
-                                    <div class="field-value">{{ $emp->hmo->hmoName ?? 'None' }} ({{ $emp->empHMONo ?? 'N/A' }})</div>
                                 </div>
                             </div>
                         </div>

@@ -21,6 +21,11 @@ class Loan extends Model
         'start_date',
         'end_date',
         'status',
+        'is_recurring',
+    ];
+
+    protected $casts = [
+        'is_recurring' => 'boolean',
     ];
 
     public function employee()
