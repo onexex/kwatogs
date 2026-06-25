@@ -25,7 +25,10 @@ class LoanController extends Controller
             ->when($type !== '', fn ($q) => $q->where('loan_type', $type))
             ->when($status !== '', fn ($q) => $q->where('status', $status))
             ->when($recurring !== '', fn ($q) => $q->where('is_recurring', $recurring === '1'))
-            ->latest()
+            ->join('users', 'users.empID', '=', 'loans.employee_id')
+            ->orderBy('users.lname')
+            ->orderBy('users.fname')
+            ->select('loans.*')
             ->paginate(15)
             ->withQueryString();
 
