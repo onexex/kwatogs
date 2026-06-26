@@ -430,6 +430,7 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip', 'check.maintena
     Route::get('/attendance-import/history', [ImportHistoryController::class, 'index'])->defaults('module', 'attendance')->name('attendance-import.history')->middleware('can:attendanceimport');
     Route::get('/attendance-import/history/{id}', [ImportHistoryController::class, 'show'])->defaults('module', 'attendance')->name('attendance-import.history.show')->middleware('can:attendanceimport');
     Route::delete('/attendance-import/history/{id}', [ImportHistoryController::class, 'destroy'])->defaults('module', 'attendance')->name('attendance-import.history.destroy')->middleware('can:attendanceimport');
+    Route::put('/attendance-import/history/row/{id}', [ImportHistoryController::class, 'updateRow'])->name('attendance-import.history.row.update')->middleware('can:attendanceimport');
 
     // Overtime import
     Route::get('/overtime-import', [OvertimeImportController::class, 'index'])->name('overtime-import.index')->middleware('can:overtimeimport');
