@@ -22,9 +22,9 @@ class LoanController extends Controller
                       ->orWhere('lname', 'like', "%{$search}%");
                 });
             })
-            ->when($type !== '', fn ($q) => $q->where('loan_type', $type))
-            ->when($status !== '', fn ($q) => $q->where('status', $status))
-            ->when($recurring !== '', fn ($q) => $q->where('is_recurring', $recurring === '1'))
+            ->when($type !== '', fn ($q) => $q->where('loans.loan_type', $type))
+            ->when($status !== '', fn ($q) => $q->where('loans.status', $status))
+            ->when($recurring !== '', fn ($q) => $q->where('loans.is_recurring', $recurring === '1'))
             ->join('users', 'users.empID', '=', 'loans.employee_id')
             ->orderBy('users.lname')
             ->orderBy('users.fname')
