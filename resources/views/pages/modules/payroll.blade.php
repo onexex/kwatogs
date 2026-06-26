@@ -550,6 +550,11 @@
                     <button class="btn btn-warning btn-sm rounded-pill px-3 fw-bold shadow-sm d-none" id="btnReopenPayroll">
                         <i class="fa fa-unlock me-2"></i> Reopen
                     </button>
+                    @can('regeneratepayroll')
+                    <button class="btn btn-danger btn-sm rounded-pill px-3 fw-bold shadow-sm d-none" id="btnDeletePayroll">
+                        <i class="fa fa-trash me-2"></i> Delete Payroll
+                    </button>
+                    @endcan
                     <button class="btn btn-light btn-sm rounded-pill px-3 fw-bold shadow-sm" id="btnPrint">
                         <i class="fa fa-print me-2 text-teal"></i> Print Report
                     </button>

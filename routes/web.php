@@ -471,6 +471,7 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip', 'check.maintena
     Route::get('/payroll/approval/status', [PayrollApprovalController::class, 'status'])->name('payroll.approval.status');
     Route::post('/payroll/approve', [PayrollApprovalController::class, 'approve'])->name('payroll.approve')->middleware('can:approvepayroll');
     Route::post('/payroll/reopen', [PayrollApprovalController::class, 'reopen'])->name('payroll.reopen')->middleware('can:regeneratepayroll');
+    Route::post('/payroll/delete', [PayrollController::class, 'destroyByPayDate'])->name('payroll.delete')->middleware('can:regeneratepayroll');
     Route::get('/payroll/fetch', [PayrollController::class, 'fetchPayroll']);
     Route::get('/payroll/details/by-payroll', [PayrollController::class, 'getDetailsByPayroll'])
     ->name('payroll.details.by-payroll');

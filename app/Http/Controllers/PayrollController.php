@@ -13,6 +13,7 @@ use App\Models\LoanPayment;
 use App\Models\OB;
 use App\Models\Overtime;
 use App\Models\Payroll;
+use App\Models\PayrollApproval;
 use App\Models\PayrollDetail;
 use App\Models\PayrollLog;
 use App\Models\SssContribution;
@@ -1195,6 +1196,79 @@ class PayrollController extends Controller
         $payrolls = $query->orderBy('users.lname')->orderBy('users.fname')->get();
 
         return view('pages.modules.payslip', compact('payrolls', 'payDate'));
+    }
+
+    /**
+     * Delete computed payroll for a pay date — ONLY while it is still unapproved.
+     * An approved pay date is final and must be Reopened first (regeneratepayroll).
+     * Deletes the ENTIRE pay date regardless of the screen's filters. Loan
+     * deductions taken in these payrolls are rolled back (balances restored)
+     * just like a recompute.
+     */
+    public function destroyByPayDate(Request $request)
+    {
+        $request->validate([
+            'pay_date' => 'required|date',
+        ]);
+
+        $payDate = $request->input('pay_date');
+
+        // Approval lock: an approved pay date is final — block deletion outright.
+        if (PayrollApproval::isLocked($payDate)) {
+            return response()->json([
+                'success' => false,
+                'locked'  => true,
+                'message' => 'This payroll is approved and final. Reopen it first before deleting.',
+            ], 423);
+        }
+
+        // Every payroll row for this pay date, regardless of company/department/classification.
+        $payrolls = Payroll::where('pay_date', $payDate)->get();
+
+        if ($payrolls->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No payroll records found to delete for this selection.',
+            ], 404);
+        }
+
+        $count = $payrolls->count();
+
+        try {
+            DB::transaction(function () use ($payrolls, $payDate) {
+                foreach ($payrolls as $oldPayroll) {
+                    // Roll back loan payments taken in this payroll (same as recompute cleanup).
+                    $loanPayments = LoanPayment::where('payroll_id', $oldPayroll->id)->get();
+                    foreach ($loanPayments as $payment) {
+                        $loan = Loan::find($payment->loan_id);
+                        // Recurring charges never tracked a balance — nothing to restore.
+                        if ($loan && !$loan->is_recurring) {
+                            $loan->balance += $payment->amount_paid;
+                            if ($loan->balance > 0) $loan->status = 'active';
+                            $loan->save();
+                        }
+                        $payment->delete();
+                    }
+                    $oldPayroll->delete();
+                }
+
+                // Detail + log rows for this pay date.
+                PayrollDetail::where('payroll_date', $payDate)->delete();
+                PayrollLog::where('pay_date', $payDate)->delete();
+            });
+        } catch (\Exception $e) {
+            Log::error('Delete Payroll Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error deleting payroll records.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Deleted {$count} unapproved payroll record(s) for {$payDate}. You can now recompute or roll back the related import.",
+        ]);
     }
 
 }

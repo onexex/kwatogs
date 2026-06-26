@@ -1008,9 +1008,10 @@ $(function () {
         const $badge = $("#approvalBadge");
         const $approve = $("#btnApprovePayroll");
         const $reopen = $("#btnReopenPayroll");
+        const $delete = $("#btnDeletePayroll");
         const $gen = $("#btnGenerate");
 
-        $badge.add($approve).add($reopen).addClass("d-none");
+        $badge.add($approve).add($reopen).add($delete).addClass("d-none");
 
         if (approved) {
             $("#approvalBadgeText").text(`APPROVED · FINAL${data.approved_by_name ? " · " + data.approved_by_name : ""}${data.approved_at ? " · " + data.approved_at : ""}`);
@@ -1024,6 +1025,8 @@ $(function () {
         } else {
             $gen.prop("disabled", false);
             if (canApprove) { $approve.removeClass("d-none"); }
+            // Delete is only offered while unapproved, and only with a pay date selected.
+            if (canRegen && $("#pay_date").val()) { $delete.removeClass("d-none"); }
         }
     }
 
@@ -1064,6 +1067,27 @@ $(function () {
             axios.post("/payroll/reopen", { pay_date: payDate })
                 .then(res => Swal.fire({ icon: "success", title: "Reopened", text: res.data.message, timer: 1500, showConfirmButton: false }).then(refreshApprovalStatus))
                 .catch(err => Swal.fire("Error", err.response?.data?.message || "Unable to reopen.", "error"));
+        });
+    });
+
+    $("#btnDeletePayroll").on("click", function () {
+        const payDate = $("#pay_date").val();
+        if (!payDate) { showAlert("Select a pay date first.", "warning", "No Pay Date"); return; }
+        Swal.fire({
+            icon: "warning",
+            title: "Delete this payroll?",
+            html: `Pay date: <strong>${payDate}</strong><br>This permanently removes the <strong>entire</strong> computed payroll for this pay date (all companies/departments) and restores any loan balances it deducted. Approved payroll cannot be deleted.`,
+            showCancelButton: true,
+            confirmButtonText: "Yes, delete",
+            confirmButtonColor: "#dc2626",
+        }).then(r => {
+            if (!r.isConfirmed) return;
+            axios.post("/payroll/delete", {
+                pay_date: payDate,
+            })
+                .then(res => Swal.fire({ icon: "success", title: "Deleted", text: res.data.message, timer: 2000, showConfirmButton: false })
+                    .then(() => { refreshApprovalStatus(); $("#btnPayroll").trigger("click"); }))
+                .catch(err => Swal.fire("Error", err.response?.data?.message || "Unable to delete payroll.", "error"));
         });
     });
 
