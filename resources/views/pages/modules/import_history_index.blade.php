@@ -105,10 +105,10 @@
                         <td>{{ $b->user_name ?: '—' }}</td>
                         <td>{{ $b->created_at ? $b->created_at->format('M d, Y g:i A') : '—' }}</td>
                         <td style="text-align:right; white-space:nowrap;">
-                            <a href="{{ $historyBase }}/{{ $b->id }}" class="btn-mini view">
+                            <a href="{{ route($routePrefix.'.show', $b->id) }}" class="btn-mini view">
                                 <i class="fa fa-eye"></i> View
                             </a>
-                            <button class="btn-mini del" onclick="deleteBatch({{ $b->id }})">
+                            <button class="btn-mini del" onclick="deleteBatch('{{ route($routePrefix.'.destroy', $b->id) }}', {{ $b->id }})">
                                 <i class="fa fa-trash"></i> Delete
                             </button>
                         </td>
@@ -122,8 +122,7 @@
 </div>
 
 <script>
-const HISTORY_BASE = "{{ $historyBase }}";
-function deleteBatch(id) {
+function deleteBatch(url, id) {
     Swal.fire({
         title: 'Roll back this import?',
         html: 'This deletes the records this import created.<br>You can re-upload a corrected file afterwards.',
@@ -132,7 +131,7 @@ function deleteBatch(id) {
     }).then(res => {
         if (!res.isConfirmed) return;
         Swal.fire({ title: 'Deleting...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        axios.delete(HISTORY_BASE + "/" + id)
+        axios.delete(url)
             .then(r => {
                 Swal.close();
                 document.getElementById('batch-row-' + id)?.remove();

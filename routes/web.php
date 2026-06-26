@@ -43,6 +43,7 @@ use App\Http\Controllers\PayrollApprovalController;
 use App\Http\Controllers\PayrollExportController;
 use App\Http\Controllers\AttendanceImportController;
 use App\Http\Controllers\ImportHistoryController;
+use App\Http\Controllers\ScheduleImportController;
 use App\Http\Controllers\OvertimeImportController;
 use App\Http\Controllers\LeaveImportController;
 use App\Http\Controllers\ScheduleRequestController;
@@ -445,6 +446,14 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip', 'check.maintena
     Route::get('/leave-import/history', [ImportHistoryController::class, 'index'])->defaults('module', 'leave')->name('leave-import.history')->middleware('can:leaveimport');
     Route::get('/leave-import/history/{id}', [ImportHistoryController::class, 'show'])->defaults('module', 'leave')->name('leave-import.history.show')->middleware('can:leaveimport');
     Route::delete('/leave-import/history/{id}', [ImportHistoryController::class, 'destroy'])->defaults('module', 'leave')->name('leave-import.history.destroy')->middleware('can:leaveimport');
+
+    // Schedule import
+    Route::get('/schedule-import', [ScheduleImportController::class, 'index'])->name('schedule-import.index')->middleware('can:scheduleimport');
+    Route::get('/schedule-import/template', [ScheduleImportController::class, 'template'])->name('schedule-import.template')->middleware('can:scheduleimport');
+    Route::post('/schedule-import/upload', [ScheduleImportController::class, 'import'])->name('schedule-import.upload')->middleware('can:scheduleimport');
+    Route::get('/schedule-import/history', [ImportHistoryController::class, 'index'])->defaults('module', 'schedule')->name('schedule-import.history')->middleware('can:scheduleimport');
+    Route::get('/schedule-import/history/{id}', [ImportHistoryController::class, 'show'])->defaults('module', 'schedule')->name('schedule-import.history.show')->middleware('can:scheduleimport');
+    Route::delete('/schedule-import/history/{id}', [ImportHistoryController::class, 'destroy'])->defaults('module', 'schedule')->name('schedule-import.history.destroy')->middleware('can:scheduleimport');
 
     // Schedule change requests
     Route::get('/schedulerequest/mine', [ScheduleRequestController::class, 'mine'])->name('schedule-request.mine')->middleware('can:createschedulechange');

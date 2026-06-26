@@ -53,6 +53,7 @@ class LandingController extends Controller
             '/pages/modules/loanManagement'      => ['loanmanagement'],
             '/pages/modules/payadjustments'      => ['payadjustments'],
             '/attendance-import'                 => ['attendanceimport'],
+            '/schedule-import'                   => ['scheduleimport'],
             '/overtime-import'                   => ['overtimeimport'],
             '/leave-import'                       => ['leaveimport'],
             '/pages/modules/schedulerequests'    => ['approveschedulechange'],

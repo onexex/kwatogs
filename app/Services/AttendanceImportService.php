@@ -153,15 +153,21 @@ class AttendanceImportService
     /** Persist one validated payload. Runs inside the caller's transaction. */
     private function persist(array $d, ?int $batchId = null): bool
     {
-        // 1) schedule (prerequisite)
+        // 1) schedule (prerequisite). Tag with the batch ONLY when this import actually
+        // creates the schedule — if it overwrites a pre-existing one (e.g. set in the
+        // Scheduler or an earlier import), we leave import_batch_id untouched so a rollback
+        // can safely delete the schedules we created without destroying ones we only updated.
         $sched = EmployeeSchedule::updateOrCreate(
             ['employee_id' => $d['employee_id'], 'sched_start_date' => $d['date']],
             [
                 'sched_in' => $d['sched_in'], 'sched_out' => $d['sched_out'], 'sched_end_date' => $d['end_date'],
                 'break_start' => $d['break_start'], 'break_end' => $d['break_end'], 'shift_type' => $d['shift_type'],
-                'import_batch_id' => $batchId,
             ]
         );
+        if ($sched->wasRecentlyCreated) {
+            $sched->import_batch_id = $batchId;
+            $sched->save();
+        }
 
         // 2) home attendance (actual log)
         homeAttendance::updateOrCreate(

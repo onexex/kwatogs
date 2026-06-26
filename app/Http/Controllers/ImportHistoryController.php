@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AttendanceDeduction;
 use App\Models\AttendanceSummary;
 use App\Models\AuditLog;
+use App\Models\EmployeeSchedule;
 use App\Models\homeAttendance;
 use App\Models\ImportBatch;
 use App\Models\Leave;
@@ -28,15 +29,19 @@ class ImportHistoryController extends Controller
     private function cfg(string $module): array
     {
         $map = [
-            'attendance' => ['label' => 'Attendance', 'base' => '/attendance-import/history', 'import' => 'attendance-import.index'],
-            'overtime'   => ['label' => 'Overtime',   'base' => '/overtime-import/history',   'import' => 'overtime-import.index'],
-            'leave'      => ['label' => 'Leave',       'base' => '/leave-import/history',      'import' => 'leave-import.index'],
+            'attendance' => ['label' => 'Attendance', 'routePrefix' => 'attendance-import.history', 'import' => 'attendance-import.index'],
+            'overtime'   => ['label' => 'Overtime',   'routePrefix' => 'overtime-import.history',   'import' => 'overtime-import.index'],
+            'leave'      => ['label' => 'Leave',       'routePrefix' => 'leave-import.history',      'import' => 'leave-import.index'],
+            'schedule'   => ['label' => 'Schedule',    'routePrefix' => 'schedule-import.history',   'import' => 'schedule-import.index'],
         ];
         return $map[$module] ?? abort(404);
     }
 
-    public function index(Request $request, string $module)
+    public function index(Request $request)
     {
+        // module comes from the route's ->defaults('module', ...), read explicitly so it
+        // never collides with the {id} URL segment during positional argument binding.
+        $module = $request->route()->parameter('module');
         $c = $this->cfg($module);
         $batches = ImportBatch::module($module)->orderByDesc('id')->get();
 
@@ -44,13 +49,14 @@ class ImportHistoryController extends Controller
             'batches'     => $batches,
             'module'      => $module,
             'moduleLabel' => $c['label'],
-            'historyBase' => $c['base'],
+            'routePrefix' => $c['routePrefix'],
             'importRoute' => $c['import'],
         ]);
     }
 
-    public function show(Request $request, string $module, $id)
+    public function show(Request $request, $id)
     {
+        $module = $request->route()->parameter('module');
         $c = $this->cfg($module);
         $batch = ImportBatch::module($module)->findOrFail($id);
         [$columns, $rows] = $this->rowsFor($module, $batch);
@@ -59,7 +65,7 @@ class ImportHistoryController extends Controller
             'batch'       => $batch,
             'module'      => $module,
             'moduleLabel' => $c['label'],
-            'historyBase' => $c['base'],
+            'routePrefix' => $c['routePrefix'],
             'importRoute' => $c['import'],
             'columns'     => $columns,
             'rows'        => $rows,
@@ -71,8 +77,9 @@ class ImportHistoryController extends Controller
      * Blocked if any of the batch's dates already fall inside a computed payroll,
      * since removing that data would desync payroll figures.
      */
-    public function destroy(Request $request, string $module, $id)
+    public function destroy(Request $request, $id)
     {
+        $module = $request->route()->parameter('module');
         $batch = ImportBatch::module($module)->findOrFail($id);
 
         if ($batch->date_from && $batch->date_to) {
@@ -113,7 +120,10 @@ class ImportHistoryController extends Controller
             AttendanceDeduction::whereIn('attendance_summary_id', $summaryIds)->delete();
             AttendanceSummary::where('import_batch_id', $batch->id)->delete();
             homeAttendance::where('import_batch_id', $batch->id)->delete();
-            // employee_schedules left intact (may be shared with live punches)
+            // Schedules are tagged ONLY when the import created them (not when it overwrote a
+            // pre-existing one), so deleting batch-tagged schedules removes exactly what this
+            // import added — pre-existing shifts it merely updated keep a null tag and survive.
+            EmployeeSchedule::where('import_batch_id', $batch->id)->delete();
         } elseif ($module === 'overtime') {
             Overtime::where('import_batch_id', $batch->id)->delete();
         } elseif ($module === 'leave') {
@@ -121,6 +131,10 @@ class ImportHistoryController extends Controller
             LeaveHistory::whereIn('leave_id', $leaveIds)->delete(); // status-trail rows written on create
             LeaveDetail::where('import_batch_id', $batch->id)->delete();
             Leave::where('import_batch_id', $batch->id)->delete();
+        } elseif ($module === 'schedule') {
+            // The schedule import only ever creates rows (it rejects overlaps), so every
+            // batch-tagged schedule was created by this import — safe to delete outright.
+            EmployeeSchedule::where('import_batch_id', $batch->id)->delete();
         }
     }
 
@@ -160,6 +174,24 @@ class ImportHistoryController extends Controller
                     $r->status,
                     number_format((float) $r->total_hrs, 2),
                     number_format((float) $r->total_pay, 2),
+                ])->all();
+            return [$columns, $rows];
+        }
+
+        if ($module === 'schedule') {
+            $columns = ['Employee', 'Date', 'In', 'Out', 'Break', 'Shift'];
+            $rows = EmployeeSchedule::with('users')
+                ->where('import_batch_id', $batch->id)
+                ->orderBy('employee_id')->orderBy('sched_start_date')->get()
+                ->map(fn ($r) => [
+                    $this->nameOf(optional($r->users), $r->employee_id),
+                    Carbon::parse($r->sched_start_date)->format('M d, Y'),
+                    substr((string) $r->sched_in, 0, 5),
+                    substr((string) $r->sched_out, 0, 5),
+                    ($r->break_start && $r->break_end)
+                        ? substr((string) $r->break_start, 0, 5) . '–' . substr((string) $r->break_end, 0, 5)
+                        : '—',
+                    $r->shift_type ?: '—',
                 ])->all();
             return [$columns, $rows];
         }

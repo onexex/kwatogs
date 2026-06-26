@@ -47,10 +47,10 @@
             <p class="page-sub">{{ $batch->filename ?: 'Imported file' }}</p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
-            <a href="{{ $historyBase }}" class="btn-ghost">
+            <a href="{{ route($routePrefix) }}" class="btn-ghost">
                 <i class="fa fa-arrow-left"></i> Back to History
             </a>
-            <button class="btn-danger" onclick="deleteBatch({{ $batch->id }})">
+            <button class="btn-danger" onclick="deleteBatch('{{ route($routePrefix.'.destroy', $batch->id) }}')">
                 <i class="fa fa-trash"></i> Roll Back This Import
             </button>
         </div>
@@ -105,8 +105,8 @@
 </div>
 
 <script>
-const HISTORY_BASE = "{{ $historyBase }}";
-function deleteBatch(id) {
+const HISTORY_URL = "{{ route($routePrefix) }}";
+function deleteBatch(url) {
     Swal.fire({
         title: 'Roll back this import?',
         html: 'This deletes the records this import created.<br>You can re-upload a corrected file afterwards.',
@@ -115,10 +115,10 @@ function deleteBatch(id) {
     }).then(res => {
         if (!res.isConfirmed) return;
         Swal.fire({ title: 'Deleting...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        axios.delete(HISTORY_BASE + "/" + id)
+        axios.delete(url)
             .then(r => {
                 Swal.fire({ icon: 'success', title: 'Done', text: r.data.message, timer: 1800, showConfirmButton: false })
-                    .then(() => window.location.href = HISTORY_BASE);
+                    .then(() => window.location.href = HISTORY_URL);
             })
             .catch(err => {
                 Swal.close();
