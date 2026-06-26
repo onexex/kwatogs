@@ -28,6 +28,7 @@ class Overtime extends Model
         'day_type',
         'day_type_computation',
         'hourly_rate',
+        'import_batch_id',
     ];
 
     public function employee(): BelongsTo

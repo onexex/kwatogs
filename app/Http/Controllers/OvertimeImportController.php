@@ -58,7 +58,7 @@ class OvertimeImportController extends Controller
         }
 
         $service = new OvertimeImportService(optional(optional($request->user())->empDetail)->id);
-        $result = $service->import($rows);
+        $result = $service->import($rows, $request->file('file')->getClientOriginalName());
 
         // Summary audit entry — one row per import (not per record), with file + counts.
         \App\Models\AuditLog::record('imported', 'Overtime', null, [
@@ -81,6 +81,7 @@ class OvertimeImportController extends Controller
             'updated'  => $result['updated'],
             'skipped'  => $result['skipped'],
             'errors'   => $result['errors'],
+            'batch_id' => $result['batch_id'] ?? null,
             'message'  => $message,
         ]);
     }

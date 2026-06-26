@@ -17,5 +17,6 @@ class LeaveDetail extends Model
        'leave_kind',
        'total_hours',
        'status',
+       'import_batch_id',
     ];
 }

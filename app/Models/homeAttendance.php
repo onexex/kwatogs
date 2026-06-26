@@ -20,7 +20,7 @@ class homeAttendance extends Model
         'night_diff_hours',
         'status',
         'remarks',
-        
+        'import_batch_id',
     ];
 
     protected $casts = [

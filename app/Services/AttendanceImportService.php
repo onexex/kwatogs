@@ -6,11 +6,14 @@ use App\Models\AttendanceSummary;
 use App\Models\EmployeeSchedule;
 use App\Models\homeAttendance;
 use App\Models\User;
+use App\Services\Concerns\CreatesImportBatch;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class AttendanceImportService
 {
+    use CreatesImportBatch;
+
     // 0-based column positions (must match the import template order)
     private const C = [
         'employee_id' => 0, 'name' => 1, 'date' => 2, 'sched_in' => 3, 'break_start' => 4,
@@ -21,9 +24,9 @@ class AttendanceImportService
 
     private const STATUSES = ['present', 'ob', 'leave', 'absent'];
 
-    public function import(array $rows): array
+    public function import(array $rows, ?string $filename = null): array
     {
-        $result = ['inserted' => 0, 'updated' => 0, 'skipped' => 0, 'errors' => [], 'aborted' => false];
+        $result = ['inserted' => 0, 'updated' => 0, 'skipped' => 0, 'errors' => [], 'aborted' => false, 'batch_id' => null];
 
         // Skip the header row if present
         $start = (!empty($rows) && stripos($this->cell($rows[0], 'employee_id'), 'employee') !== false) ? 1 : 0;
@@ -63,10 +66,21 @@ class AttendanceImportService
         }
 
         // ── Phase 2: persist everything in one transaction (rolls back if anything fails). ──
-        DB::transaction(function () use (&$result, $prepared) {
+        // Every row is stamped with a batch id so the whole import can be pulled up and
+        // rolled back as a unit later (see Attendance Import History).
+        DB::transaction(function () use (&$result, $prepared, $filename) {
+            $dates = array_column($prepared, 'date'); // 'Y-m-d' strings sort lexicographically
+            $batch = $this->createImportBatch(
+                'attendance', $filename, count($prepared),
+                $dates ? min($dates) : null, $dates ? max($dates) : null
+            );
+
             foreach ($prepared as $data) {
-                $this->persist($data) ? $result['inserted']++ : $result['updated']++;
+                $this->persist($data, $batch->id) ? $result['inserted']++ : $result['updated']++;
             }
+
+            $batch->update(['inserted' => $result['inserted'], 'updated' => $result['updated']]);
+            $result['batch_id'] = $batch->id;
         });
 
         return $result;
@@ -108,7 +122,13 @@ class AttendanceImportService
         $totalHours = $this->numOr($this->cell($row, 'total_hours'), $m['total_hours']);
         $minsLate   = (int) $this->numOr($this->cell($row, 'mins_late'), $m['mins_late']);
         $minsUt     = (int) $this->numOr($this->cell($row, 'mins_undertime'), $m['mins_undertime']);
+
+        // Night differential: a manual Mins Night Diff in the file always wins (respected as-is,
+        // even when break_start/break_end are blank). Only when the file leaves it blank do we
+        // auto-compute — the unpaid night break is deducted only if both break times are present,
+        // otherwise ND is computed over the full night window.
         $minsNd     = (int) $this->numOr($this->cell($row, 'mins_night_diff'), $m['mins_night_diff']);
+
         $overBreak  = (int) $this->numOr($this->cell($row, 'over_break'), 0);
         $outpass    = (int) $this->numOr($this->cell($row, 'outpass'), 0);
 
@@ -131,7 +151,7 @@ class AttendanceImportService
     }
 
     /** Persist one validated payload. Runs inside the caller's transaction. */
-    private function persist(array $d): bool
+    private function persist(array $d, ?int $batchId = null): bool
     {
         // 1) schedule (prerequisite)
         $sched = EmployeeSchedule::updateOrCreate(
@@ -139,6 +159,7 @@ class AttendanceImportService
             [
                 'sched_in' => $d['sched_in'], 'sched_out' => $d['sched_out'], 'sched_end_date' => $d['end_date'],
                 'break_start' => $d['break_start'], 'break_end' => $d['break_end'], 'shift_type' => $d['shift_type'],
+                'import_batch_id' => $batchId,
             ]
         );
 
@@ -148,7 +169,7 @@ class AttendanceImportService
             [
                 'schedule_id' => $sched->id, 'time_in' => $d['time_in_ts'], 'time_out' => $d['time_out_ts'],
                 'duration_hours' => $d['total_hours'], 'night_diff_hours' => round($d['mins_night_diff'] / 60, 2),
-                'status' => $d['status'], 'remarks' => $d['remarks'],
+                'status' => $d['status'], 'remarks' => $d['remarks'], 'import_batch_id' => $batchId,
             ]
         );
 
@@ -158,7 +179,7 @@ class AttendanceImportService
             [
                 'total_hours' => $d['total_hours'], 'mins_late' => $d['mins_late'], 'mins_undertime' => $d['mins_undertime'],
                 'mins_night_diff' => $d['mins_night_diff'], 'over_break_minutes' => $d['over_break'], 'outpass_minutes' => $d['outpass'],
-                'status' => $d['status'], 'remarks' => $d['remarks'],
+                'status' => $d['status'], 'remarks' => $d['remarks'], 'import_batch_id' => $batchId,
             ]
         );
 

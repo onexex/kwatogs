@@ -42,6 +42,7 @@ use App\Http\Controllers\PayrollController;
 use App\Http\Controllers\PayrollApprovalController;
 use App\Http\Controllers\PayrollExportController;
 use App\Http\Controllers\AttendanceImportController;
+use App\Http\Controllers\ImportHistoryController;
 use App\Http\Controllers\OvertimeImportController;
 use App\Http\Controllers\LeaveImportController;
 use App\Http\Controllers\ScheduleRequestController;
@@ -424,16 +425,26 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip', 'check.maintena
     Route::get('/attendance-import', [AttendanceImportController::class, 'index'])->name('attendance-import.index')->middleware('can:attendanceimport');
     Route::get('/attendance-import/template', [AttendanceImportController::class, 'template'])->name('attendance-import.template')->middleware('can:attendanceimport');
     Route::post('/attendance-import/upload', [AttendanceImportController::class, 'import'])->name('attendance-import.upload')->middleware('can:attendanceimport');
+    // Import history — pull up a past import and roll it back as a unit, then re-upload corrected
+    Route::get('/attendance-import/history', [ImportHistoryController::class, 'index'])->defaults('module', 'attendance')->name('attendance-import.history')->middleware('can:attendanceimport');
+    Route::get('/attendance-import/history/{id}', [ImportHistoryController::class, 'show'])->defaults('module', 'attendance')->name('attendance-import.history.show')->middleware('can:attendanceimport');
+    Route::delete('/attendance-import/history/{id}', [ImportHistoryController::class, 'destroy'])->defaults('module', 'attendance')->name('attendance-import.history.destroy')->middleware('can:attendanceimport');
 
     // Overtime import
     Route::get('/overtime-import', [OvertimeImportController::class, 'index'])->name('overtime-import.index')->middleware('can:overtimeimport');
     Route::get('/overtime-import/template', [OvertimeImportController::class, 'template'])->name('overtime-import.template')->middleware('can:overtimeimport');
     Route::post('/overtime-import/upload', [OvertimeImportController::class, 'import'])->name('overtime-import.upload')->middleware('can:overtimeimport');
+    Route::get('/overtime-import/history', [ImportHistoryController::class, 'index'])->defaults('module', 'overtime')->name('overtime-import.history')->middleware('can:overtimeimport');
+    Route::get('/overtime-import/history/{id}', [ImportHistoryController::class, 'show'])->defaults('module', 'overtime')->name('overtime-import.history.show')->middleware('can:overtimeimport');
+    Route::delete('/overtime-import/history/{id}', [ImportHistoryController::class, 'destroy'])->defaults('module', 'overtime')->name('overtime-import.history.destroy')->middleware('can:overtimeimport');
 
     // Leave import
     Route::get('/leave-import', [LeaveImportController::class, 'index'])->name('leave-import.index')->middleware('can:leaveimport');
     Route::get('/leave-import/template', [LeaveImportController::class, 'template'])->name('leave-import.template')->middleware('can:leaveimport');
     Route::post('/leave-import/upload', [LeaveImportController::class, 'import'])->name('leave-import.upload')->middleware('can:leaveimport');
+    Route::get('/leave-import/history', [ImportHistoryController::class, 'index'])->defaults('module', 'leave')->name('leave-import.history')->middleware('can:leaveimport');
+    Route::get('/leave-import/history/{id}', [ImportHistoryController::class, 'show'])->defaults('module', 'leave')->name('leave-import.history.show')->middleware('can:leaveimport');
+    Route::delete('/leave-import/history/{id}', [ImportHistoryController::class, 'destroy'])->defaults('module', 'leave')->name('leave-import.history.destroy')->middleware('can:leaveimport');
 
     // Schedule change requests
     Route::get('/schedulerequest/mine', [ScheduleRequestController::class, 'mine'])->name('schedule-request.mine')->middleware('can:createschedulechange');

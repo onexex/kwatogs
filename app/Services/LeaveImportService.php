@@ -6,11 +6,14 @@ use App\Models\Leave;
 use App\Models\LeaveDetail;
 use App\Models\leavetype;
 use App\Models\User;
+use App\Services\Concerns\CreatesImportBatch;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class LeaveImportService
 {
+    use CreatesImportBatch;
+
     // 0-based column positions (must match the leave import template order)
     private const C = [
         'employee_id' => 0, 'name' => 1, 'leave_type' => 2, 'start_date' => 3, 'end_date' => 4,
@@ -26,9 +29,9 @@ class LeaveImportService
 
     public function __construct(private ?int $approverUserId = null) {}
 
-    public function import(array $rows): array
+    public function import(array $rows, ?string $filename = null): array
     {
-        $result = ['inserted' => 0, 'updated' => 0, 'skipped' => 0, 'errors' => [], 'aborted' => false];
+        $result = ['inserted' => 0, 'updated' => 0, 'skipped' => 0, 'errors' => [], 'aborted' => false, 'batch_id' => null];
         $this->preload();
         $start = (!empty($rows) && stripos($this->cell($rows[0], 'employee_id'), 'employee') !== false) ? 1 : 0;
 
@@ -65,10 +68,21 @@ class LeaveImportService
         }
 
         // ── Phase 2: persist everything in one transaction (rolls back if anything fails). ──
-        DB::transaction(function () use (&$result, $prepared) {
+        // Tag every row with a batch id so the import can be rolled back as a unit later.
+        DB::transaction(function () use (&$result, $prepared, $filename) {
+            $starts = array_column($prepared, 'start_date');
+            $ends   = array_column($prepared, 'end_date');
+            $batch = $this->createImportBatch(
+                'leave', $filename, count($prepared),
+                $starts ? min($starts) : null, $ends ? max($ends) : null
+            );
+
             foreach ($prepared as $data) {
-                $this->persist($data) ? $result['inserted']++ : $result['updated']++;
+                $this->persist($data, $batch->id) ? $result['inserted']++ : $result['updated']++;
             }
+
+            $batch->update(['inserted' => $result['inserted'], 'updated' => $result['updated']]);
+            $result['batch_id'] = $batch->id;
         });
 
         return $result;
@@ -162,7 +176,7 @@ class LeaveImportService
     }
 
     /** Persist one validated payload. Runs inside the caller's transaction. */
-    private function persist(array $d): bool
+    private function persist(array $d, ?int $batchId = null): bool
     {
         $leave = Leave::updateOrCreate(
             ['employee_id' => $d['employee_id'], 'start_date' => $d['start_date'], 'end_date' => $d['end_date'], 'leave_type' => $d['leave_type']],
@@ -170,6 +184,7 @@ class LeaveImportService
                 'total_hrs' => $d['total_hrs'], 'reason' => $d['reason'], 'status' => $d['status'],
                 'is_half_day' => $d['is_half_day'], 'leave_kind' => $d['leave_kind'],
                 'approved_by' => $d['approved_at'] ? $this->approverUserId : null, 'approved_at' => $d['approved_at'],
+                'import_batch_id' => $batchId,
             ]
         );
         $created = $leave->wasRecentlyCreated;
@@ -187,6 +202,7 @@ class LeaveImportService
                 'leave_kind' => $d['leave_kind'],
                 'total_hours' => $d['hours_per_day'],
                 'status' => $d['status'],
+                'import_batch_id' => $batchId,
             ]);
             $day->addDay();
         }

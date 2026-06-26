@@ -18,8 +18,9 @@ class EmployeeSchedule extends Model
         'sched_end_date',
         'sched_out',
         'shift_type',
-        'break_start',   
-        'break_end'     
+        'break_start',
+        'break_end',
+        'import_batch_id'
     ];
 
   

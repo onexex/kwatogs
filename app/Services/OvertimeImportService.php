@@ -4,11 +4,14 @@ namespace App\Services;
 
 use App\Models\empDetail;
 use App\Models\Overtime;
+use App\Services\Concerns\CreatesImportBatch;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class OvertimeImportService
 {
+    use CreatesImportBatch;
+
     // 0-based column positions (must match the OT import template order)
     private const C = [
         'employee_id' => 0, 'name' => 1, 'date_from' => 2, 'date_to' => 3, 'time_in' => 4,
@@ -35,9 +38,9 @@ class OvertimeImportService
 
     public function __construct(private ?int $approverEmpDetailId = null) {}
 
-    public function import(array $rows): array
+    public function import(array $rows, ?string $filename = null): array
     {
-        $result = ['inserted' => 0, 'updated' => 0, 'skipped' => 0, 'errors' => [], 'aborted' => false];
+        $result = ['inserted' => 0, 'updated' => 0, 'skipped' => 0, 'errors' => [], 'aborted' => false, 'batch_id' => null];
         $this->preload();
         $start = (!empty($rows) && stripos($this->cell($rows[0], 'employee_id'), 'employee') !== false) ? 1 : 0;
 
@@ -74,10 +77,21 @@ class OvertimeImportService
         }
 
         // ── Phase 2: persist everything in one transaction (rolls back if anything fails). ──
-        DB::transaction(function () use (&$result, $prepared) {
+        // Tag every row with a batch id so the import can be rolled back as a unit later.
+        DB::transaction(function () use (&$result, $prepared, $filename) {
+            $froms = array_column($prepared, 'date_from');
+            $tos   = array_column($prepared, 'date_to');
+            $batch = $this->createImportBatch(
+                'overtime', $filename, count($prepared),
+                $froms ? min($froms) : null, $tos ? max($tos) : null
+            );
+
             foreach ($prepared as $data) {
-                $this->persist($data) ? $result['inserted']++ : $result['updated']++;
+                $this->persist($data, $batch->id) ? $result['inserted']++ : $result['updated']++;
             }
+
+            $batch->update(['inserted' => $result['inserted'], 'updated' => $result['updated']]);
+            $result['batch_id'] = $batch->id;
         });
 
         return $result;
@@ -182,7 +196,7 @@ class OvertimeImportService
     }
 
     /** Persist one validated payload. Runs inside the caller's transaction. */
-    private function persist(array $d): bool
+    private function persist(array $d, ?int $batchId = null): bool
     {
         $ot = Overtime::updateOrCreate(
             ['emp_detail_id' => $d['emp_detail_id'], 'date_from' => $d['date_from'], 'time_in' => $d['time_in']],
@@ -198,6 +212,7 @@ class OvertimeImportService
                 'hourly_rate' => $d['hourly_rate'],
                 'total_hrs' => $d['total_hrs'],
                 'total_pay' => $d['total_pay'],
+                'import_batch_id' => $batchId,
             ]
         );
 

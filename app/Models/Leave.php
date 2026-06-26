@@ -29,6 +29,7 @@ class Leave extends Model
         'is_half_day',
         'leave_kind',
         'disapproved_remarks',
+        'import_batch_id',
     ];
 
     protected $casts = [

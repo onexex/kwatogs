@@ -53,9 +53,14 @@
             <p class="page-title">Attendance Import</p>
             <p class="page-sub">Bulk-create schedules, home attendance logs, and daily summaries from one file</p>
         </div>
-        <a href="{{ route('attendance-import.template') }}" class="btn-ghost">
-            <i class="fa fa-download"></i> Download Template
-        </a>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{{ route('attendance-import.history') }}" class="btn-ghost">
+                <i class="fa fa-clock-rotate-left"></i> Import History
+            </a>
+            <a href="{{ route('attendance-import.template') }}" class="btn-ghost">
+                <i class="fa fa-download"></i> Download Template
+            </a>
+        </div>
     </div>
 
     <div class="sc">

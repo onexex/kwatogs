@@ -54,9 +54,14 @@
             <p class="page-title">Leave Import</p>
             <p class="page-sub">Bulk-import approved leaves so they reflect in attendance and payroll</p>
         </div>
-        <a href="{{ route('leave-import.template') }}" class="btn-ghost">
-            <i class="fa fa-download"></i> Download Template
-        </a>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{{ route('leave-import.history') }}" class="btn-ghost">
+                <i class="fa fa-clock-rotate-left"></i> Import History
+            </a>
+            <a href="{{ route('leave-import.template') }}" class="btn-ghost">
+                <i class="fa fa-download"></i> Download Template
+            </a>
+        </div>
     </div>
 
     <div class="sc">

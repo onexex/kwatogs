@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditLog;
 use App\Services\AttendanceImportService;
 use App\Support\SimpleXlsx;
 use App\Support\SimpleXlsxReader;
@@ -75,7 +76,7 @@ class AttendanceImportController extends Controller
             return response()->json(['success' => false, 'message' => 'The file has no data rows.'], 422);
         }
 
-        $result = $service->import($rows);
+        $result = $service->import($rows, $request->file('file')->getClientOriginalName());
 
         // Summary audit entry — one row per import (not per record), with file + counts.
         \App\Models\AuditLog::record('imported', 'Attendance', null, [
@@ -98,6 +99,7 @@ class AttendanceImportController extends Controller
             'updated'  => $result['updated'],
             'skipped'  => $result['skipped'],
             'errors'   => $result['errors'],
+            'batch_id' => $result['batch_id'] ?? null,
             'message'  => $message,
         ]);
     }

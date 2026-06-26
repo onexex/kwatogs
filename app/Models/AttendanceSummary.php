@@ -21,7 +21,8 @@ class AttendanceSummary extends Model
         'status',
         'remarks',
         'over_break_minutes',
-        'outpass_minutes'
+        'outpass_minutes',
+        'import_batch_id'
     ];
 
     // Relationships

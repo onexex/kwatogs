@@ -54,9 +54,14 @@
             <p class="page-title">Overtime Import</p>
             <p class="page-sub">Bulk-import approved overtime so it flows straight into payroll</p>
         </div>
-        <a href="{{ route('overtime-import.template') }}" class="btn-ghost">
-            <i class="fa fa-download"></i> Download Template
-        </a>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{{ route('overtime-import.history') }}" class="btn-ghost">
+                <i class="fa fa-clock-rotate-left"></i> Import History
+            </a>
+            <a href="{{ route('overtime-import.template') }}" class="btn-ghost">
+                <i class="fa fa-download"></i> Download Template
+            </a>
+        </div>
     </div>
 
     <div class="sc">
