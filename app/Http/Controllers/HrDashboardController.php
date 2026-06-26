@@ -50,8 +50,13 @@ class HrDashboardController extends Controller
         $d['pendTotal'] = $d['pendLeave'] + $d['pendOt'] + $d['pendSched'];
 
         // ── Today's attendance ─────────────────────────────────────────
-        $d['present'] = DB::table('attendance_summaries')->whereDate('attendance_date', $today)->where('total_hours', '>', 0)->distinct('employee_id')->count('employee_id');
-        $d['late']    = DB::table('attendance_summaries')->whereDate('attendance_date', $today)->where('mins_late', '>', 0)->distinct('employee_id')->count('employee_id');
+        // "Present" must reflect anyone who actually punched in today — the live punch
+        // log (home_attendances), NOT attendance_summaries. The summary's total_hours is
+        // only written when an employee clocks OUT (updateDailySummary sums duration_hours,
+        // which is computed in logTimeOut), so counting summaries misses everyone still on
+        // shift. This is the same source the "Who's in right now" panel uses.
+        $d['present'] = DB::table('home_attendances')->whereDate('attendance_date', $today)->whereNotNull('time_in')->distinct('employee_id')->count('employee_id');
+        $d['late']    = $this->lateToday($today);
         $d['onLeave'] = LeaveDetail::whereDate('date', $today)->where('status', 'APPROVEDBYCFO')->distinct('employee_id')->count('employee_id');
         $d['onOb']    = OB::where('status', 'APPROVEDBYCFO')->whereDate('start_date', '<=', $today)->whereDate('end_date', '>=', $today)->distinct('employee_id')->count('employee_id');
 
@@ -238,12 +243,42 @@ class HrDashboardController extends Controller
         return view('pages.management.hr_dashboard', ['d' => $d]);
     }
 
+    /**
+     * Count employees who are LATE today, computed live from the punch log instead of
+     * attendance_summaries.mins_late (which is only written on clock-out, so it misses
+     * anyone still on shift). Mirrors homeAttendance::updateDailySummary(): an employee is
+     * late when their FIRST punch-in of the day is after the scheduled start
+     * (sched_start_date + sched_in) of the schedule that punch is tied to.
+     */
+    private function lateToday(string $today): int
+    {
+        $rows = DB::table('home_attendances as h')
+            ->join('employee_schedules as s', 's.id', '=', 'h.schedule_id')
+            ->whereDate('h.attendance_date', $today)
+            ->whereNotNull('h.time_in')
+            ->selectRaw('h.employee_id, MIN(h.time_in) as first_in, s.sched_start_date, s.sched_in')
+            ->groupBy('h.employee_id', 's.sched_start_date', 's.sched_in')
+            ->get();
+
+        $late = [];
+        foreach ($rows as $r) {
+            $schedIn = Carbon::parse($r->sched_start_date . ' ' . $r->sched_in);
+            if (Carbon::parse($r->first_in)->gt($schedIn)) {
+                $late[$r->employee_id] = true; // distinct employees only
+            }
+        }
+
+        return count($late);
+    }
+
     /** AJAX: all live counters for whole-dashboard auto-refresh. */
     public function live()
     {
         $today = Carbon::today()->toDateString();
-        $present   = DB::table('attendance_summaries')->whereDate('attendance_date', $today)->where('total_hours', '>', 0)->distinct('employee_id')->count('employee_id');
-        $late      = DB::table('attendance_summaries')->whereDate('attendance_date', $today)->where('mins_late', '>', 0)->distinct('employee_id')->count('employee_id');
+        // Present = anyone who punched in today (home_attendances), matching index(). The
+        // summary's total_hours is only set on clock-out, so it under-counts active staff.
+        $present   = DB::table('home_attendances')->whereDate('attendance_date', $today)->whereNotNull('time_in')->distinct('employee_id')->count('employee_id');
+        $late      = $this->lateToday($today);
         $onLeave   = LeaveDetail::whereDate('date', $today)->where('status', 'APPROVEDBYCFO')->distinct('employee_id')->count('employee_id');
         $onOb      = OB::where('status', 'APPROVEDBYCFO')->whereDate('start_date', '<=', $today)->whereDate('end_date', '>=', $today)->distinct('employee_id')->count('employee_id');
         $scheduled = DB::table('employee_schedules')->whereDate('sched_start_date', '<=', $today)->whereDate('sched_end_date', '>=', $today)->distinct('employee_id')->count('employee_id');
