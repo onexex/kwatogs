@@ -54,6 +54,10 @@ return [
             'unix_socket' => env('DB_SOCKET', ''),
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
+            // Pin the session timezone so TIMESTAMP columns (created_at/updated_at, etc.) read and
+            // write deterministically regardless of the server's default tz. Uses a fixed offset so
+            // it works even where named-timezone tables aren't loaded. (Asia/Manila = +08:00.)
+            'timezone' => env('DB_TIMEZONE', '+08:00'),
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,

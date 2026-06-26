@@ -120,6 +120,7 @@ class AllowedIpController extends Controller
         $allowedIp->update([
             'ip_address'  => $request->ip_address,
             'description' => $request->description,
+            'status'      => $request->boolean('status'),
         ]);
 
         return redirect()
@@ -129,20 +130,25 @@ class AllowedIpController extends Controller
 
     // ─── Delete ───────────────────────────────────────────────────────────────
 
-    public function destroy(AllowedIp $allowedIp)
+    public function destroy(Request $request, AllowedIp $allowedIp)
     {
         $role = (int) session('LoggedUserRole');
         if (! in_array($role, self::BYPASS_ROLES, strict: true)) {
-            return redirect()
-                ->route('allowed-ips.index')
-                ->with('error', 'Access denied. Only admins may delete IP entries.');
+            $message = 'Access denied. Only admins may delete IP entries.';
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => $message], 403);
+            }
+            return redirect()->route('allowed-ips.index')->with('error', $message);
         }
 
         $allowedIp->delete();
 
-        return redirect()
-            ->route('allowed-ips.index')
-            ->with('success', 'IP address removed from the allowlist.');
+        $message = 'IP address removed from the allowlist.';
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json(['success' => true, 'message' => $message]);
+        }
+
+        return redirect()->route('allowed-ips.index')->with('success', $message);
     }
 
     // ─── Toggle status (AJAX-aware) ───────────────────────────────────────────

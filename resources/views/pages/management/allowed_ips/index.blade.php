@@ -551,6 +551,11 @@
         ? document.querySelector('meta[name="csrf-token"]').getAttribute('content')
         : '{{ csrf_token() }}';
 
+    // Mark every request as AJAX so the server returns JSON (not a redirect that
+    // the XHR would re-issue with the original method → 405 on the collection URL).
+    axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+    axios.defaults.headers.common['X-CSRF-TOKEN'] = csrfToken;
+
     // ── Select all ─────────────────────────────────────────────────────────────
     var selectAll = document.getElementById('select-all');
     if (selectAll) {

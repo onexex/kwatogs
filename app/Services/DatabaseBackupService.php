@@ -244,6 +244,10 @@ class DatabaseBackupService
             $command[] = '--password='.$config['password'];
         }
 
+        // Keep TIMESTAMP columns as their session-local wall-clock instead of converting them to
+        // UTC (mysqldump's default). Prevents attendance/punch times from shifting when the dump is
+        // restored on a host whose timezone differs from where it was taken.
+        $command[] = '--skip-tz-utc';
         $command[] = '--single-transaction';
         $command[] = '--quick';
         $command[] = '--routines';
