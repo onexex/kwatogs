@@ -179,6 +179,7 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip', 'check.maintena
     Route::get('/pages/management/accessrights',[EmployeeRoleController::class, 'index']);
     Route::get('/pages/management/databasebackup',[DatabaseBackupController::class, 'index'])->name('database-backup.index');
     Route::post('/pages/management/databasebackup',[DatabaseBackupController::class, 'store'])->name('database-backup.store');
+    Route::post('/pages/management/databasebackup/import',[DatabaseBackupController::class, 'import'])->name('database-backup.import');
     Route::get('/pages/management/databasebackup/{filename}/download',[DatabaseBackupController::class, 'download'])->name('database-backup.download');
     Route::post('/pages/management/databasebackup/{filename}/restore',[DatabaseBackupController::class, 'restore'])->name('database-backup.restore');
     Route::delete('/pages/management/databasebackup/{filename}',[DatabaseBackupController::class, 'destroy'])->name('database-backup.destroy');

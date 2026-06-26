@@ -68,7 +68,8 @@ class reportAttendanceCtrl extends Controller
             ->select('attendance_summaries.*') 
             ->get();
 
-        $logs = \App\Models\homeAttendance::whereBetween('attendance_date', [$dateFrom, $dateTo])
+        $logs = \App\Models\homeAttendance::with('employee')
+            ->whereBetween('attendance_date', [$dateFrom, $dateTo])
             ->when($empId !== 'All', fn($q) => $q->where('employee_id', $empId))
             ->get()
             ->groupBy(['employee_id', fn($log) => $log->attendance_date->format('Y-m-d')]);
@@ -103,11 +104,70 @@ class reportAttendanceCtrl extends Controller
                 'break_end'   => $sched->break_end,
                 'shift_type'  => $sched->shift_type,
             ] : null;
+
+            $summary->is_partial = false;
         });
+
+        // ── Partial days ────────────────────────────────────────────────
+        // A summary is only written on time-out (homeAttendance::updateDailySummary,
+        // called from logTimeOut / autoCloseMissedLogout). A day with punch logs but
+        // no summary yet — e.g. still clocked in — would otherwise be invisible here.
+        // Synthesize a read-only "partial" row from the raw logs so the day still shows,
+        // with computed fields (late/undertime/etc.) left blank until the summary exists.
+        $summarized = $summaries
+            ->map(fn($s) => $s->employee_id . '|' . $s->attendance_date->format('Y-m-d'))
+            ->flip();
+
+        $partials = collect();
+        foreach ($logs as $empId => $byDate) {
+            foreach ($byDate as $date => $dayLogs) {
+                if ($summarized->has($empId . '|' . $date)) {
+                    continue; // a real summary already covers this day
+                }
+
+                $sched = optional($schedules->get($empId))->first(function ($s) use ($date) {
+                    $start = \Carbon\Carbon::parse($s->sched_start_date)->format('Y-m-d');
+                    $end   = \Carbon\Carbon::parse($s->sched_end_date)->format('Y-m-d');
+                    return $start <= $date && $date <= $end;
+                });
+
+                $partials->push([
+                    'employee_id'        => $empId,
+                    'employee'           => $dayLogs->first()->employee,
+                    'attendance_date'    => $date,
+                    'formatted_date'     => $date,
+                    'logs'               => $dayLogs->values(),
+                    'manual_deductions'  => [],
+                    'total_hours'        => round($dayLogs->sum('duration_hours'), 2),
+                    'mins_late'          => 0,
+                    'mins_undertime'     => 0,
+                    'mins_night_diff'    => 0,
+                    'outpass_minutes'    => 0,
+                    'over_break_minutes' => 0,
+                    'status'             => 'partial',
+                    'is_partial'         => true,
+                    'schedule'           => $sched ? [
+                        'sched_in'    => $sched->sched_in,
+                        'sched_out'   => $sched->sched_out,
+                        'break_start' => $sched->break_start,
+                        'break_end'   => $sched->break_end,
+                        'shift_type'  => $sched->shift_type,
+                    ] : null,
+                ]);
+            }
+        }
+
+        // Merge real summaries + partial days and keep the same lname → date ordering.
+        $data = $summaries->concat($partials)
+            ->sortBy([
+                fn($row) => strtolower(optional(data_get($row, 'employee'))->lname ?? ''),
+                fn($row) => data_get($row, 'formatted_date'),
+            ])
+            ->values();
 
         return response()->json([
             'status' => 'success',
-            'data' => $summaries, 
+            'data' => $data,
         ]);
     }
 

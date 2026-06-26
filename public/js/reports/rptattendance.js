@@ -199,22 +199,30 @@ document.addEventListener('DOMContentLoaded', function () {
                 sub.gross += grossHours; sub.ded += totalDeductedMins; sub.net += netHours;
                 sub.late += late; sub.ut += ut; sub.nd += nd; sub.pass += pass; sub.ob += ob;
 
+                const isPartial = !!item.is_partial;
+                const dateCell = isPartial
+                    ? `${item.formatted_date ?? '-'}<div><span class="badge bg-warning text-dark" style="font-size:.6rem;font-weight:700;">PARTIAL</span></div>`
+                    : (item.formatted_date ?? '-');
+                // Partial day (logs but no computed summary yet) — leave the computed
+                // columns blank rather than showing a misleading 0.
+                const dash = isPartial ? '<span class="text-muted">—</span>' : null;
+
                 no++;
                 rows += `
-                    <tr>
+                    <tr${isPartial ? ' style="background:#fffbeb;"' : ''}>
                         <td>${no}</td>
                         <td class="text-start text-capitalize">${capitalizeName(empName)}</td>
-                        <td>${item.formatted_date ?? '-'}</td>
+                        <td>${dateCell}</td>
                         <td>${schedCell}</td>
                         <td colspan="2">${logRows}</td>
                         <td class="fw-bold">${grossHours.toFixed(2)}</td>
                         <td class="text-danger fw-bold">${totalDeductedMins > 0 ? totalDeductedMins + 'm' : '-'}</td>
                         <td class="text-primary fw-bold">${netHours.toFixed(2)}</td>
-                        <td>${m(late)}</td>
-                        <td>${m(ut)}</td>
-                        <td>${m(nd)}</td>
-                        <td>${m(pass)}</td>
-                        <td>${m(ob)}</td>
+                        <td>${dash ?? m(late)}</td>
+                        <td>${dash ?? m(ut)}</td>
+                        <td>${dash ?? m(nd)}</td>
+                        <td>${dash ?? m(pass)}</td>
+                        <td>${dash ?? m(ob)}</td>
                     </tr>
                 `;
             });

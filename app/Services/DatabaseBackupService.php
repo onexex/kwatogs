@@ -133,13 +133,160 @@ class DatabaseBackupService
     }
 
     /**
+     * Import an external SQL dump (e.g. downloaded from an online host) into the
+     * current database. Supports a full replace as well as a non-destructive merge.
+     *
+     * Modes:
+     *  - 'replace'         : Run the dump as-is (DROP/CREATE/INSERT) — overwrites existing data.
+     *  - 'merge-skip'      : Keep existing structure & rows; insert only rows that do NOT collide
+     *                        with an existing primary/unique key (INSERT IGNORE).
+     *  - 'merge-overwrite' : Keep existing structure; for colliding rows, the imported row wins
+     *                        (REPLACE INTO). Non-colliding rows are inserted.
+     *
+     * @param string $relativePath Path to the uploaded dump (relative to the backup disk).
+     * @param string $mode         One of 'replace', 'merge-skip', 'merge-overwrite'.
+     * @return void
+     *
+     * @throws Exception
+     */
+    public function import(string $relativePath, string $mode = 'replace'): void
+    {
+        $allowedModes = ['replace', 'merge-skip', 'merge-overwrite'];
+
+        if (!in_array($mode, $allowedModes, true)) {
+            throw new Exception("Invalid import mode: {$mode}");
+        }
+
+        $connection = config('database.default');
+        $config = config("database.connections.{$connection}");
+
+        if (($config['driver'] ?? null) !== 'mysql') {
+            throw new Exception("Database import only supports the 'mysql' driver. Current driver: {$config['driver']}");
+        }
+
+        $disk = Storage::disk($this->disk);
+
+        if (!$disk->exists($relativePath)) {
+            throw new Exception('Import file not found.');
+        }
+
+        $absolutePath = $disk->path($relativePath);
+
+        // Always work against a plain .sql file: decompress gzip uploads first.
+        $sqlPath = $absolutePath;
+        $temporaryFiles = [];
+
+        if (str_ends_with(strtolower($absolutePath), '.gz')) {
+            $sqlPath = $absolutePath.'.import.sql';
+            $this->gunzipFile($absolutePath, $sqlPath);
+            $temporaryFiles[] = $sqlPath;
+        }
+
+        try {
+            if (!file_exists($sqlPath) || filesize($sqlPath) === 0) {
+                throw new Exception('Import file is empty or could not be read.');
+            }
+
+            // For merge modes, rewrite the dump so it preserves the existing data:
+            // skip DROP TABLE, make CREATE TABLE non-destructive, and turn plain
+            // INSERTs into INSERT IGNORE / REPLACE depending on the chosen mode.
+            if ($mode !== 'replace') {
+                $mergedPath = $sqlPath.'.merge.sql';
+                $this->buildMergeSqlFile($sqlPath, $mergedPath, $mode);
+                $sqlPath = $mergedPath;
+                $temporaryFiles[] = $mergedPath;
+            }
+
+            // Merge tolerates structural "already exists" errors (--force); a replace must be clean.
+            $force = $mode !== 'replace';
+
+            $process = new Process($this->buildRestoreCommand($config, $sqlPath, $force));
+            $process->setTimeout(3600);
+            $process->run();
+
+            if (!$process->isSuccessful()) {
+                throw new Exception('Database import failed: '.($process->getErrorOutput() ?: $process->getOutput()));
+            }
+
+            Log::info("Database imported successfully ({$mode}) from: ".basename($relativePath));
+        } finally {
+            foreach ($temporaryFiles as $tmp) {
+                @unlink($tmp);
+            }
+        }
+    }
+
+    /**
+     * Stream-rewrite a SQL dump into a non-destructive "merge" dump.
+     *
+     * Reads the source line by line (so large dumps don't exhaust memory) and:
+     *  - comments out `DROP TABLE IF EXISTS ...` so existing tables/data are kept;
+     *  - rewrites `CREATE TABLE \`x\`` → `CREATE TABLE IF NOT EXISTS \`x\``;
+     *  - rewrites leading `INSERT INTO` → `INSERT IGNORE INTO` (merge-skip) or
+     *    `REPLACE INTO` (merge-overwrite).
+     *
+     * Foreign-key checks are disabled around the whole file so table ordering
+     * and existing references don't block the merge.
+     *
+     * @param string $source
+     * @param string $destination
+     * @param string $mode 'merge-skip' | 'merge-overwrite'
+     * @return void
+     *
+     * @throws Exception
+     */
+    protected function buildMergeSqlFile(string $source, string $destination, string $mode): void
+    {
+        $in = fopen($source, 'rb');
+        $out = fopen($destination, 'wb');
+
+        if ($in === false || $out === false) {
+            throw new Exception('Unable to open file for merge transformation.');
+        }
+
+        fwrite($out, "SET FOREIGN_KEY_CHECKS=0;\n");
+
+        while (($line = fgets($in)) !== false) {
+            $trimmed = ltrim($line);
+
+            // Preserve existing tables and their rows.
+            if (stripos($trimmed, 'DROP TABLE') === 0) {
+                fwrite($out, '-- '.$line);
+                continue;
+            }
+
+            // Don't recreate tables that already exist.
+            if (stripos($trimmed, 'CREATE TABLE ') === 0 && stripos($trimmed, 'IF NOT EXISTS') === false) {
+                $line = preg_replace('/CREATE TABLE\s+/i', 'CREATE TABLE IF NOT EXISTS ', $line, 1);
+            }
+
+            // Reroute inserts so existing rows are never lost.
+            if (stripos($trimmed, 'INSERT INTO') === 0) {
+                if ($mode === 'merge-overwrite') {
+                    $line = preg_replace('/INSERT\s+INTO/i', 'REPLACE INTO', $line, 1);
+                } else {
+                    $line = preg_replace('/INSERT\s+INTO/i', 'INSERT IGNORE INTO', $line, 1);
+                }
+            }
+
+            fwrite($out, $line);
+        }
+
+        fwrite($out, "\nSET FOREIGN_KEY_CHECKS=1;\n");
+
+        fclose($in);
+        fclose($out);
+    }
+
+    /**
      * Build the mysql restore command, importing from the given SQL file.
      *
      * @param array $config
      * @param string $sourceFile
+     * @param bool $force Continue past SQL errors (used for tolerant merges).
      * @return array<int, string>
      */
-    protected function buildRestoreCommand(array $config, string $sourceFile): array
+    protected function buildRestoreCommand(array $config, string $sourceFile, bool $force = false): array
     {
         $command = [
             $this->resolveMysqlBinary(),
@@ -150,6 +297,10 @@ class DatabaseBackupService
 
         if (!empty($config['password'])) {
             $command[] = '--password='.$config['password'];
+        }
+
+        if ($force) {
+            $command[] = '--force';
         }
 
         $command[] = $config['database'] ?? '';
