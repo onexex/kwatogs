@@ -1222,7 +1222,29 @@ class PayrollController extends Controller
 
         $payrolls = $query->orderBy('users.lname')->orderBy('users.fname')->get();
 
-        return view('pages.modules.payslip', compact('payrolls', 'payDate'));
+        // Allowance derivation lives only in the computation log (the payrolls table
+        // stores the NET allowance only). Pull the allowance sub-breakdown for these
+        // employees + pay date so the payslip can show a compact
+        // "gross days × rate − late/UT − over-break" note under the Allowance line.
+        // Keyed by "employeeId|Y-m-d"; one bounded bulk query, no N+1.
+        $allowanceByKey = collect();
+        if ($payrolls->isNotEmpty()) {
+            $empIds = $payrolls->pluck('employee_id')->unique()->all();
+            PayrollLog::whereIn('employee_id', $empIds)
+                ->whereDate('pay_date', $payDate)
+                ->get(['employee_id', 'pay_date', 'breakdown'])
+                ->each(function ($log) use (&$allowanceByKey) {
+                    $bd = $log->breakdown ?? [];
+                    if (!is_array($bd) || empty($bd['allowance'])) { return; }
+                    $key = $log->employee_id.'|'.\Carbon\Carbon::parse($log->pay_date)->format('Y-m-d');
+                    $allowanceByKey->put($key, [
+                        'allowance'        => $bd['allowance'],
+                        'allowance_hourly' => $bd['rates']['allowance_hourly'] ?? 0,
+                    ]);
+                });
+        }
+
+        return view('pages.modules.payslip', compact('payrolls', 'payDate', 'allowanceByKey'));
     }
 
     /**

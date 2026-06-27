@@ -237,6 +237,27 @@
         padding: 16px 22px;
     }
     #mdlLogDetail .modal-body { background: var(--bg); padding: 22px; }
+
+    /* ── Computation waterfall (matches the print report) ── */
+    #mdlLogBody .calc { width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+    #mdlLogBody .calc td { padding:6px 12px; font-size:.8rem; border-bottom:1px solid #f1f5f9; vertical-align:baseline; }
+    #mdlLogBody .calc td.lbl  { color:var(--slate); }
+    #mdlLogBody .calc td.note { color:var(--muted); font-size:.68rem; text-align:right; white-space:nowrap; }
+    #mdlLogBody .calc td.amt  { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; width:128px; font-weight:600; }
+    #mdlLogBody .calc td.amt.add { color:#0f766e; }
+    #mdlLogBody .calc td.amt.sub { color:#b91c1c; }
+    #mdlLogBody .calc tr.sec td { background:#f8fafc; font-size:.62rem; font-weight:800; text-transform:uppercase; letter-spacing:.5px; color:var(--slate-light); padding-top:9px; padding-bottom:4px; }
+    #mdlLogBody .calc tr.info td  { color:var(--slate-light); }
+    #mdlLogBody .calc tr.info td.amt { font-weight:500; }
+    #mdlLogBody .calc tr.mile td { background:var(--teal-light); font-weight:800; border-top:2px solid var(--teal); border-bottom:2px solid var(--teal); }
+    #mdlLogBody .calc tr.mile td.lbl { color:var(--teal-dark); text-transform:uppercase; font-size:.72rem; letter-spacing:.3px; }
+    #mdlLogBody .calc tr.mile td.amt { color:var(--teal-dark); font-size:.9rem; }
+    #mdlLogBody .calc tr.grand td { background:var(--teal); color:#fff; font-weight:800; }
+    #mdlLogBody .calc tr.grand td.lbl { text-transform:uppercase; letter-spacing:.4px; }
+    #mdlLogBody .calc tr.grand td.amt { color:#fff; font-size:.95rem; }
+    #mdlLogBody .calc-foot { margin-top:12px; font-size:.72rem; color:var(--muted); line-height:1.6; }
+    #mdlLogBody .calc-foot .lbl  { font-weight:700; color:var(--slate); text-transform:uppercase; letter-spacing:.3px; }
+    #mdlLogBody .calc-foot .warn { color:var(--danger); font-weight:700; }
 </style>
 
 <div class="pl-shell">
@@ -339,17 +360,7 @@ $(function () {
     let curPage = 1;
 
     const peso = (n) => Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-    // Keys in the computation breakdown that represent money (comma + 2 decimals).
-    // Counts, minutes, hours and dates are deliberately left as-is.
-    const MONEY_KEYS = new Set([
-        'basic_monthly','daily_rate','hourly_rate','daily_allowance','allowance_hourly',
-        'x_hourly_rate','x_daily','deduction','amount','total_pay','pay','gross','net',
-        'late_ut_deduction','over_break_deduction','total_deductions','basic_pay','gross_pay','holiday_pay',
-        'sss','philhealth','pagibig','tax','gov_dues','taxable',
-        'company','charges','cash_adv','other','sss_loan','pagibig_loan',
-        'gross_taxed','net_after_tax','total','net_pay','pay_receivable'
-    ]);
+    const esc  = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
     function loadLogs(page = 1) {
         const params = {
@@ -407,24 +418,156 @@ $(function () {
         c.innerHTML = h;
     }
 
-    // Render a breakdown object as nested tables
-    function renderBreakdown(obj) {
-        if (obj === null || obj === undefined) return '<span class="text-muted">—</span>';
-        if (typeof obj !== 'object') return `<span>${obj}</span>`;
-        let h = '<table class="table table-sm mb-0"><tbody>';
-        Object.keys(obj).forEach(k => {
-            const v = obj[k];
-            const label = k.replace(/_/g, ' ');
-            if (v !== null && typeof v === 'object') {
-                h += `<tr><td class="fw-bold text-capitalize align-top" style="width:200px;">${label}</td><td>${renderBreakdown(v)}</td></tr>`;
-            } else {
-                const isMoney = MONEY_KEYS.has(String(k).toLowerCase())
-                    && v !== null && v !== '' && !isNaN(Number(v));
-                const display = isMoney ? peso(v) : (v ?? '—');
-                h += `<tr><td class="text-capitalize" style="width:200px;">${label}</td><td>${display}</td></tr>`;
+    // Render the computation breakdown as a top-down waterfall that mirrors the
+    // engine: earnings → less attendance deductions = Gross → less gov dues = Net
+    // → less loans / plus allowance & adjustments = Pay Receivable. Milestones use
+    // the stored authoritative figures, so it always foots (RGLR or daily).
+    // Kept in sync with pages/modules/payroll_logs_print.blade.php.
+    function renderBreakdown(bd) {
+        if (!bd || typeof bd !== 'object') return '<span class="text-muted">No breakdown available.</span>';
+
+        const g = (o, path, d = 0) => {
+            let cur = o;
+            for (const seg of path.split('.')) {
+                if (cur && typeof cur === 'object' && seg in cur) cur = cur[seg];
+                else return d;
             }
-        });
+            return cur;
+        };
+        const num = (v) => { const n = Number(v); return isNaN(n) ? 0 : n; };
+        const nz  = (v) => Math.abs(num(v)) > 0.005;
+        const h2  = (v) => num(v).toFixed(2).replace(/\.?0+$/, '');
+
+        const row = (label, amount, sign = 'add', note = '') => {
+            const cls = sign === 'sub' ? 'sub' : 'add';
+            const pre = sign === 'sub' ? '− ' : '+ ';
+            return `<tr><td class="lbl">${esc(label)}</td><td class="note">${esc(note)}</td><td class="amt ${cls}">${pre}${peso(amount)}</td></tr>`;
+        };
+        const mile = (label, amount, grand = false) =>
+            `<tr class="${grand ? 'grand' : 'mile'}"><td class="lbl">${esc(label)}</td><td></td><td class="amt">${peso(amount)}</td></tr>`;
+        const sec  = (label) => `<tr class="sec"><td colspan="3">${esc(label)}</td></tr>`;
+        const info = (label, amount, note = '') => {
+            const val = (amount !== '' && !isNaN(Number(amount))) ? peso(amount) : esc(amount);
+            return `<tr class="info"><td class="lbl">${esc(label)}</td><td class="note">${esc(note)}</td><td class="amt">${val}</td></tr>`;
+        };
+
+        const isRglr   = String(g(bd, 'classification', '')).toUpperCase() === 'RGLR';
+        const mRate    = num(g(bd, 'rates.basic_monthly', 0));
+        const dRate    = num(g(bd, 'rates.daily_rate', 0));
+        const hRate    = num(g(bd, 'rates.hourly_rate', 0));
+        const aDaily   = num(g(bd, 'rates.daily_allowance', 0));
+        const aHourly  = num(g(bd, 'rates.allowance_hourly', 0));
+        const sched    = num(g(bd, 'attendance.scheduled_days', 0));
+        const daysPres = num(g(bd, 'attendance.days_present', 0));
+        const earnBase = isRglr ? num(g(bd, 'totals.basic_pay', 0)) : daysPres * dRate;
+        const grossAdj = num(g(bd, 'adjustments.gross_taxed', 0));
+        const netAdj   = num(g(bd, 'adjustments.net_after_tax', 0));
+
+        let h = '<table class="calc"><tbody>';
+
+        // ── PAY BASIS ──
+        h += sec('Pay Basis');
+        if (nz(mRate)) h += info('Monthly Basic', mRate);
+        h += info('Daily Rate',  dRate, nz(mRate) ? `${h2(mRate)} ÷ 26 days` : '');
+        h += info('Hourly Rate', hRate, nz(dRate) ? `${h2(dRate)} ÷ 8 hrs` : '');
+        if (nz(aDaily))  h += info('Daily Allowance',  aDaily);
+        if (nz(aHourly)) h += info('Allowance / Hour', aHourly, nz(aDaily) ? `${h2(aDaily)} ÷ 8 hrs` : '');
+        h += info('Days Present', `${h2(daysPres)} / ${h2(sched)}`, 'present / scheduled');
+
+        // ── EARNINGS ──
+        h += sec('Earnings');
+        h += row(isRglr ? 'Basic Pay (semi-monthly)' : 'Regular Pay', earnBase, 'add',
+            isRglr ? `${h2(mRate)} ÷ 2` : `${h2(daysPres)} day(s) × ${peso(dRate)}`);
+        if (nz(g(bd, 'overtime.total_pay', 0))) {
+            const otDates = (g(bd, 'overtime.rest_day_ot_dates', []) || []).length;
+            h += row('Overtime Pay', g(bd, 'overtime.total_pay', 0), 'add', otDates ? `${otDates} rest-day OT date(s)` : '');
+        }
+        if (nz(g(bd, 'holiday_pay', 0)))
+            h += row('Holiday Pay', g(bd, 'holiday_pay', 0), 'add', `${g(bd, 'holiday.count', 0)} holiday(s)`);
+        if (nz(g(bd, 'night_diff.pay', 0)))
+            h += row('Night Differential', g(bd, 'night_diff.pay', 0), 'add', `${h2(g(bd, 'night_diff.minutes', 0))}min ÷ 60 × (${peso(hRate)} × 10%)`);
+        if (nz(grossAdj))
+            h += row('Gross Adjustment', Math.abs(grossAdj), grossAdj < 0 ? 'sub' : 'add', 'taxable');
+
+        // ── LESS: ATTENDANCE DEDUCTIONS ──
+        const att = [
+            ['Tardiness',        g(bd,'tardiness.deduction',0),      `${h2(g(bd,'tardiness.total_minutes',0))}min → ${h2(g(bd,'tardiness.bracket_hours',0))}h × ${peso(g(bd,'tardiness.x_hourly_rate',hRate))}`],
+            ['Undertime',        g(bd,'undertime.deduction',0),      `${h2(g(bd,'undertime.total_minutes',0))}min → ${h2(g(bd,'undertime.bracket_hours',0))}h × ${peso(g(bd,'undertime.x_hourly_rate',hRate))}`],
+            ['Absences',         g(bd,'absences.deduction',0),       `${h2(g(bd,'absences.days',0))} day(s) × ${peso(g(bd,'absences.x_daily',dRate))}`],
+            ['Over-break',       g(bd,'over_break.deduction',0),     `${h2(g(bd,'over_break.minutes',0))}min ÷ 60 × ${peso(hRate)}`],
+            ['Outpass',          g(bd,'outpass.deduction',0),        `${h2(g(bd,'outpass.minutes',0))}min ÷ 60 × ${peso(hRate)}`],
+            ['Custom Deduction', g(bd,'custom_deduction.amount',0),  `${h2(g(bd,'custom_deduction.minutes',0))}min ÷ 60 × ${peso(hRate)}`],
+        ];
+        if (att.some(r => nz(r[1]))) {
+            h += sec('Less: Attendance Deductions');
+            att.forEach(([lbl, amt, note]) => { if (nz(amt)) h += row(lbl, amt, 'sub', note); });
+            h += info('Total Attendance Deductions', g(bd,'totals.total_deductions',0), 'subtotal');
+        }
+        h += mile('Gross Pay', g(bd,'totals.gross_pay',0));
+
+        // ── LESS: GOVERNMENT DUES ──
+        const gov = [
+            ['SSS',             g(bd,'contributions.sss',0)],
+            ['PhilHealth',      g(bd,'contributions.philhealth',0)],
+            ['Pag-IBIG',        g(bd,'contributions.pagibig',0)],
+            ['Withholding Tax', g(bd,'contributions.tax',0)],
+        ];
+        h += sec('Less: Government Dues');
+        if (nz(g(bd,'contributions.taxable',0))) h += info('Taxable Income', g(bd,'contributions.taxable',0), 'basis for tax');
+        if (gov.some(r => nz(r[1]))) {
+            gov.forEach(([lbl, amt]) => { if (nz(amt)) h += row(lbl, amt, 'sub'); });
+        } else {
+            h += `<tr><td class="lbl" colspan="3" style="color:#94a3b8;font-style:italic;">No statutory deductions this cut-off (deducted end-of-month).</td></tr>`;
+        }
+        h += mile('Net Pay', g(bd,'net_pay',0));
+
+        // ── LESS: LOANS / PLUS: ALLOWANCE & ADJUSTMENTS ──
+        const loans = [
+            ['Company Loan',    g(bd,'loans.company',0)],
+            ['Charges/Penalty', g(bd,'loans.charges',0)],
+            ['Cash Advance',    g(bd,'loans.cash_adv',0)],
+            ['Other',           g(bd,'loans.other',0)],
+            ['SSS Loan',        g(bd,'loans.sss_loan',0)],
+            ['Pag-IBIG Loan',   g(bd,'loans.pagibig_loan',0)],
+        ];
+        const aGross     = num(g(bd,'allowance.gross',0));
+        const aLateUt    = num(g(bd,'allowance.late_ut_deduction',0));
+        const aOverBreak = num(g(bd,'allowance.over_break_deduction',0));
+        const allowNet   = num(g(bd,'allowance.net',0));
+        const allowDecomposes = Math.abs((aGross - aLateUt - aOverBreak) - allowNet) < 0.02;
+        const hasTail = loans.some(r => nz(r[1])) || nz(aGross) || nz(allowNet) || nz(netAdj);
+        if (hasTail) {
+            h += sec('Less: Loans / Plus: Allowance & Adjustments');
+            loans.forEach(([lbl, amt]) => { if (nz(amt)) h += row(lbl, amt, 'sub'); });
+            if (nz(aGross) && allowDecomposes) {
+                h += row('Allowance (gross)', aGross, 'add', `${h2(g(bd,'allowance.days_paid',0))} day(s) × ${peso(aDaily)}`);
+                if (nz(aLateUt))    h += row('Allowance Late/UT', aLateUt, 'sub', `${h2(g(bd,'allowance.late_ut_hours',0))}h × ${peso(aHourly)}`);
+                if (nz(aOverBreak)) h += row('Allowance Over-break', aOverBreak, 'sub', `${h2(g(bd,'allowance.over_break_minutes',0))}min ÷ 60 × ${peso(aHourly)}`);
+            } else if (nz(allowNet)) {
+                h += row('Allowance (net)', allowNet, 'add');
+            }
+            if (nz(netAdj)) h += row('Net Adjustment', Math.abs(netAdj), netAdj < 0 ? 'sub' : 'add', 'after tax');
+        }
+        h += mile('Pay Receivable', g(bd,'pay_receivable',0), true);
         h += '</tbody></table>';
+
+        // ── Footnotes ──
+        const hols = g(bd,'holiday.applied',[]) || [];
+        const adjs = g(bd,'adjustments.entries',[]) || [];
+        const loansSkipped = g(bd,'loans.can_afford',true) === false;
+        if (hols.length || adjs.length || loansSkipped) {
+            h += '<div class="calc-foot">';
+            if (hols.length) {
+                const list = hols.map(x => `${esc(x.date ? String(x.date).substring(0,10) : '')} (${esc(x.type || '')})`).join(', ');
+                h += `<div><span class="lbl">Holidays applied:</span> ${list}</div>`;
+            }
+            if (adjs.length) {
+                const list = adjs.map(a => `${esc(a.label || 'Adj')} ${esc(a.kind || '')} ${peso(a.amount || 0)} (${esc(a.apply_to || '')})`).join(' · ');
+                h += `<div><span class="lbl">Adjustments:</span> ${list}</div>`;
+            }
+            if (loansSkipped) h += `<div class="warn">⚠ Loan deductions skipped this cut-off — pay receivable would be negative.</div>`;
+            h += '</div>';
+        }
         return h;
     }
 

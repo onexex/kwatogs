@@ -72,12 +72,33 @@
         .b-holiday { background:#f5f3ff; color:#6d28d9; }
         .b-ot      { background:#fefce8; color:#a16207; }
 
+        /* ---- Computation waterfall (earnings → deductions → net) ---- */
+        table.calc { width:100%; border-collapse:collapse; }
+        table.calc td { padding:3px 9px; font-size:10.5px; border-bottom:1px solid #f3f4f6; vertical-align:baseline; }
+        table.calc td.lbl  { color:#334155; }
+        table.calc td.note { color:#94a3b8; font-size:9px; text-align:right; white-space:nowrap; padding-right:4px; }
+        table.calc td.amt  { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; width:118px; }
+        table.calc td.amt.add { color:var(--pos); }
+        table.calc td.amt.sub { color:var(--neg); }
+        table.calc tr.sec td { background:#f8fafc; font-size:8.5px; font-weight:800; text-transform:uppercase;
+            letter-spacing:.4px; color:#64748b; padding:6px 9px 3px; border-bottom:1px solid var(--line); }
+        table.calc tr.mile td { font-weight:800; background:var(--teal-light);
+            border-top:2px solid var(--teal); border-bottom:2px solid var(--teal); }
+        table.calc tr.mile td.lbl { color:var(--teal-dark); text-transform:uppercase; font-size:10px; letter-spacing:.3px; }
+        table.calc tr.mile td.amt { color:var(--teal-dark); font-size:12px; }
+        table.calc tr.grand td { font-weight:800; background:var(--teal); color:#fff; border-top:2px solid var(--teal-dark); }
+        table.calc tr.grand td.lbl { text-transform:uppercase; font-size:11px; letter-spacing:.4px; }
+        table.calc tr.grand td.amt { color:#fff; font-size:13px; }
+        .calc-foot { font-size:9px; color:var(--muted); margin-top:7px; line-height:1.5; }
+        .calc-foot .lbl { font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.3px; }
+        .calc-foot .warn { color:var(--neg); font-weight:700; }
+
         @media print {
             body { padding:0; font-size:10px; }
             .toolbar { display:none; }
             details.detail[open] > summary::before { content:'▾ '; }
             details.detail:not([open]) { display:none; } /* hide collapsed detail in print */
-            table.days-t tr, table.kv tr { page-break-inside:avoid; }
+            table.days-t tr, table.kv tr, table.calc tr { page-break-inside:avoid; }
             .grp { page-break-inside:avoid; }
         }
     </style>
@@ -132,6 +153,32 @@
 
         // Distinct pay dates in this print (used in the header line).
         $runDates = $logs->map(fn ($l) => \Carbon\Carbon::parse($l->pay_date)->format('Y-m-d'))->unique();
+
+        // ── Computation-waterfall row builders ──
+        // A normal earning(+)/deduction(−) line; $sign = 'add' | 'sub'.
+        $calcRow = function ($label, $amount, $sign = 'add', $note = '') use ($peso) {
+            $cls = $sign === 'sub' ? 'sub' : 'add';
+            $pre = $sign === 'sub' ? '&minus; ' : '+ ';
+            return '<tr><td class="lbl">'.e($label).'</td><td class="note">'.e($note).'</td>'
+                 . '<td class="amt '.$cls.'">'.$pre.$peso($amount).'</td></tr>';
+        };
+        // A running-total milestone (Gross / Net) or the grand total (Receivable).
+        $calcMile = function ($label, $amount, $grand = false) use ($peso) {
+            $tr = $grand ? 'grand' : 'mile';
+            return '<tr class="'.$tr.'"><td class="lbl">'.e($label).'</td><td></td>'
+                 . '<td class="amt">'.$peso($amount).'</td></tr>';
+        };
+        // A section divider row (EARNINGS / LESS: ... ).
+        $calcSec = fn ($label) => '<tr class="sec"><td colspan="3">'.e($label).'</td></tr>';
+        // A neutral reference row (rates / basis) — no sign, muted. Amount may be a
+        // formatted number (numeric) or a literal string (e.g. "3 / 5 days").
+        $calcInfo = function ($label, $amount, $note = '') use ($peso) {
+            $val = is_numeric($amount) ? $peso($amount) : e($amount);
+            return '<tr><td class="lbl" style="color:#64748b;">'.e($label).'</td><td class="note">'.e($note).'</td>'
+                 . '<td class="amt" style="color:#64748b;">'.$val.'</td></tr>';
+        };
+        // Trim trailing zeros for clean inline counts/hours in formula notes.
+        $h2 = fn ($v) => rtrim(rtrim(number_format((float) $v, 2), '0'), '.');
     @endphp
 
     <div class="hd">
@@ -185,23 +232,173 @@
                     @if ($utMin > 0)<span class="chip warn"><b>{{ $utMin }}</b>UT min</span>@endif
                 </div>
 
-                {{-- Full computation detail (open by default so it prints) --}}
+                {{-- Computation breakdown, ordered as the engine actually computes it:
+                     earnings → less attendance deductions = Gross → less gov dues = Net
+                     → less loans / plus allowance & adjustments = Pay Receivable.
+                     Milestone values are the stored authoritative figures, so the
+                     waterfall always foots regardless of RGLR vs daily classification. --}}
                 @if (!empty($bd) && is_array($bd))
+                    @php
+                        $isRglr   = strtoupper((string) $g($bd, 'classification', '')) === 'RGLR';
+                        // Reference rates (basis for every formula below).
+                        $mRate    = (float) $g($bd, 'rates.basic_monthly', 0);
+                        $dRate    = (float) $g($bd, 'rates.daily_rate', 0);
+                        $hRate    = (float) $g($bd, 'rates.hourly_rate', 0);
+                        $aDaily   = (float) $g($bd, 'rates.daily_allowance', 0);
+                        $aHourly  = (float) $g($bd, 'rates.allowance_hourly', 0);
+                        $sched    = (float) $g($bd, 'attendance.scheduled_days', 0);
+                        $daysPres = (float) $g($bd, 'attendance.days_present', 0);
+                        // Earnings base entering gross: RGLR = semi-monthly basic;
+                        // daily = present days × daily rate (regular pay).
+                        $earnBase = $isRglr ? (float) $g($bd, 'totals.basic_pay', 0) : $daysPres * $dRate;
+                        $grossAdj = (float) $g($bd, 'adjustments.gross_taxed', 0);
+                        $netAdj   = (float) $g($bd, 'adjustments.net_after_tax', 0);
+                        $nz       = fn ($v) => abs((float) $v) > 0.005; // show only non-zero lines
+
+                        $html  = '<table class="calc"><tbody>';
+
+                        // ── PAY BASIS (reference rates) ──
+                        $html .= $calcSec('Pay Basis');
+                        if ($nz($mRate)) $html .= $calcInfo('Monthly Basic', $mRate);
+                        $html .= $calcInfo('Daily Rate',  $dRate, $nz($mRate) ? $h2($mRate).' ÷ 26 days' : '');
+                        $html .= $calcInfo('Hourly Rate', $hRate, $nz($dRate) ? $h2($dRate).' ÷ 8 hrs' : '');
+                        if ($nz($aDaily))  $html .= $calcInfo('Daily Allowance',  $aDaily);
+                        if ($nz($aHourly)) $html .= $calcInfo('Allowance / Hour', $aHourly, $nz($aDaily) ? $h2($aDaily).' ÷ 8 hrs' : '');
+                        $html .= $calcInfo('Days Present', $h2($daysPres).' / '.$h2($sched), 'present / scheduled');
+
+                        // ── EARNINGS ──
+                        $html .= $calcSec('Earnings');
+                        $html .= $calcRow(
+                            $isRglr ? 'Basic Pay (semi-monthly)' : 'Regular Pay',
+                            $earnBase, 'add',
+                            $isRglr ? $h2($mRate).' ÷ 2'
+                                    : $h2($daysPres).' day(s) × '.$peso($dRate)
+                        );
+                        if ($nz($g($bd, 'overtime.total_pay', 0))) {
+                            $otDates = count((array) $g($bd, 'overtime.rest_day_ot_dates', []));
+                            $html .= $calcRow('Overtime Pay', $g($bd, 'overtime.total_pay', 0), 'add',
+                                $otDates ? $otDates.' rest-day OT date(s)' : '');
+                        }
+                        if ($nz($g($bd, 'holiday_pay', 0)))
+                            $html .= $calcRow('Holiday Pay', $g($bd, 'holiday_pay', 0), 'add', $g($bd, 'holiday.count', 0).' holiday(s)');
+                        if ($nz($g($bd, 'night_diff.pay', 0)))
+                            $html .= $calcRow('Night Differential', $g($bd, 'night_diff.pay', 0), 'add',
+                                $h2($g($bd, 'night_diff.minutes', 0)).'min ÷ 60 × ('.$peso($hRate).' × 10%)');
+                        if ($nz($grossAdj))
+                            $html .= $calcRow('Gross Adjustment', abs($grossAdj), $grossAdj < 0 ? 'sub' : 'add', 'taxable');
+
+                        // ── LESS: ATTENDANCE DEDUCTIONS ── (each shows its derivation)
+                        $attLines = [
+                            ['Tardiness',        $g($bd, 'tardiness.deduction', 0),
+                                $h2($g($bd, 'tardiness.total_minutes', 0)).'min → '.$h2($g($bd, 'tardiness.bracket_hours', 0)).'h × '.$peso($g($bd, 'tardiness.x_hourly_rate', $hRate))],
+                            ['Undertime',        $g($bd, 'undertime.deduction', 0),
+                                $h2($g($bd, 'undertime.total_minutes', 0)).'min → '.$h2($g($bd, 'undertime.bracket_hours', 0)).'h × '.$peso($g($bd, 'undertime.x_hourly_rate', $hRate))],
+                            ['Absences',         $g($bd, 'absences.deduction', 0),
+                                $h2($g($bd, 'absences.days', 0)).' day(s) × '.$peso($g($bd, 'absences.x_daily', $dRate))],
+                            ['Over-break',       $g($bd, 'over_break.deduction', 0),
+                                $h2($g($bd, 'over_break.minutes', 0)).'min ÷ 60 × '.$peso($hRate)],
+                            ['Outpass',          $g($bd, 'outpass.deduction', 0),
+                                $h2($g($bd, 'outpass.minutes', 0)).'min ÷ 60 × '.$peso($hRate)],
+                            ['Custom Deduction', $g($bd, 'custom_deduction.amount', 0),
+                                $h2($g($bd, 'custom_deduction.minutes', 0)).'min ÷ 60 × '.$peso($hRate)],
+                        ];
+                        $hasAtt = collect($attLines)->contains(fn ($r) => $nz($r[1]));
+                        if ($hasAtt) {
+                            $html .= $calcSec('Less: Attendance Deductions');
+                            foreach ($attLines as [$lbl, $amt, $note]) {
+                                if ($nz($amt)) $html .= $calcRow($lbl, $amt, 'sub', $note);
+                            }
+                            $html .= $calcInfo('Total Attendance Deductions', $g($bd, 'totals.total_deductions', 0), 'subtotal');
+                        }
+                        $html .= $calcMile('Gross Pay', $g($bd, 'totals.gross_pay', 0));
+
+                        // ── LESS: GOVERNMENT DUES ──
+                        $govLines = [
+                            ['SSS',            $g($bd, 'contributions.sss', 0)],
+                            ['PhilHealth',     $g($bd, 'contributions.philhealth', 0)],
+                            ['Pag-IBIG',       $g($bd, 'contributions.pagibig', 0)],
+                            ['Withholding Tax',$g($bd, 'contributions.tax', 0)],
+                        ];
+                        $hasGov = collect($govLines)->contains(fn ($r) => $nz($r[1]));
+                        $html .= $calcSec('Less: Government Dues');
+                        if ($nz($g($bd, 'contributions.taxable', 0)))
+                            $html .= $calcInfo('Taxable Income', $g($bd, 'contributions.taxable', 0), 'basis for tax');
+                        if ($hasGov) {
+                            foreach ($govLines as [$lbl, $amt]) {
+                                if ($nz($amt)) $html .= $calcRow($lbl, $amt, 'sub');
+                            }
+                        } else {
+                            $html .= '<tr><td class="lbl" colspan="3" style="color:#94a3b8;font-style:italic;">'
+                                   . 'No statutory deductions this cut-off (deducted end-of-month).</td></tr>';
+                        }
+                        $html .= $calcMile('Net Pay', $g($bd, 'net_pay', 0));
+
+                        // ── LESS: LOANS / PLUS: ALLOWANCE & ADJUSTMENTS ──
+                        $loanLines = [
+                            ['Company Loan',   $g($bd, 'loans.company', 0)],
+                            ['Charges/Penalty',$g($bd, 'loans.charges', 0)],
+                            ['Cash Advance',   $g($bd, 'loans.cash_adv', 0)],
+                            ['Other',          $g($bd, 'loans.other', 0)],
+                            ['SSS Loan',       $g($bd, 'loans.sss_loan', 0)],
+                            ['Pag-IBIG Loan',  $g($bd, 'loans.pagibig_loan', 0)],
+                        ];
+                        $aGross     = (float) $g($bd, 'allowance.gross', 0);
+                        $aLateUt    = (float) $g($bd, 'allowance.late_ut_deduction', 0);
+                        $aOverBreak = (float) $g($bd, 'allowance.over_break_deduction', 0);
+                        $allowNet   = (float) $g($bd, 'allowance.net', 0);
+                        // Allowance net = gross − late/UT − over-break, except when clamped at 0.
+                        $allowDecomposes = abs(($aGross - $aLateUt - $aOverBreak) - $allowNet) < 0.02;
+                        $hasTail = collect($loanLines)->contains(fn ($r) => $nz($r[1])) || $nz($aGross) || $nz($allowNet) || $nz($netAdj);
+                        if ($hasTail) {
+                            $html .= $calcSec('Less: Loans / Plus: Allowance & Adjustments');
+                            foreach ($loanLines as [$lbl, $amt]) {
+                                if ($nz($amt)) $html .= $calcRow($lbl, $amt, 'sub');
+                            }
+                            if ($nz($aGross) && $allowDecomposes) {
+                                $html .= $calcRow('Allowance (gross)', $aGross, 'add',
+                                    $h2($g($bd, 'allowance.days_paid', 0)).' day(s) × '.$peso($aDaily));
+                                if ($nz($aLateUt))
+                                    $html .= $calcRow('Allowance Late/UT', $aLateUt, 'sub',
+                                        $h2($g($bd, 'allowance.late_ut_hours', 0)).'h × '.$peso($aHourly));
+                                if ($nz($aOverBreak))
+                                    $html .= $calcRow('Allowance Over-break', $aOverBreak, 'sub',
+                                        $h2($g($bd, 'allowance.over_break_minutes', 0)).'min ÷ 60 × '.$peso($aHourly));
+                            } elseif ($nz($allowNet)) {
+                                $html .= $calcRow('Allowance (net)', $allowNet, 'add');
+                            }
+                            if ($nz($netAdj)) $html .= $calcRow('Net Adjustment', abs($netAdj), $netAdj < 0 ? 'sub' : 'add', 'after tax');
+                        }
+                        $html .= $calcMile('Pay Receivable', $g($bd, 'pay_receivable', 0), true);
+                        $html .= '</tbody></table>';
+                    @endphp
+
                     <details class="detail" open>
-                        <summary>Full computation log</summary>
-                        <div class="cols">
-                            @foreach ($bd as $section => $val)
-                                @if (in_array($section, ['employee_id','name'])) @continue @endif
-                                <div class="grp">
-                                    <div class="grp-h">{{ ucwords(str_replace('_', ' ', $section)) }}</div>
-                                    @if (is_array($val))
-                                        {!! $render($val) !!}
-                                    @else
-                                        <table class="kv"><tbody><tr><td class="v">{{ $isMoneyKey($section) && is_numeric($val) ? number_format((float) $val, 2) : $val }}</td></tr></tbody></table>
-                                    @endif
-                                </div>
-                            @endforeach
-                        </div>
+                        <summary>Computation Breakdown</summary>
+                        {!! $html !!}
+
+                        {{-- Footnotes: applied holidays, adjustment entries, loan-skip warning --}}
+                        @php
+                            $appliedHols = collect($g($bd, 'holiday.applied', []));
+                            $adjEntries  = collect($g($bd, 'adjustments.entries', []));
+                            $loansSkipped = $g($bd, 'loans.can_afford', true) === false;
+                        @endphp
+                        @if ($appliedHols->isNotEmpty() || $adjEntries->isNotEmpty() || $loansSkipped)
+                            <div class="calc-foot">
+                                @if ($appliedHols->isNotEmpty())
+                                    <div><span class="lbl">Holidays applied:</span>
+                                        {{ $appliedHols->map(fn ($h) => \Carbon\Carbon::parse($h['date'] ?? null)->format('M d').' ('.($h['type'] ?? '').')')->implode(', ') }}
+                                    </div>
+                                @endif
+                                @if ($adjEntries->isNotEmpty())
+                                    <div><span class="lbl">Adjustments:</span>
+                                        {{ $adjEntries->map(fn ($a) => ($a['label'] ?? 'Adj').' '.ucfirst($a['kind'] ?? '').' '.$peso($a['amount'] ?? 0).' ('.($a['apply_to'] ?? '').')')->implode(' · ') }}
+                                    </div>
+                                @endif
+                                @if ($loansSkipped)
+                                    <div class="warn">⚠ Loan deductions skipped this cut-off — pay receivable would be negative.</div>
+                                @endif
+                            </div>
+                        @endif
                     </details>
                 @endif
 
