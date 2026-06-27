@@ -362,12 +362,14 @@ class PayrollController extends Controller
                 //  This employee's department (for per-department holiday matching)
                 $empDeptId = optional($emp->empDetail)->empDepID;
 
-                // Business rule: Trainees ('TRN' classification — same code already used
-                // for skipping gov't contributions/withholding tax in ContributionHelper
-                // and for skipping loan deductions below) are NOT granted holiday pay.
-                // Read once per employee from the already-eager-loaded empDetail — no
-                // extra query, so this costs nothing in payroll generation speed.
-                $isTraineeForHoliday = optional($emp->empDetail)->empClassification === 'TRN';
+                // Business rule: ONLY regular employees ('RGLR' classification — the
+                // monthly-paid branch below) are entitled to holiday pay. Trainees ('TRN')
+                // and all daily/probationary/contractual/agency codes are excluded. This is
+                // strictly more restrictive than the old "not a trainee" gate (RGLR is a
+                // subset of "not TRN"), so it subsumes the trainee carve-out. Read once per
+                // employee from the already-eager-loaded empDetail — no extra query, so this
+                // costs nothing in payroll generation speed.
+                $isRegularForHoliday = optional($emp->empDetail)->empClassification === 'RGLR';
                 // Resolve which holiday type applies to THIS employee on a given date.
                 // A holiday tied to the employee's department wins; a NULL-department
                 // holiday applies to everyone; otherwise no holiday for this employee.
@@ -611,11 +613,12 @@ class PayrollController extends Controller
                                 if ($isAbsent && $absentDays > 0) {
                                     $absentDays--;
                                 }
-                            } elseif (!$isTraineeForHoliday) {
+                            } elseif ($isRegularForHoliday) {
                                 // No OT on this holiday — grant the standard holiday benefit.
-                                // (Trainees are excluded from this whole branch above, so
-                                // $holidayPay simply stays 0 for them — they still get paid
-                                // OT normally via the $hasOtToday branch if they worked it.)
+                                // (Only RGLR employees reach this branch; every non-regular
+                                // classification — trainee, daily, probationary, contractual,
+                                // agency — leaves $holidayPay at 0. They still get paid OT
+                                // normally via the $hasOtToday branch if they worked it.)
                                 if ($holidayType == '0') { // REGULAR holiday
                                     if ($worked) {
                                         $holidayPay += $dailyRate * 1;
