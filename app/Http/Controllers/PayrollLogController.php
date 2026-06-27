@@ -156,9 +156,48 @@ class PayrollLogController extends Controller
                     $leaveByEmpDate->put($key, [
                         'type' => $leaveTypeNames[$lv->leavetype_id] ?? 'Leave',
                         'hrs'  => (float) $lv->total_hours,
-                        'paid' => (string) $lv->leave_kind === '1',   // '1' = paid, '0' = unpaid
+                        'paid' => (string) $lv->leave_kind === '0',   // '0' = paid, '1' = unpaid
                     ]);
                 });
+        }
+
+        // Non-scheduled OT (rest-day / holiday) has no payroll_details row, so it
+        // would be invisible in the Daily Attendance table (which is built from
+        // scheduled days only). Inject a synthetic day-row for every OT date that
+        // isn't already a scheduled row, attributed to the log whose pay period
+        // contains it, then re-sort each group by date. The view reads OT hrs from
+        // $otByEmpDate by date and renders the "Rest-day OT" badge.
+        if ($otByEmpDate->isNotEmpty()) {
+            foreach ($logs as $log) {
+                $empId  = $log->employee_id;
+                $payKey = $empId.'|'.\Carbon\Carbon::parse($log->pay_date)->format('Y-m-d');
+                $group  = $dayDetails->get($payKey, collect());
+                $shown  = $group->map(fn ($d) => \Carbon\Carbon::parse($d->date)->format('Y-m-d'))->all();
+
+                $winStart = optional($log->payroll_start_date)?->format('Y-m-d') ?? (collect($shown)->min());
+                $winEnd   = optional($log->payroll_end_date)?->format('Y-m-d')   ?? (collect($shown)->max());
+
+                foreach ($otByEmpDate as $key => $val) {
+                    [$kEmp, $kDate] = explode('|', $key);
+                    if ($kEmp !== $empId || in_array($kDate, $shown, true)) {
+                        continue; // wrong employee, or already a scheduled row
+                    }
+                    if ($winStart && $kDate < $winStart) { continue; }
+                    if ($winEnd   && $kDate > $winEnd)   { continue; }
+
+                    $group->push((object) [
+                        'date' => $kDate, 'payroll_date' => \Carbon\Carbon::parse($log->pay_date)->format('Y-m-d'),
+                        'logsType' => null, 'holiday_type' => null, 'holiday_pay' => 0, 'totalHours' => 0,
+                        'late_minutes' => 0, 'undertime_minutes' => 0, 'night_diff_hours' => 0, 'night_diff_pay' => 0,
+                        'late_deduction' => 0, 'undertime_deduction' => 0, 'penalty_amount' => 0,
+                        'adjustment_amount' => 0, 'remarks' => null,
+                    ]);
+                }
+                if ($group->isNotEmpty()) {
+                    $dayDetails->put($payKey, $group->sortBy(fn ($d) =>
+                        \Carbon\Carbon::parse($d->date)->format('Y-m-d'))->values());
+                }
+            }
         }
 
         return view('pages.modules.payroll_logs_print', compact('logs', 'dayDetails', 'otByEmpDate', 'leaveByEmpDate'));

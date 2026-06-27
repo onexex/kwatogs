@@ -446,7 +446,7 @@ class PayrollController extends Controller
                     ->sort()
                     ->values();
 
-                // Was the employee Present, on Approved PAID Leave (leave_kind == 1), or on
+                // Was the employee Present, on Approved PAID Leave (leave_kind == 0), or on
                 // OB on a given date? Reuses $attendanceSummaries / $employeeLeaves /
                 // $employeeObs already loaded above — no additional queries.
                 $isPaidOnDate = function (string $d) use ($attendanceSummaries, $employeeLeaves, $employeeObs) {
@@ -456,7 +456,7 @@ class PayrollController extends Controller
                     }
 
                     $paidLeave = $employeeLeaves->first(fn($l) =>
-                        Carbon::parse($l->date)->format('Y-m-d') === $d && (string) $l->leave_kind === '1'
+                        Carbon::parse($l->date)->format('Y-m-d') === $d && (string) $l->leave_kind === '0'
                     );
                     if ($paidLeave) {
                         return true; // Approved paid leave
@@ -524,9 +524,10 @@ class PayrollController extends Controller
                         );
 
                         // Now that $onLeave can actually match (see fix above), distinguish
-                        // paid vs unpaid leave (LeaveDetail.leave_kind: '1' = paid, '0' = unpaid)
+                        // paid vs unpaid leave (LeaveDetail.leave_kind: '0' = paid, '1' = unpaid —
+                        // matches the leave-application form & all displays/imports)
                         // — only paid leave should count toward daysPresent / holiday pay below.
-                        $isPaidLeave   = $onLeave && (string) $onLeave->leave_kind === '1';
+                        $isPaidLeave   = $onLeave && (string) $onLeave->leave_kind === '0';
                         $isUnpaidLeave = $onLeave && !$isPaidLeave;
 
                         // OT total is computed once above from all approved OT (see $totalOT).

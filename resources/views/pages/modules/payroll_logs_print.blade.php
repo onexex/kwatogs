@@ -259,7 +259,7 @@
                                         <td>{{ $dDate->format('M d, Y') }}</td>
                                         <td>{{ $dDate->format('D') }}</td>
                                         <td>
-                                            <span class="badge {{ $badgeClass }}">{{ $d->logsType ?: '—' }}</span>
+                                            @if ($d->logsType)<span class="badge {{ $badgeClass }}">{{ $d->logsType }}</span>@endif
                                             @if ($isHoliday)<span class="badge b-holiday">{{ $d->holiday_type ? $d->holiday_type.' Holiday' : 'Holiday' }}</span>@endif
                                             @if ($ot)<span class="badge b-ot">{{ $isRestOt ? 'Rest-day OT' : 'OT' }}{{ $otHrs ? ' '.$otHrs.'h' : '' }}</span>
                                             @elseif ($isRestOt)<span class="badge b-ot">Rest-day OT</span>@endif
