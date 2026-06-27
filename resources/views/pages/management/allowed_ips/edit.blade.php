@@ -204,13 +204,13 @@
                                id="ip_address"
                                name="ip_address"
                                class="form-control @error('ip_address') is-invalid @enderror"
-                               placeholder="e.g. 192.168.1.100 or 2001:db8::1"
+                               placeholder="e.g. 192.168.1.100 or 203.0.113.0/24"
                                value="{{ old('ip_address', $allowedIp->ip_address) }}"
                                autofocus />
                         @error('ip_address')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
-                        <p class="field-hint">Supports both IPv4 and IPv6 formats.</p>
+                        <p class="field-hint">Single IP (IPv4/IPv6) or a CIDR range like <strong>203.0.113.0/24</strong> for ISPs that rotate dynamic IPs within a block.</p>
                     </div>
 
                     {{-- Description --}}

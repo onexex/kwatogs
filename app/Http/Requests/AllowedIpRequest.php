@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\AllowedIp;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -22,7 +23,12 @@ class AllowedIpRequest extends FormRequest
                 'required',
                 'string',
                 'max:45',
-                'ip',                                         // validates both IPv4 and IPv6
+                // Accept a single IP (IPv4/IPv6) OR a CIDR range (e.g. 203.0.113.0/24).
+                function ($attribute, $value, $fail) {
+                    if (! AllowedIp::isValidIpOrCidr($value)) {
+                        $fail('Must be a valid IP address (e.g. 192.168.1.1) or CIDR range (e.g. 203.0.113.0/24).');
+                    }
+                },
                 Rule::unique('allowed_ips', 'ip_address')->ignore($ignoreId),
             ],
             'description' => ['nullable', 'string', 'max:255'],
@@ -34,7 +40,6 @@ class AllowedIpRequest extends FormRequest
     {
         return [
             'ip_address.required' => 'IP address is required.',
-            'ip_address.ip'       => 'Must be a valid IPv4 or IPv6 address.',
             'ip_address.max'      => 'IP address must not exceed 45 characters.',
             'ip_address.unique'   => 'This IP address is already in the allowlist.',
             'description.max'     => 'Description must not exceed 255 characters.',

@@ -214,6 +214,18 @@
         padding: 4px 12px; border-radius: 20px;
         display: inline-flex; align-items: center; gap: 5px;
     }
+    /* ── CIDR range marker ──────────────────────────────────────────────────── */
+    .badge-range {
+        background: rgba(245,158,11,.12);
+        color: #b45309;
+        border: 1px solid rgba(245,158,11,.35);
+        font-size: 0.62rem; font-weight: 700;
+        letter-spacing: .3px;
+        padding: 2px 8px; border-radius: 20px;
+        display: inline-flex; align-items: center; gap: 4px;
+        margin-left: 6px; vertical-align: middle;
+        text-transform: uppercase;
+    }
 
     /* ── Icon action buttons ────────────────────────────────────────────────── */
     .icon-action-btn {
@@ -413,6 +425,11 @@
                                 <code style="background:var(--teal-light);color:var(--teal-dark);padding:3px 8px;border-radius:6px;font-size:0.82rem;font-weight:600;">
                                     {{ $ip->ip_address }}
                                 </code>
+                                @if(str_contains($ip->ip_address, '/'))
+                                    <span class="badge-range" title="CIDR range — matches every IP in this block">
+                                        <i class="fa-solid fa-network-wired" style="font-size:.55rem;"></i> Range
+                                    </span>
+                                @endif
                             </td>
                             <td style="color:var(--slate-light);">
                                 {{ $ip->description ?: '—' }}

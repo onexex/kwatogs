@@ -181,13 +181,13 @@
                                id="ip_address"
                                name="ip_address"
                                class="form-control @error('ip_address') is-invalid @enderror"
-                               placeholder="e.g. 192.168.1.100 or 2001:db8::1"
+                               placeholder="e.g. 192.168.1.100 or 203.0.113.0/24"
                                value="{{ old('ip_address') }}"
                                autofocus />
                         @error('ip_address')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
-                        <p class="field-hint">Supports both IPv4 (e.g. 192.168.1.1) and IPv6 (e.g. 2001:db8::1).</p>
+                        <p class="field-hint">Single IP (IPv4/IPv6) or a CIDR range. Use a range like <strong>203.0.113.0/24</strong> when the ISP gives out dynamic IPs that change daily within the same block.</p>
 
                         {{-- Live preview --}}
                         <div id="ipPreview" class="ip-preview-chip" style="display:none;">
@@ -232,8 +232,9 @@
     const ipPreview = document.getElementById('ipPreview');
     const ipText    = document.getElementById('ipPreviewText');
 
-    const ipv4 = /^(\d{1,3}\.){3}\d{1,3}$/;
-    const ipv6 = /^[0-9a-fA-F:]+$/;
+    // Optional /NN suffix at the end allows CIDR ranges in the live preview.
+    const ipv4 = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/;
+    const ipv6 = /^[0-9a-fA-F:]+(\/\d{1,3})?$/;
 
     ipInput.addEventListener('input', function () {
         const val = this.value.trim();

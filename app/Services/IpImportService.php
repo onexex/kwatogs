@@ -74,12 +74,19 @@ class IpImportService
             $validator = Validator::make(
                 ['ip_address' => $ip, 'description' => $desc],
                 [
-                    'ip_address'  => ['required', 'ip', 'max:45'],
+                    'ip_address'  => [
+                        'required',
+                        'max:45',
+                        function ($attribute, $value, $fail) {
+                            if (! AllowedIp::isValidIpOrCidr($value)) {
+                                $fail("\"$value\" is not a valid IP address or CIDR range.");
+                            }
+                        },
+                    ],
                     'description' => ['nullable', 'string', 'max:255'],
                 ],
                 [
                     'ip_address.required' => 'IP address is required.',
-                    'ip_address.ip'       => "\"$ip\" is not a valid IPv4 or IPv6 address.",
                     'ip_address.max'      => 'IP address exceeds 45 characters.',
                 ]
             );
@@ -122,6 +129,7 @@ class IpImportService
             'ip_address,description',
             '192.168.1.1,Main Office Gateway',
             '192.168.1.100,Branch 2 Workstation',
+            '203.0.113.0/24,Office ISP block (CIDR range)',
             '2001:db8::1,IPv6 Example (optional)',
         ]);
     }
