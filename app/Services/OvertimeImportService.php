@@ -19,16 +19,17 @@ class OvertimeImportService
         'total_hrs' => 9, 'total_pay' => 10, 'hourly_rate' => 11,
     ];
 
-    // day_type => OT multiplier (mirrors OvertimeController)
-    private const RATES = [
-        'regular' => 1.25,
-        'rest_day' => 1.69,
-        'special_holiday' => 1.69,
-        'regular_holiday' => 2.60,
-        'rest_day_regular_holiday' => 3.38,
-        'rest_day_special_holiday' => 1.95,
-        'rest_day_double_regular_holiday' => 3.90,
-        'double_holiday' => 3.38,
+    // day_type => base day rate for the FIRST 8 hours (DOLE premium pay).
+    // Beyond-8 OT rate is derived: base × 1.30 (or × 1.25 for an ordinary day).
+    private const BASE_RATES = [
+        'regular'                          => 1.00,
+        'rest_day'                         => 1.30,
+        'special_holiday'                  => 1.30,
+        'regular_holiday'                  => 2.00,
+        'rest_day_regular_holiday'         => 2.60,
+        'rest_day_special_holiday'         => 1.50,
+        'double_holiday'                   => 3.00,
+        'rest_day_double_regular_holiday'  => 3.90,
     ];
 
     private const STATUSES = ['FORAPPROVAL', 'CANCELED', 'APPROVED', 'APPROVEDBYCFO', 'DISAPPROVED'];
@@ -149,8 +150,8 @@ class OvertimeImportService
         if (!$timeIn || !$timeOut) { throw new \Exception('Time In and Time Out are required (HH:MM).'); }
 
         $dayType = strtolower(trim($this->cell($row, 'day_type'))) ?: 'regular';
-        if (!isset(self::RATES[$dayType])) {
-            throw new \Exception("Day Type '{$dayType}' is invalid. Allowed: " . implode(', ', array_keys(self::RATES)) . '.');
+        if (!isset(self::BASE_RATES[$dayType])) {
+            throw new \Exception("Day Type '{$dayType}' is invalid. Allowed: " . implode(', ', array_keys(self::BASE_RATES)) . '.');
         }
 
         $status = strtoupper(trim($this->cell($row, 'status'))) ?: 'APPROVEDBYCFO';
@@ -160,29 +161,36 @@ class OvertimeImportService
 
         $purpose = trim($this->cell($row, 'purpose')) ?: 'Imported overtime';
 
-        // ── Compute (mirrors OvertimeController) ──
-        $basic = (float) ($emp->empBasic ?? 0);
+        // ── Compute (DOLE two-tier premium pay) ──
+        $basic      = (float) ($emp->empBasic ?? 0);
         $hourlyRate = ($basic / 26) / 8;
-        $rate = self::RATES[$dayType];
 
-        // A manually-entered Total Hrs always wins: treat it as the final payable
-        // hours (no meal-break deduction) and base the pay on it. Only derive hours
-        // from time in/out when the Total Hrs column is left blank.
+        $baseRate = self::BASE_RATES[$dayType];            // first-8-hours rate
+        $otFactor = $dayType === 'regular' ? 1.25 : 1.30;  // ordinary-day OT is +25%, all others +30%
+        $otRate   = round($baseRate * $otFactor, 4);       // beyond-8-hours rate
+
+        // A manual Total Hrs always wins as the worked-hours figure; else derive from
+        // time in/out. (No 8-hour cap — hours beyond 8 are paid at the beyond-8 rate below.)
         $manualHrs = $this->numOr($this->cell($row, 'total_hrs'), null);
-
         if ($manualHrs !== null) {
             $totalHours = (float) $manualHrs;
-            $premium = min($totalHours, 8);
-            $excess  = max($totalHours - 8, 0);
-            $pay = ($hourlyRate * $rate * $premium) + ($hourlyRate * 1.25 * $excess);
         } else {
             $in  = Carbon::parse($dateFrom . ' ' . $timeIn);
             $out = Carbon::parse($dateTo . ' ' . $timeOut);
             if ($out->lessThanOrEqualTo($in)) { $out->addDay(); } // crossed midnight
             $totalHours = $out->floatDiffInHours($in);
+        }
 
-            if ($totalHours > 8) { $totalHours = 8; } // cap at a flat 8 hours
-            $pay = $hourlyRate * $rate * $totalHours;
+        if ($dayType === 'regular') {
+            // Ordinary-day overtime: every filed hour is work beyond the regular shift → 1.25×.
+            $pay        = $hourlyRate * $otRate * $totalHours;
+            $storedRate = $otRate;
+        } else {
+            // Premium days: first 8 hrs at the base day rate, hours beyond 8 at base × 1.30.
+            $premium    = min($totalHours, 8);
+            $excess     = max($totalHours - 8, 0);
+            $pay        = ($hourlyRate * $baseRate * $premium) + ($hourlyRate * $otRate * $excess);
+            $storedRate = $baseRate;
         }
 
         $totalHrs = round($totalHours, 2);
@@ -195,7 +203,7 @@ class OvertimeImportService
             'emp_detail_id' => $emp->id, 'date_from' => $dateFrom, 'date_to' => $dateTo,
             'time_in' => $timeIn, 'time_out' => $timeOut, 'status' => $status,
             'approved_at' => $approvedAt, 'purpose' => $purpose, 'day_type' => $dayType,
-            'day_type_computation' => $rate, 'hourly_rate' => round($hourlyRate, 6),
+            'day_type_computation' => $storedRate, 'hourly_rate' => round($hourlyRate, 6),
             'total_hrs' => $totalHrs, 'total_pay' => $totalPay,
         ];
     }
