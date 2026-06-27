@@ -93,7 +93,7 @@
         $moneyKeys = [
             'basic_monthly','daily_rate','hourly_rate','daily_allowance','allowance_hourly',
             'x_hourly_rate','x_daily','deduction','amount','total_pay','pay','gross','net',
-            'late_ut_deduction','total_deductions','basic_pay','gross_pay','holiday_pay',
+            'late_ut_deduction','over_break_deduction','total_deductions','basic_pay','gross_pay','holiday_pay',
             'sss','philhealth','pagibig','tax','gov_dues','taxable',
             'company','charges','cash_adv','other','sss_loan','pagibig_loan',
             'gross_taxed','net_after_tax','total','net_pay','pay_receivable',

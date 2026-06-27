@@ -691,7 +691,10 @@ class PayrollController extends Controller
                 // Tardiness + undertime also reduce the allowance, valued at the allowance's hourly rate.
                 $allowanceHourly = $dailyAllowance / 8;
                 $allowanceLateUt = ($this->lateBracketHours($totalLate) + $this->lateBracketHours($totalUndertime)) * $allowanceHourly;
-                $allowance = max($allowanceGross - $allowanceLateUt, 0);
+                // Over-break also reduces the allowance, valued at the allowance's hourly rate.
+                // Raw minutes (not bracketed) — consistent with how over-break already hits basic pay.
+                $allowanceOverBreak = ($over_break_minutes / 60) * $allowanceHourly;
+                $allowance = max($allowanceGross - $allowanceLateUt - $allowanceOverBreak, 0);
 
                 // ==============================
                 //  CLASSIFICATION: REGULAR vs DAILY
@@ -884,12 +887,14 @@ class PayrollController extends Controller
                     'holiday_pay'      => round($holidayPay, 2),
                     'night_diff'       => ['minutes' => $night_diff_mins, 'pay' => round($night_diff_pay, 2)],
                     'allowance'        => [
-                        'daily_rate'        => round($dailyAllowance, 2),
-                        'days_paid'         => $daysPresent + $restDayOtDates,
-                        'gross'             => round($allowanceGross, 2),
-                        'late_ut_hours'     => $this->lateBracketHours($totalLate) + $this->lateBracketHours($totalUndertime),
-                        'late_ut_deduction' => round($allowanceLateUt, 2),
-                        'net'               => round($allowance, 2),
+                        'daily_rate'           => round($dailyAllowance, 2),
+                        'days_paid'            => $daysPresent + $restDayOtDates,
+                        'gross'                => round($allowanceGross, 2),
+                        'late_ut_hours'        => $this->lateBracketHours($totalLate) + $this->lateBracketHours($totalUndertime),
+                        'late_ut_deduction'    => round($allowanceLateUt, 2),
+                        'over_break_minutes'   => $over_break_minutes,
+                        'over_break_deduction' => round($allowanceOverBreak, 2),
+                        'net'                  => round($allowance, 2),
                     ],
                     'totals'           => [
                         'total_deductions' => round($deductions, 2),
