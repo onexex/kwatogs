@@ -151,6 +151,7 @@ class ImportHistoryController extends Controller
             $rows = AttendanceSummary::with('employee')
                 ->where('import_batch_id', $batch->id)
                 ->orderBy('attendance_date')->orderBy('employee_id')->get()
+                ->sortBy(fn ($r) => $this->sortName(optional($r->employee)))->values()
                 ->map(function ($r) {
                     $flag = $this->attendanceAnomaly($r);
                     return [
@@ -187,6 +188,7 @@ class ImportHistoryController extends Controller
             $rows = Overtime::with('employee.user')
                 ->where('import_batch_id', $batch->id)
                 ->orderBy('date_from')->get()
+                ->sortBy(fn ($r) => $this->sortName(optional(optional($r->employee)->user)))->values()
                 ->map(fn ($r) => ['cells' => [
                     $this->nameOf(optional(optional($r->employee)->user), optional($r->employee)->empID),
                     Carbon::parse($r->date_from)->format('M d, Y'),
@@ -206,6 +208,7 @@ class ImportHistoryController extends Controller
             $rows = EmployeeSchedule::with('users')
                 ->where('import_batch_id', $batch->id)
                 ->orderBy('employee_id')->orderBy('sched_start_date')->get()
+                ->sortBy(fn ($r) => $this->sortName(optional($r->users)))->values()
                 ->map(fn ($r) => ['cells' => [
                     $this->nameOf(optional($r->users), $r->employee_id),
                     Carbon::parse($r->sched_start_date)->format('M d, Y'),
@@ -224,6 +227,7 @@ class ImportHistoryController extends Controller
         $rows = Leave::with(['employee.user', 'leaveType'])
             ->where('import_batch_id', $batch->id)
             ->orderBy('start_date')->get()
+            ->sortBy(fn ($r) => $this->sortName(optional(optional($r->employee)->user)))->values()
             ->map(fn ($r) => ['cells' => [
                 $this->nameOf(optional(optional($r->employee)->user), $r->employee_id),
                 optional($r->leaveType)->type_leave ?: ('#' . $r->leave_type),
@@ -404,10 +408,26 @@ class ImportHistoryController extends Controller
             ->exists();
     }
 
-    /** "First Last (EMPID)" from a User-like model, falling back to just the id. */
+    /** "LASTNAME, FIRSTNAME (EMPID)" (upper-cased) from a User-like model, falling back to just the id. */
     private function nameOf($user, $empId): string
     {
-        $name = $user ? trim(($user->fname ?? '') . ' ' . ($user->lname ?? '')) : '';
+        $last  = $user ? strtoupper(trim((string) ($user->lname ?? ''))) : '';
+        $first = $user ? strtoupper(trim((string) ($user->fname ?? ''))) : '';
+
+        if ($last !== '' && $first !== '') {
+            $name = "{$last}, {$first}";
+        } else {
+            $name = $last !== '' ? $last : $first; // whichever we have
+        }
+
         return $name !== '' ? "{$name} ({$empId})" : (string) $empId;
+    }
+
+    /** Sort key so rows order alphabetically by last name, then first name. */
+    private function sortName($user): string
+    {
+        $last  = $user ? strtoupper(trim((string) ($user->lname ?? ''))) : '';
+        $first = $user ? strtoupper(trim((string) ($user->fname ?? ''))) : '';
+        return $last . '|' . $first;
     }
 }
