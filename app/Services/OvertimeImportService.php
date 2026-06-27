@@ -165,23 +165,28 @@ class OvertimeImportService
         $hourlyRate = ($basic / 26) / 8;
         $rate = self::RATES[$dayType];
 
-        $in  = Carbon::parse($dateFrom . ' ' . $timeIn);
-        $out = Carbon::parse($dateTo . ' ' . $timeOut);
-        if ($out->lessThanOrEqualTo($in)) { $out->addDay(); } // crossed midnight
-        $totalHours = $out->floatDiffInHours($in);
+        // A manually-entered Total Hrs always wins: treat it as the final payable
+        // hours (no meal-break deduction) and base the pay on it. Only derive hours
+        // from time in/out when the Total Hrs column is left blank.
+        $manualHrs = $this->numOr($this->cell($row, 'total_hrs'), null);
 
-        if ($totalHours >= 8) {
-            $payable = $totalHours - 1;            // 1-hour meal break
-            $premium = min($payable, 8);
-            $excess  = max($payable - 8, 0);
+        if ($manualHrs !== null) {
+            $totalHours = (float) $manualHrs;
+            $premium = min($totalHours, 8);
+            $excess  = max($totalHours - 8, 0);
             $pay = ($hourlyRate * $rate * $premium) + ($hourlyRate * 1.25 * $excess);
-            $totalHours = $payable;
         } else {
+            $in  = Carbon::parse($dateFrom . ' ' . $timeIn);
+            $out = Carbon::parse($dateTo . ' ' . $timeOut);
+            if ($out->lessThanOrEqualTo($in)) { $out->addDay(); } // crossed midnight
+            $totalHours = $out->floatDiffInHours($in);
+
+            if ($totalHours > 8) { $totalHours = 8; } // cap at a flat 8 hours
             $pay = $hourlyRate * $rate * $totalHours;
         }
 
-        // explicit overrides from the file (if provided)
-        $totalHrs = $this->numOr($this->cell($row, 'total_hrs'), round($totalHours, 2));
+        $totalHrs = round($totalHours, 2);
+        // explicit Total Pay override from the file still wins, else use computed pay
         $totalPay = $this->numOr($this->cell($row, 'total_pay'), round($pay, 2));
 
         $approvedAt = in_array($status, ['APPROVED', 'APPROVEDBYCFO'], true) ? now() : null;
