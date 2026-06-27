@@ -45,22 +45,6 @@
         .sign { display:grid; grid-template-columns:1fr 1fr; gap:40px; margin-top:34px; font-size:12px; color:var(--muted); }
         .sign .slot { border-top:1px solid #9ca3af; padding-top:4px; text-align:center; }
 
-        /* ── Computation waterfall (matches Payroll Logs) ── */
-        table.calc { width:100%; border-collapse:collapse; margin-top:4px; }
-        table.calc td { padding:5px 12px; font-size:13px; border-bottom:1px solid #f3f4f6; vertical-align:baseline; }
-        table.calc td.lbl  { color:var(--ink); }
-        table.calc td.note { color:var(--muted); font-size:11px; text-align:right; white-space:nowrap; }
-        table.calc td.amt  { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; width:150px; font-weight:600; }
-        table.calc td.amt.add { color:#0f766e; }
-        table.calc td.amt.sub { color:#b91c1c; }
-        table.calc tr.sec td { background:#f8fafc; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); padding-top:10px; padding-bottom:4px; }
-        table.calc tr.mile td { background:#e0f2f1; font-weight:800; border-top:2px solid var(--teal); border-bottom:2px solid var(--teal); }
-        table.calc tr.mile td.lbl { color:#006666; text-transform:uppercase; font-size:13px; letter-spacing:.3px; }
-        table.calc tr.mile td.amt { color:#006666; font-size:14px; }
-        table.calc tr.grand td { background:var(--teal); color:#fff; font-weight:800; }
-        table.calc tr.grand td.lbl { text-transform:uppercase; letter-spacing:.4px; }
-        table.calc tr.grand td.amt { color:#fff; font-size:15px; }
-
         @media print {
             body { background:#fff; padding:0; }
             .toolbar { display:none; }
@@ -75,23 +59,6 @@
         <button class="btn btn-print" onclick="window.print()">🖨 Print</button>
         <button class="btn btn-close" onclick="window.close()">Close</button>
     </div>
-
-    @php
-        // Shared formatters + waterfall row builders (defined once for all slips).
-        $peso = fn ($n) => number_format((float) $n, 2);
-        $psRow = function ($label, $amount, $sign = 'add', $note = '') use ($peso) {
-            $cls = $sign === 'sub' ? 'sub' : 'add';
-            $pre = $sign === 'sub' ? '&minus; ' : '+ ';
-            return '<tr><td class="lbl">'.e($label).'</td><td class="note">'.e($note).'</td>'
-                 . '<td class="amt '.$cls.'">'.$pre.$peso($amount).'</td></tr>';
-        };
-        $psMile = function ($label, $amount, $grand = false) use ($peso) {
-            $tr = $grand ? 'grand' : 'mile';
-            return '<tr class="'.$tr.'"><td class="lbl">'.e($label).'</td><td></td>'
-                 . '<td class="amt">'.$peso($amount).'</td></tr>';
-        };
-        $psSec = fn ($label) => '<tr class="sec"><td colspan="3">'.e($label).'</td></tr>';
-    @endphp
 
     @forelse ($payrolls as $p)
         @php
@@ -109,6 +76,7 @@
             $ot      = (float) $p->overtime_pay;
             $nd      = (float) $p->night_diff_pay;
             $allow   = (float) $p->allowances;
+            $earnings = $basic + $holiday + $ot + $nd + $allow;
 
             // Deductions
             $absut   = (float) $p->abs_ut_deduction;
@@ -124,77 +92,13 @@
             $cashAdv = (float) $p->cash_advance;
             $charges = (float) $p->penalty_amount;
 
-            // ── Computation waterfall — foots to the stored milestones ──
-            // Gross = (basic+holiday+OT+ND) − attendance deductions.  (Allowance is
-            // NOT in gross; it is added back at the receivable stage, same as the engine.)
-            $grossComp     = $basic + $holiday + $ot + $nd;
-            $attDed        = $absut + $ob + $op;
-            $grossVal      = (float) $p->gross_pay;
-            $grossResidual = round($grossComp - $attDed - $grossVal, 2); // un-itemised custom deductions
-            $gov           = $sss + $phil + $pag + $tax;
-            $netVal        = (float) $p->net_pay;
-            $netResidual   = round($grossVal - $gov - $netVal, 2);       // clamp / rounding
-            $loans         = $sssLoan + $pagLoan + $compLoan + $cashAdv + $charges;
-            $recVal        = (float) $p->pay_rec;
-            $tailResidual  = round($recVal - ($netVal - $loans + $allow), 2); // pay adjustments / other
+            $listedDed = $absut + $ob + $op + $sss + $phil + $pag + $tax + $sssLoan + $pagLoan + $compLoan + $cashAdv + $charges;
+            $takehome  = (float) $p->pay_rec;
+            // Residual (manual/custom deductions or rounding) so the slip always foots to pay receivable
+            $residual  = round($earnings - $listedDed - $takehome, 2);
+            $totalDed  = $listedDed + max($residual, 0);
 
-            // Compact allowance derivation, sourced from the computation log (payrolls
-            // stores net only). Blank when no matching log row — the slip then shows
-            // the plain Allowance line, no derivation, no error.
-            $allowNote = '';
-            $alw = ($allowanceByKey ?? collect())->get($p->employee_id.'|'.\Carbon\Carbon::parse($p->pay_date)->format('Y-m-d'));
-            if ($alw && !empty($alw['allowance'])) {
-                $a = $alw['allowance'];
-                $parts = [];
-                if (isset($a['days_paid'], $a['daily_rate'])) {
-                    $parts[] = rtrim(rtrim(number_format((float) $a['days_paid'], 2), '0'), '.').'d × '.$peso($a['daily_rate']);
-                }
-                if ((float) ($a['late_ut_deduction'] ?? 0) > 0.005)    { $parts[] = '- '.$peso($a['late_ut_deduction']).' late/UT'; }
-                if ((float) ($a['over_break_deduction'] ?? 0) > 0.005) { $parts[] = '- '.$peso($a['over_break_deduction']).' o.break'; }
-                $allowNote = implode(' ', $parts);
-            }
-
-            $ps  = '<table class="calc"><tbody>';
-            $ps .= $psSec('Earnings');
-            $ps .= $psRow('Basic Pay (Semi-monthly)', $basic, 'add');
-            if ($holiday > 0.005) $ps .= $psRow('Holiday Pay', $holiday, 'add');
-            if ($ot > 0.005)      $ps .= $psRow('Overtime Pay', $ot, 'add');
-            if ($nd > 0.005)      $ps .= $psRow('Night Differential', $nd, 'add');
-
-            if ($absut > 0.005 || $ob > 0.005 || $op > 0.005 || abs($grossResidual) > 0.005) {
-                $ps .= $psSec('Less: Attendance Deductions');
-                if ($absut > 0.005) $ps .= $psRow('Absences / Tardy / Undertime', $absut, 'sub');
-                if ($ob > 0.005)    $ps .= $psRow('Over-break', $ob, 'sub');
-                if ($op > 0.005)    $ps .= $psRow('Out-pass', $op, 'sub');
-                if ($grossResidual > 0.005)      $ps .= $psRow('Other Deductions', $grossResidual, 'sub');
-                elseif ($grossResidual < -0.005) $ps .= $psRow('Other Earnings', abs($grossResidual), 'add');
-            }
-            $ps .= $psMile('Gross Pay', $grossVal);
-
-            $ps .= $psSec('Less: Government Contributions');
-            if ($gov > 0.005) {
-                if ($sss > 0.005)  $ps .= $psRow('SSS Contribution', $sss, 'sub');
-                if ($phil > 0.005) $ps .= $psRow('PhilHealth', $phil, 'sub');
-                if ($pag > 0.005)  $ps .= $psRow('Pag-IBIG', $pag, 'sub');
-                if ($tax > 0.005)  $ps .= $psRow('Withholding Tax', $tax, 'sub');
-            } else {
-                $ps .= '<tr><td class="lbl" colspan="3" style="color:#9ca3af;font-style:italic;">No statutory deductions this cut-off (deducted end-of-month).</td></tr>';
-            }
-            if (abs($netResidual) > 0.005) $ps .= $psRow('Adjustment', abs($netResidual), $netResidual < 0 ? 'add' : 'sub');
-            $ps .= $psMile('Net Pay', $netVal);
-
-            if ($loans > 0.005 || $allow > 0.005 || abs($tailResidual) > 0.005) {
-                $ps .= $psSec('Less: Loans / Plus: Allowance');
-                if ($sssLoan > 0.005)  $ps .= $psRow('SSS Loan', $sssLoan, 'sub');
-                if ($pagLoan > 0.005)  $ps .= $psRow('Pag-IBIG Loan', $pagLoan, 'sub');
-                if ($compLoan > 0.005) $ps .= $psRow('Company Loan', $compLoan, 'sub');
-                if ($cashAdv > 0.005)  $ps .= $psRow('Cash Advance', $cashAdv, 'sub');
-                if ($charges > 0.005)  $ps .= $psRow('Charges / Penalty', $charges, 'sub');
-                if ($allow > 0.005)    $ps .= $psRow('Allowance', $allow, 'add', $allowNote);
-                if (abs($tailResidual) > 0.005) $ps .= $psRow('Adjustments / Other', abs($tailResidual), $tailResidual < 0 ? 'sub' : 'add');
-            }
-            $ps .= $psMile('Net Pay Receivable', $recVal, true);
-            $ps .= '</tbody></table>';
+            $peso = fn($n) => number_format((float) $n, 2);
         @endphp
 
         <div class="payslip">
@@ -223,7 +127,41 @@
                 <div><span class="lbl">Position:</span> <b>{{ optional($detail)->position->pos_desc ?? '—' }}</b></div>
             </div>
 
-            {!! $ps !!}
+            <div class="cols">
+                <div class="col">
+                    <h4>Earnings</h4>
+                    <div class="ln"><span>Basic Pay (Semi-monthly)</span><span class="v">{{ $peso($basic) }}</span></div>
+                    <div class="ln"><span>Holiday Pay</span><span class="v">{{ $peso($holiday) }}</span></div>
+                    <div class="ln"><span>Overtime Pay</span><span class="v">{{ $peso($ot) }}</span></div>
+                    <div class="ln"><span>Night Differential</span><span class="v">{{ $peso($nd) }}</span></div>
+                    <div class="ln"><span>Allowance</span><span class="v">{{ $peso($allow) }}</span></div>
+                    <div class="sub-tot"><span>Total Earnings</span><span>{{ $peso($earnings) }}</span></div>
+                </div>
+
+                <div class="col">
+                    <h4>Deductions</h4>
+                    <div class="ln"><span>Absences / Tardy / Undertime</span><span class="v">{{ $peso($absut) }}</span></div>
+                    @if ($ob > 0)<div class="ln"><span>Over-break</span><span class="v">{{ $peso($ob) }}</span></div>@endif
+                    @if ($op > 0)<div class="ln"><span>Out-pass</span><span class="v">{{ $peso($op) }}</span></div>@endif
+                    <div class="ln"><span>SSS Contribution</span><span class="v">{{ $peso($sss) }}</span></div>
+                    <div class="ln"><span>PhilHealth</span><span class="v">{{ $peso($phil) }}</span></div>
+                    <div class="ln"><span>Pag-IBIG</span><span class="v">{{ $peso($pag) }}</span></div>
+                    <div class="ln"><span>Withholding Tax</span><span class="v">{{ $peso($tax) }}</span></div>
+                    @if ($sssLoan > 0)<div class="ln"><span>SSS Loan</span><span class="v">{{ $peso($sssLoan) }}</span></div>@endif
+                    @if ($pagLoan > 0)<div class="ln"><span>Pag-IBIG Loan</span><span class="v">{{ $peso($pagLoan) }}</span></div>@endif
+                    @if ($compLoan > 0)<div class="ln"><span>Company Loan</span><span class="v">{{ $peso($compLoan) }}</span></div>@endif
+                    @if ($cashAdv > 0)<div class="ln"><span>Cash Advance</span><span class="v">{{ $peso($cashAdv) }}</span></div>@endif
+                    @if ($charges > 0)<div class="ln"><span>Charges / Penalty</span><span class="v">{{ $peso($charges) }}</span></div>@endif
+                    @if ($residual > 0.005)<div class="ln"><span>Other Deductions</span><span class="v">{{ $peso($residual) }}</span></div>@endif
+                    <div class="sub-tot"><span>Total Deductions</span><span>{{ $peso($totalDed) }}</span></div>
+                </div>
+            </div>
+
+            <div class="settle">
+                <div class="row"><span>Gross Pay</span><span>{{ $peso($p->gross_pay) }}</span></div>
+                <div class="row"><span>Net Pay (after govt. premiums &amp; tax)</span><span>{{ $peso($p->net_pay) }}</span></div>
+                <div class="row net"><span>NET PAY RECEIVABLE</span><span>₱ {{ $peso($takehome) }}</span></div>
+            </div>
 
             <div class="sign">
                 <div class="slot">Prepared by</div>
