@@ -229,7 +229,9 @@
                                     <th style="text-align:right;">UT Ded.</th>
                                     <th style="text-align:right;">ND Hrs</th>
                                     <th style="text-align:right;">ND Pay</th>
+                                    <th style="text-align:right;">OT Hrs</th>
                                     <th style="text-align:right;">Holiday Pay</th>
+                                    <th>Leave</th>
                                     <th style="text-align:right;">Penalty</th>
                                     <th style="text-align:right;">Adjustment</th>
                                     <th>Remarks</th>
@@ -251,6 +253,7 @@
                                         $isRestOt  = in_array($dDate->format('Y-m-d'), $restOtDates, true);
                                         $ot        = ($otByEmpDate ?? collect())->get($log->employee_id.'|'.$dDate->format('Y-m-d'));
                                         $otHrs     = $ot ? rtrim(rtrim(number_format($ot['hrs'], 2), '0'), '.') : null;
+                                        $lv        = ($leaveByEmpDate ?? collect())->get($log->employee_id.'|'.$dDate->format('Y-m-d'));
                                     @endphp
                                     <tr>
                                         <td>{{ $dDate->format('M d, Y') }}</td>
@@ -268,7 +271,16 @@
                                         <td class="num">{{ number_format((float) ($d->undertime_deduction ?? 0), 2) }}</td>
                                         <td class="num">{{ number_format((float) ($d->night_diff_hours ?? 0), 2) }}</td>
                                         <td class="num">{{ number_format((float) ($d->night_diff_pay ?? 0), 2) }}</td>
+                                        <td class="num">{{ $otHrs ?? '—' }}</td>
                                         <td class="num">{{ $isHoliday ? number_format((float) $d->holiday_pay, 2) : '—' }}</td>
+                                        <td>
+                                            @if ($lv)
+                                                {{ $lv['type'] }} ({{ rtrim(rtrim(number_format($lv['hrs'], 2), '0'), '.') }}h)
+                                                <span class="badge {{ $lv['paid'] ? 'b-present' : 'b-absent' }}">{{ $lv['paid'] ? 'Paid' : 'Unpaid' }}</span>
+                                            @else
+                                                —
+                                            @endif
+                                        </td>
                                         <td class="num">{{ number_format((float) ($d->penalty_amount ?? 0), 2) }}</td>
                                         <td class="num">{{ number_format((float) ($d->adjustment_amount ?? 0), 2) }}</td>
                                         <td>{{ $d->remarks }}</td>

@@ -549,10 +549,31 @@ class PayrollController extends Controller
                         }
 
                         //  Accumulate worked hours + deductions
+                        // Actual productive minutes for the day (0 if no attendance summary).
+                        $workedMins = $summary ? (int) round(((float) $summary->total_hours) * 60) : 0;
+
+                        if ($isPaidLeave && $onLeave && !$onOB) {
+                            // PARTIAL/HALF-DAY PAID LEAVE. The day is paid for min(8h, worked +
+                            // paid-leave): a worked half + a paid-leave half = a full day, but
+                            // either half alone pays only that half. The attendance summary has no
+                            // knowledge of the leave, so its raw mins_late/mins_undertime (measured
+                            // against the full 8h schedule, which already includes the leave half)
+                            // would be wrong here. Replace them with the true uncovered shortfall —
+                            // the part of the schedule covered by neither work nor paid leave —
+                            // charged as undertime. Because $workedMins is the ACTUAL productive
+                            // minutes, any lateness/short-time inside the worked half is captured
+                            // here too. ($onOB excluded: OB already covers the working portion.)
+                            $leaveMins      = (int) round(((float) $onLeave->total_hours) * 60);
+                            $shortfallMins  = max(0, 480 - $leaveMins - $workedMins);
+                            $totalUndertime += $shortfallMins;
+                        } elseif ($summary) {
+                            $totalLate      += $summary->mins_late;
+                            $totalUndertime += $summary->mins_undertime;
+                        }
+
+                        // These apply regardless (independent infractions / pay).
                         if ($summary) {
                             $totalHoursWorked += $summary->total_hours;
-                            $totalLate        += $summary->mins_late;
-                            $totalUndertime   += $summary->mins_undertime;
                             $over_break_minutes  += $summary->over_break_minutes;
                             $outpass_minutes   += $summary->outpass_minutes;
                             $night_diff_mins +=  $summary->mins_night_diff;

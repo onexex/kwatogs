@@ -95,6 +95,9 @@ class PayrollLogController extends Controller
         // Approved overtime per (employee, day) so each daily row can show an OT
         // badge with hours. Keyed by "empID|Y-m-d". One bounded bulk query.
         $otByEmpDate = collect();
+        // Approved leave per (employee, day) so each daily row can show the leave
+        // type + hours. Keyed by "empID|Y-m-d". One bounded bulk query, no N+1.
+        $leaveByEmpDate = collect();
         if ($logs->isNotEmpty()) {
             $empIds   = $logs->pluck('employee_id')->unique()->all();
             $payDates = $logs->map(fn ($l) => \Carbon\Carbon::parse($l->pay_date)->format('Y-m-d'))
@@ -106,19 +109,20 @@ class PayrollLogController extends Controller
                 ->get()
                 ->groupBy(fn ($d) => $d->employee_id.'|'.\Carbon\Carbon::parse($d->payroll_date)->format('Y-m-d'));
 
+            // Bound the OT/leave queries to the cut-off span actually printed
+            // (fallback to the pay dates if a log has no start/end), so we never
+            // scan all OT/leave. Shared by both the OT and leave wiring below.
+            $startBound = $logs->map(fn ($l) => optional($l->payroll_start_date)?->format('Y-m-d'))
+                ->filter()->push(...$payDates)->min();
+            $endBound   = $logs->map(fn ($l) => optional($l->payroll_end_date)?->format('Y-m-d'))
+                ->filter()->push(...$payDates)->max();
+
             // ── Overtime wiring ──────────────────────────────────────────────
             // Overtime is keyed by emp_details.id, but our day rows are keyed by
             // empID (users.empID). Build the bridge map [emp_details.id => empID].
             $detailIdToEmpId = empDetail::whereIn('empID', $empIds)->pluck('empID', 'id');
 
             if ($detailIdToEmpId->isNotEmpty()) {
-                // Bound the query to the cut-off span actually printed (fallback to
-                // the pay dates if a log has no start/end), so we never scan all OT.
-                $startBound = $logs->map(fn ($l) => optional($l->payroll_start_date)?->format('Y-m-d'))
-                    ->filter()->push(...$payDates)->min();
-                $endBound   = $logs->map(fn ($l) => optional($l->payroll_end_date)?->format('Y-m-d'))
-                    ->filter()->push(...$payDates)->max();
-
                 Overtime::where('status', 'APPROVEDBYCFO')
                     ->whereIn('emp_detail_id', $detailIdToEmpId->keys())
                     ->whereBetween('date_from', [$startBound, $endBound])
@@ -137,8 +141,26 @@ class PayrollLogController extends Controller
                         $otByEmpDate->put($key, $cur);
                     });
             }
+
+            // ── Leave wiring ─────────────────────────────────────────────────
+            // LeaveDetail.employee_id already matches users.empID, so no id-bridge
+            // is needed (unlike OT). Resolve leave type names once (id => name).
+            $leaveTypeNames = \App\Models\leavetype::pluck('type_leave', 'id');
+
+            \App\Models\LeaveDetail::where('status', 'APPROVEDBYCFO')
+                ->whereIn('employee_id', $empIds)
+                ->whereBetween('date', [$startBound, $endBound])
+                ->get(['employee_id', 'date', 'leavetype_id', 'leave_kind', 'total_hours'])
+                ->each(function ($lv) use (&$leaveByEmpDate, $leaveTypeNames) {
+                    $key = $lv->employee_id.'|'.\Carbon\Carbon::parse($lv->date)->format('Y-m-d');
+                    $leaveByEmpDate->put($key, [
+                        'type' => $leaveTypeNames[$lv->leavetype_id] ?? 'Leave',
+                        'hrs'  => (float) $lv->total_hours,
+                        'paid' => (string) $lv->leave_kind === '1',   // '1' = paid, '0' = unpaid
+                    ]);
+                });
         }
 
-        return view('pages.modules.payroll_logs_print', compact('logs', 'dayDetails', 'otByEmpDate'));
+        return view('pages.modules.payroll_logs_print', compact('logs', 'dayDetails', 'otByEmpDate', 'leaveByEmpDate'));
     }
 }
