@@ -669,7 +669,7 @@ $(document).ready(function () {
 
                 if (!Array.isArray(data) || data.length === 0) {
                     $payrollTableBody.html(
-                        '<tr class="payroll-state"><td colspan="25" class="text-center text-muted">' +
+                        '<tr class="payroll-state"><td colspan="26" class="text-center text-muted">' +
                         '<div class="payroll-empty-icon"><i class="fa fa-folder-open"></i></div>' +
                         '<div class="fw-semibold">No payroll data found</div>' +
                         '<div class="small">Generate the payroll for this pay date, or adjust your filters.</div></td></tr>',
@@ -677,7 +677,7 @@ $(document).ready(function () {
                     return;
                 }
 
-                const sumFields = ['basic_salary','basicPay','abs_ut_deduction','holiday_pay','overtime_pay','night_diff_pay','gross_pay','sss_contribution','sss_loan','pagibig_contribution','pagibig_loan','philhealth_contribution','taxable_income','withholding_tax','allowances','adjustment_amount','penalty_amount','other_deduction','company_loan','cash_advance','net_pay','pay_rec'];
+                const sumFields = ['basic_salary','basicPay','abs_ut_deduction','holiday_pay','overtime_hours','overtime_pay','night_diff_pay','gross_pay','sss_contribution','sss_loan','pagibig_contribution','pagibig_loan','philhealth_contribution','taxable_income','withholding_tax','allowances','adjustment_amount','penalty_amount','other_deduction','company_loan','cash_advance','net_pay','pay_rec'];
                 const totals = {};
                 sumFields.forEach((fld) => { totals[fld] = 0; });
 
@@ -699,6 +699,7 @@ $(document).ready(function () {
                             <td class="text-danger">${formatNumber(payroll.abs_ut_deduction || 0)}</td>
 
                             <td class="bg-earnings">${formatNumber(payroll.holiday_pay || 0)}</td>
+                            <td class="bg-earnings">${formatNumber(payroll.overtime_hours || 0)}</td>
                             <td class="bg-earnings">${formatNumber(payroll.overtime_pay || 0)}</td>
                             <td class="bg-earnings">${formatNumber(payroll.night_diff_pay || 0)}</td>
 
@@ -735,6 +736,7 @@ $(document).ready(function () {
                         <td>${formatNumber(totals.basicPay)}</td>
                         <td>${formatNumber(totals.abs_ut_deduction)}</td>
                         <td>${formatNumber(totals.holiday_pay)}</td>
+                        <td>${formatNumber(totals.overtime_hours)}</td>
                         <td>${formatNumber(totals.overtime_pay)}</td>
                         <td>${formatNumber(totals.night_diff_pay)}</td>
                         <td>${formatNumber(totals.gross_pay)}</td>

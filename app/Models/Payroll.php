@@ -21,6 +21,7 @@ class Payroll extends Model
         'basic_salary',
         'allowances',
         'overtime_pay',
+        'overtime_hours',
         'holiday_pay',
         'other_earnings',
         'late_minutes',
