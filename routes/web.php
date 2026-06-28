@@ -487,6 +487,7 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip', 'check.maintena
     Route::post('/payroll/payslip-email/settings', [PayslipEmailController::class, 'updateSettings'])->name('payslip-email.settings.update')->middleware('can:payslipemail');
     Route::get('/payroll/export/cash', [PayrollExportController::class, 'exportCash'])->name('payroll.export.cash');
     Route::get('/payroll/export/card', [PayrollExportController::class, 'exportCard'])->name('payroll.export.card');
+    Route::get('/payroll/export/gov-dues', [PayrollExportController::class, 'exportGovDues'])->name('payroll.export.govdues');
     Route::get('/payroll-logs', [PayrollLogController::class, 'index'])->name('payroll-logs.index')->middleware('can:payrolllogs');
     Route::get('/payroll-logs/fetch', [PayrollLogController::class, 'fetch'])->name('payroll-logs.fetch')->middleware('can:payrolllogs');
     Route::get('/payroll-logs/print', [PayrollLogController::class, 'print'])->name('payroll-logs.print')->middleware('can:payrolllogs');

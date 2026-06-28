@@ -573,6 +573,8 @@
                         <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="btnExportMenu">
                             <li><a class="dropdown-item" href="#" id="btnExportCash"><i class="fa fa-money-bill-wave me-2 text-secondary"></i>Cash list (name &amp; net pay)</a></li>
                             <li><a class="dropdown-item" href="#" id="btnExportCard"><i class="fa fa-credit-card me-2 text-teal"></i>ATM / Card (bank upload)</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" id="btnExportGovDues"><i class="fa fa-building-columns me-2 text-success"></i>Gov dues (EE/ER)</a></li>
                         </ul>
                     </div>
                 </div>

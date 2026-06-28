@@ -803,6 +803,11 @@ $(document).ready(function () {
         const params = payrollExportParams();
         if (params) { window.location.href = `/payroll/export/card?${params.toString()}`; }
     });
+    $("#btnExportGovDues").on("click", function (e) {
+        e.preventDefault();
+        const params = payrollExportParams();
+        if (params) { window.location.href = `/payroll/export/gov-dues?${params.toString()}`; }
+    });
 
     $("#btnPrintPayslips").on("click", function () {
         const payDate = $("#pay_date").val();
