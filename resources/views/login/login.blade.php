@@ -30,6 +30,8 @@
             background: linear-gradient(135deg, var(--primary-teal) 0%, var(--dark-teal) 100%);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
+            padding: 1.5rem 0;
+            box-sizing: border-box;
         }
 
         .login-container {
@@ -137,6 +139,12 @@
             .img-logo { display: none; }
             .login-card-form { padding: 30px; }
         }
+
+        @media (max-width: 480px) {
+            .login-container { border-radius: 1rem; }
+            .login-card-form { padding: 24px 20px; }
+            .login-card-form h2 { font-size: 1.5rem; }
+        }
     </style>
 </head>
 <body>
@@ -146,6 +154,12 @@
             {{-- Left: form column --}}
             <div class="col-lg-6 col-md-12">
                 <div class="login-card-form">
+                    {{-- Mobile logo: shown only when the right branding panel is hidden --}}
+                    <div class="mobile-logo d-flex d-lg-none flex-column align-items-center text-center mb-4">
+                        <img src="{{ asset('img/kwatogslogo.jpg') }}" alt="{{ config('app.name') }}" style="height:120px;max-height:120px;object-fit:contain;">
+                        <h4 class="fw-bold mt-3 mb-1" style="color:#2d3748;">{{ config('app.name', 'HR Portal') }}</h4>
+                        <p class="mb-0" style="color:#718096;font-size:.875rem;">Your all-in-one workforce management solution</p>
+                    </div>
                     <h2>Welcome Back</h2>
                     <p>Please enter your details to sign in.</p>
 

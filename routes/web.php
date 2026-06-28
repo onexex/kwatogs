@@ -315,6 +315,7 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip', 'check.maintena
     Route::post('/classification/createHolidayLogger',[holidayLoggerCtrl::class, 'create_update']);
     Route::get('/getHL',[holidayLoggerCtrl::class, 'getall']);
     Route::get('/getHLData',[holidayLoggerCtrl::class, 'edit']);
+    Route::delete('/deleteHL',[holidayLoggerCtrl::class, 'delete']);
 
     Route::post('/settings/eo_validation',[eovalidationCtrl::class, 'create_update']);
     Route::get('/getEOValidation',[eovalidationCtrl::class, 'getall']);
