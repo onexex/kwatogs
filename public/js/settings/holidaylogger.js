@@ -125,20 +125,26 @@ $(document).ready(function() {
                     $('span.' + prefix + '_error').text(val[0]);
                 });
             } 
-            else if (status == 200 || status == 202) { // Success (Create or Update)
+            else if (status == 200) {
                 Swal.fire({
                     icon: 'success',
                     title: 'Success!',
                     text: response.data.msg,
-                    timer: 2000,
+                    timer: 2500,
                     showConfirmButton: false
                 });
-
                 get_hl();
-                if (status == 200) $('#frmHoliday')[0].reset(); // Reset only on new entry
-                
-                // Hide modal if everything is successful
+                $('#frmHoliday')[0].reset();
                 $('#mdlHoliday').modal('hide');
+            }
+            else if (status == 202) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Already Exists',
+                    text: response.data.msg,
+                    confirmButtonColor: '#008080'
+                });
+                get_hl();
             }
         })
         .catch(function (error) {
@@ -166,14 +172,17 @@ $(document).ready(function() {
                     }
 
                     content += "<tr>" +
-                        "<td class='ps-4 fw-medium'>" + item.date + "</td>" + // ps-4 matches header padding
+                        "<td class='ps-4 fw-medium'>" + item.date + "</td>" +
                         "<td>" + holidayBadge + "</td>" +
                         "<td class='text-muted'>" + item.description + "</td>" +
                         "<td class='text-muted'>" + (item.department?.dep_name || "All Departments") + "</td>" +
-                        "<td class='pe-4 text-end'>" + 
-                            "<button type='button' class='btn btn-light btn-sm rounded-circle shadow-sm p-2' value='" + item.id + "' data-bs-toggle='modal' data-bs-target='#mdlHoliday' id='btnUpdateHL' title='Edit'>" + 
-                                "<i class='fa-solid fa-pencil text-primary'></i>" + 
-                            "</button> " +
+                        "<td class='pe-4 text-end'>" +
+                            "<button type='button' class='btn btn-light btn-sm rounded-circle shadow-sm p-2 me-1' value='" + item.id + "' data-bs-toggle='modal' data-bs-target='#mdlHoliday' id='btnUpdateHL' title='Edit'>" +
+                                "<i class='fa-solid fa-pencil text-primary'></i>" +
+                            "</button>" +
+                            "<button type='button' class='btn btn-light btn-sm rounded-circle shadow-sm p-2 btnDeleteHL' data-id='" + item.id + "' data-desc='" + item.description + "' title='Delete'>" +
+                                "<i class='fa-solid fa-trash text-danger'></i>" +
+                            "</button>" +
                         "</td>" +
                     "</tr>";
                 });
@@ -196,6 +205,34 @@ $(document).ready(function() {
             });
         });
     }
+
+    $(document).on("click", ".btnDeleteHL", function () {
+        var id   = $(this).data('id');
+        var desc = $(this).data('desc');
+        Swal.fire({
+            title: 'Delete Holiday?',
+            text: '"' + desc + '" will be permanently removed.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#94a3b8',
+            confirmButtonText: 'Yes, delete it',
+        }).then(function(result) {
+            if (!result.isConfirmed) return;
+            axios.delete('/deleteHL', { data: { id: id, _token: $('meta[name="csrf-token"]').attr('content') } })
+                .then(function(response) {
+                    if (response.data.status == 200) {
+                        Swal.fire({ icon: 'success', title: 'Deleted!', text: response.data.msg, timer: 1500, showConfirmButton: false });
+                        get_hl();
+                    } else {
+                        Swal.fire({ icon: 'error', title: 'Error', text: response.data.msg });
+                    }
+                })
+                .catch(function(error) {
+                    Swal.fire({ icon: 'error', title: 'Error', text: 'Something went wrong.' });
+                });
+        });
+    });
 
     $(document).on("click", "#btnUpdateHL", function (e) {
 
