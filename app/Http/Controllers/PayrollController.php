@@ -1012,7 +1012,10 @@ class PayrollController extends Controller
                 );
 
 
-                if ($isEndOfMonth && $employeeClass !== 'TRN' && $canAffordLoans) { 
+                // Loans deduct on EVERY cutoff (not just end-of-month) and apply to
+                // trainees too — so record the LoanPayment and decrement the balance
+                // whenever a deduction was actually taken this run.
+                if ($canAffordLoans) {
                     foreach ($contributions['loan_details'] as $loan) {
                         LoanPayment::create([
                             'loan_id' => $loan['loan_id'],

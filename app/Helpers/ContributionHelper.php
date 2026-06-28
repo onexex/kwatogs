@@ -20,45 +20,40 @@ class ContributionHelper
      */
     public static function computeAll($monthlyGross, $employeeClass, $isEndOfMonth = false, $employeeId = null, array $duesFlags = [], $payDate = null)
     {
-        // If NOT end of month or employee is trainee → no deductions
-        if (!$isEndOfMonth || $employeeClass === 'TRN') {
-            return [
-                'sss' => ['employee_share' => 0, 'employer_share' => 0, 'total' => 0],
-                'philhealth' => ['employee_share' => 0, 'employer_share' => 0, 'total' => 0],
-                'pagibig' => ['employee_share' => 0, 'employer_share' => 0, 'total' => 0],
-                'withholding_tax' => 0,
-                'loan_deduction' => 0,
-                'loan_breakdown' => [
-                    'pagibig' => 0,
-                    'sss' => 0,
-                    'philhealth' => 0,
-                    'salary' => 0,
-                     'other' => 0,
-                    'charges/penalty' => 0,
-                    'cash_adv' => 0,
-                ],
-                'loan_details' => [],
-                'taxable_income' => 0,
-            ];
-        }
-
-        // Compute contributions
-        $sss = SssContribution::compute($monthlyGross, $employeeClass);
-        $philhealth = PhilhealthContribution::compute($monthlyGross, $employeeClass);
-        $pagibig = PagibigContribution::compute($monthlyGross, $employeeClass);
-
-        // ── Per-employee enrolment toggles ──────────────────────────────
-        // If an employee is NOT subject to a government due, zero it out
-        // entirely (employee + employer share). Omitted flag => enrolled.
+        $isTrainee = $employeeClass === 'TRN';
         $zeroShare = ['employee_share' => 0, 'employer_share' => 0, 'total' => 0];
-        if (array_key_exists('sss', $duesFlags) && !$duesFlags['sss']) {
-            $sss = $zeroShare;
-        }
-        if (array_key_exists('philhealth', $duesFlags) && !$duesFlags['philhealth']) {
-            $philhealth = $zeroShare;
-        }
-        if (array_key_exists('pagibig', $duesFlags) && !$duesFlags['pagibig']) {
-            $pagibig = $zeroShare;
+
+        // ── Government contributions & withholding tax ──────────────────
+        // These are MONTHLY dues, so they deduct only on the end-of-month cutoff,
+        // and never for trainees (TRN), who aren't enrolled. (Loans/charges are
+        // handled separately below and deduct on EVERY cutoff.)
+        if ($isEndOfMonth && !$isTrainee) {
+            $sss = SssContribution::compute($monthlyGross, $employeeClass);
+            $philhealth = PhilhealthContribution::compute($monthlyGross, $employeeClass);
+            $pagibig = PagibigContribution::compute($monthlyGross, $employeeClass);
+
+            // Per-employee enrolment toggles: if an employee is NOT subject to a
+            // government due, zero it out entirely (employee + employer share).
+            // Omitted flag => enrolled.
+            if (array_key_exists('sss', $duesFlags) && !$duesFlags['sss']) {
+                $sss = $zeroShare;
+            }
+            if (array_key_exists('philhealth', $duesFlags) && !$duesFlags['philhealth']) {
+                $philhealth = $zeroShare;
+            }
+            if (array_key_exists('pagibig', $duesFlags) && !$duesFlags['pagibig']) {
+                $pagibig = $zeroShare;
+            }
+
+            $taxableIncome = $monthlyGross
+                - ($sss['employee_share'] ?? 0)
+                - ($philhealth['employee_share'] ?? 0)
+                - ($pagibig['employee_share'] ?? 0);
+            $withholdingTax = BirWithholdingTax::compute($taxableIncome, $employeeClass);
+        } else {
+            $sss = $philhealth = $pagibig = $zeroShare;
+            $taxableIncome = 0;
+            $withholdingTax = 0;
         }
 
         // Default loan values
@@ -75,12 +70,16 @@ class ContributionHelper
         $loanDetails = [];
         $loans = [];
 
-        if ($isEndOfMonth && $employeeClass !== 'TRN' && $employeeId) {
+        // Loans/charges deduct on EVERY cutoff (client policy), not just at end of
+        // month — each cutoff pays whatever amortization is due against the remaining
+        // balance until the loan is settled. Applies to all classifications,
+        // trainees included (money owed to the company).
+        if ($employeeId) {
             // Get active loans. Finite loans only count while they still have a
             // balance; recurring charges (rent etc.) are picked up regardless of
-            // balance and keep deducting every month until switched off.
+            // balance and keep deducting each cutoff until switched off.
             // A charge only deducts on/after its start date — a future-dated charge
-            // is skipped until its start month (gated only when a pay date is given).
+            // is skipped until its start cutoff (gated only when a pay date is given).
             $loans = Loan::where('employee_id', $employeeId)
                 ->where('status', 'active')
                 ->where(fn($q) => $q->where('is_recurring', true)->orWhere('balance', '>', 0))
@@ -126,22 +125,8 @@ class ContributionHelper
             }
         }
 
-        // Compute taxable income (include contributions + gov loans only)
-        // $loanDeductibleForTax = 0;
-        // foreach ($loans as $loan) {
-        //     if (in_array($loan->loan_type, ['pagibig', 'sss', 'philhealth'])) {
-        //         $loanDeductibleForTax += min($loan->monthly_amortization, $loan->balance);
-        //     }
-        // }
-
-        $taxableIncome = $monthlyGross
-            - ($sss['employee_share'] ?? 0)
-            - ($philhealth['employee_share'] ?? 0)
-            - ($pagibig['employee_share'] ?? 0);
-            // - $loanDeductibleForTax;
-
-        // Compute withholding tax
-        $withholdingTax = BirWithholdingTax::compute($taxableIncome, $employeeClass);
+        // ($taxableIncome and $withholdingTax were computed above with the
+        // end-of-month government contributions.)
 
         return [
             'sss' => $sss ,
