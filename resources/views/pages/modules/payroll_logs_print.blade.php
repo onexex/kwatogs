@@ -163,9 +163,9 @@
                  . '<td class="amt '.$cls.'">'.$pre.$peso($amount).'</td></tr>';
         };
         // A running-total milestone (Gross / Net) or the grand total (Receivable).
-        $calcMile = function ($label, $amount, $grand = false) use ($peso) {
+        $calcMile = function ($label, $amount, $grand = false, $note = '') use ($peso) {
             $tr = $grand ? 'grand' : 'mile';
-            return '<tr class="'.$tr.'"><td class="lbl">'.e($label).'</td><td></td>'
+            return '<tr class="'.$tr.'"><td class="lbl">'.e($label).'</td><td class="note">'.e($note).'</td>'
                  . '<td class="amt">'.$peso($amount).'</td></tr>';
         };
         // A section divider row (EARNINGS / LESS: ... ).
@@ -312,17 +312,14 @@
                         }
                         $html .= $calcMile('Gross Pay', $g($bd, 'totals.gross_pay', 0));
 
-                        // ── LESS: GOVERNMENT DUES ──
+                        // ── LESS: GOVERNMENT DUES ── (contributions only; tax is its own step below)
                         $govLines = [
-                            ['SSS',            $g($bd, 'contributions.sss', 0)],
-                            ['PhilHealth',     $g($bd, 'contributions.philhealth', 0)],
-                            ['Pag-IBIG',       $g($bd, 'contributions.pagibig', 0)],
-                            ['Withholding Tax',$g($bd, 'contributions.tax', 0)],
+                            ['SSS',        $g($bd, 'contributions.sss', 0)],
+                            ['PhilHealth', $g($bd, 'contributions.philhealth', 0)],
+                            ['Pag-IBIG',   $g($bd, 'contributions.pagibig', 0)],
                         ];
                         $hasGov = collect($govLines)->contains(fn ($r) => $nz($r[1]));
                         $html .= $calcSec('Less: Government Dues');
-                        if ($nz($g($bd, 'contributions.taxable', 0)))
-                            $html .= $calcInfo('Taxable Income', $g($bd, 'contributions.taxable', 0), 'basis for tax');
                         if ($hasGov) {
                             foreach ($govLines as [$lbl, $amt]) {
                                 if ($nz($amt)) $html .= $calcRow($lbl, $amt, 'sub');
@@ -331,6 +328,20 @@
                             $html .= '<tr><td class="lbl" colspan="3" style="color:#94a3b8;font-style:italic;">'
                                    . 'No statutory deductions this cut-off (deducted end-of-month).</td></tr>';
                         }
+
+                        // ── TAXABLE INCOME (subtotal / basis for tax) ──
+                        $html .= $calcMile('Taxable Income', $g($bd, 'contributions.taxable', 0), false, 'basis for tax');
+
+                        // ── LESS: TAX ── (always shown; 0.00 when none)
+                        $wtax = $g($bd, 'contributions.tax', 0);
+                        $html .= $calcSec('Less: Tax');
+                        if ($nz($wtax)) {
+                            $html .= $calcRow('Withholding Tax', $wtax, 'sub');
+                        } else {
+                            $html .= '<tr><td class="lbl">Withholding Tax</td><td class="note"></td>'
+                                   . '<td class="amt">'.$peso(0).'</td></tr>';
+                        }
+
                         $html .= $calcMile('Net Pay', $g($bd, 'net_pay', 0));
 
                         // ── LESS: LOANS / PLUS: ALLOWANCE & ADJUSTMENTS ──

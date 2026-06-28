@@ -443,8 +443,8 @@ $(function () {
             const pre = sign === 'sub' ? '− ' : '+ ';
             return `<tr><td class="lbl">${esc(label)}</td><td class="note">${esc(note)}</td><td class="amt ${cls}">${pre}${peso(amount)}</td></tr>`;
         };
-        const mile = (label, amount, grand = false) =>
-            `<tr class="${grand ? 'grand' : 'mile'}"><td class="lbl">${esc(label)}</td><td></td><td class="amt">${peso(amount)}</td></tr>`;
+        const mile = (label, amount, grand = false, note = '') =>
+            `<tr class="${grand ? 'grand' : 'mile'}"><td class="lbl">${esc(label)}</td><td class="note">${esc(note)}</td><td class="amt">${peso(amount)}</td></tr>`;
         const sec  = (label) => `<tr class="sec"><td colspan="3">${esc(label)}</td></tr>`;
         const info = (label, amount, note = '') => {
             const val = (amount !== '' && !isNaN(Number(amount))) ? peso(amount) : esc(amount);
@@ -505,20 +505,31 @@ $(function () {
         }
         h += mile('Gross Pay', g(bd,'totals.gross_pay',0));
 
-        // ── LESS: GOVERNMENT DUES ──
+        // ── LESS: GOVERNMENT DUES ── (contributions only; tax is its own step below)
         const gov = [
-            ['SSS',             g(bd,'contributions.sss',0)],
-            ['PhilHealth',      g(bd,'contributions.philhealth',0)],
-            ['Pag-IBIG',        g(bd,'contributions.pagibig',0)],
-            ['Withholding Tax', g(bd,'contributions.tax',0)],
+            ['SSS',        g(bd,'contributions.sss',0)],
+            ['PhilHealth', g(bd,'contributions.philhealth',0)],
+            ['Pag-IBIG',   g(bd,'contributions.pagibig',0)],
         ];
         h += sec('Less: Government Dues');
-        if (nz(g(bd,'contributions.taxable',0))) h += info('Taxable Income', g(bd,'contributions.taxable',0), 'basis for tax');
         if (gov.some(r => nz(r[1]))) {
             gov.forEach(([lbl, amt]) => { if (nz(amt)) h += row(lbl, amt, 'sub'); });
         } else {
             h += `<tr><td class="lbl" colspan="3" style="color:#94a3b8;font-style:italic;">No statutory deductions this cut-off (deducted end-of-month).</td></tr>`;
         }
+
+        // ── TAXABLE INCOME (subtotal / basis for tax) ──
+        h += mile('Taxable Income', g(bd,'contributions.taxable',0), false, 'basis for tax');
+
+        // ── LESS: TAX ── (always shown; 0.00 when none)
+        const wtax = g(bd,'contributions.tax',0);
+        h += sec('Less: Tax');
+        if (nz(wtax)) {
+            h += row('Withholding Tax', wtax, 'sub');
+        } else {
+            h += `<tr><td class="lbl">Withholding Tax</td><td class="note"></td><td class="amt">${peso(0)}</td></tr>`;
+        }
+
         h += mile('Net Pay', g(bd,'net_pay',0));
 
         // ── LESS: LOANS / PLUS: ALLOWANCE & ADJUSTMENTS ──
