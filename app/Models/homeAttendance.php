@@ -78,7 +78,10 @@ class homeAttendance extends Model
         if ($this->schedule && $this->schedule->break_start && $this->schedule->break_end) {
             $breakStart = Carbon::parse($actualIn->toDateString() . ' ' . $this->schedule->break_start);
             $breakEnd   = Carbon::parse($actualIn->toDateString() . ' ' . $this->schedule->break_end);
-            // Handle overnight break (e.g. 11PM–2AM)
+            // Post-midnight break: a break scheduled before work starts (e.g. 12AM–1AM on a
+            // 9PM–6AM shift) belongs to the NEXT calendar day, not the shift-start day.
+            if ($breakStart->lt($actualIn)) { $breakStart->addDay(); $breakEnd->addDay(); }
+            // Handle overnight break that itself crosses midnight (e.g. 11PM–2AM)
             if ($breakEnd->lt($breakStart)) { $breakEnd->addDay(); }
         }
 
@@ -306,7 +309,10 @@ class homeAttendance extends Model
                 $breakStart = Carbon::parse($schedule->sched_start_date . ' ' . $schedule->break_start);
                 $breakEnd = Carbon::parse($schedule->sched_start_date . ' ' . $schedule->break_end);
 
-                // Handle overnight break
+                // Post-midnight break: a break scheduled before shift-in (e.g. 12AM–1AM on a
+                // 9PM–6AM shift) belongs to the NEXT calendar day, not the shift-start day.
+                if ($breakStart->lt($schedIn)) { $breakStart->addDay(); $breakEnd->addDay(); }
+                // Handle overnight break that itself crosses midnight
                 if ($breakEnd->lt($breakStart)) { $breakEnd->addDay(); }
 
                 // Calculate overlap between working hours and break hours

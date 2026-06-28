@@ -96,6 +96,11 @@ class NightDiffTest extends TestCase
             '6pm to 6am with 1h break at 11pm = 7h' => [
                 '6pm->6am +1h break@11pm', "$D1 18:00", "$D2 06:00", '23:00:00', '00:00:00', 7.0,
             ],
+            // Break wholly AFTER midnight (12AM-1AM) on an overnight shift must still be
+            // deducted — regression for the post-midnight anchoring bug.
+            '9pm to 6am with 1h break 12am-1am = 7h' => [
+                '9pm->6am +1h break@12am', "$D1 21:00", "$D2 06:00", '00:00:00', '01:00:00', 7.0,
+            ],
             // Break entirely OUTSIDE the night window must NOT reduce ND.
             '6pm to 6am with lunch break 12pm-1pm = 8h' => [
                 '6pm->6am +daytime break', "$D1 18:00", "$D2 06:00", '12:00:00', '13:00:00', 8.0,
