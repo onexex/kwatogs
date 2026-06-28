@@ -44,6 +44,21 @@ class BirWithholdingTax extends Model
     //     return max($tax, 0);
     // }
 
+    /**
+     * ⚡ PERFORMANCE: load the (small, static) tax table ONCE per request and
+     * resolve the bracket in PHP, instead of one DB query per employee during
+     * payroll generation. Cache is per-request so edits apply on the next run.
+     */
+    protected static $bracketCache = null;
+
+    protected static function brackets()
+    {
+        if (static::$bracketCache === null) {
+            static::$bracketCache = static::orderByDesc('effective_year')->get();
+        }
+        return static::$bracketCache;
+    }
+
     public static function compute($taxableIncome, $employeeClass = null)
     {
         // ❗ Skip withholding tax if employee is Trainee / Non-taxable class
@@ -55,10 +70,8 @@ class BirWithholdingTax extends Model
         $taxableIncome = max(($taxableIncome ?? 0), 0);
 
         // Find matching TRAIN bracket for this taxable income
-        $record = self::where('compensation_from', '<=', $taxableIncome)
-            ->where('compensation_to', '>=', $taxableIncome)
-            ->orderByDesc('effective_year')
-            ->first();
+        $record = self::brackets()
+            ->first(fn ($r) => $r->compensation_from <= $taxableIncome && $r->compensation_to >= $taxableIncome);
 
         // If no matching bracket → no withholding tax
         if (!$record) {

@@ -71,7 +71,23 @@
                 : 'UNKNOWN';
 
             // Earnings
-            $basic   = (float) $p->basicPay;
+            // Daily-paid employees (classification ≠ RGLR): basicPay stores only the
+            // daily rate, while the real regular pay (days × rate) is buried in gross_pay.
+            // Rebuild it from the computation log so Total Earnings foots to the gross and
+            // the slip shows how many days were reported.
+            $class      = optional($detail)->empClassification;
+            $isDaily    = $class && $class !== 'RGLR';
+            $meta       = $allowanceByKey->get($p->employee_id.'|'.\Carbon\Carbon::parse($p->pay_date)->format('Y-m-d'), []);
+            $daysWorked = $meta['days_present'] ?? null;
+            $dayRate    = $meta['daily_rate'] ?? (float) $p->basicPay;
+
+            if ($isDaily && $daysWorked !== null) {
+                $basic      = $daysWorked * $dayRate;
+                $basicLabel = $daysWorked.' day'.($daysWorked == 1 ? '' : 's').' × '.number_format($dayRate, 2);
+            } else {
+                $basic      = (float) $p->basicPay;
+                $basicLabel = 'Semi-monthly';
+            }
             $holiday = (float) $p->holiday_pay;
             $ot      = (float) $p->overtime_pay;
             $nd      = (float) $p->night_diff_pay;
@@ -130,7 +146,7 @@
             <div class="cols">
                 <div class="col">
                     <h4>Earnings</h4>
-                    <div class="ln"><span>Basic Pay (Semi-monthly)</span><span class="v">{{ $peso($basic) }}</span></div>
+                    <div class="ln"><span>Basic Pay ({{ $basicLabel }})</span><span class="v">{{ $peso($basic) }}</span></div>
                     <div class="ln"><span>Holiday Pay</span><span class="v">{{ $peso($holiday) }}</span></div>
                     <div class="ln"><span>Overtime Pay</span><span class="v">{{ $peso($ot) }}</span></div>
                     <div class="ln"><span>Night Differential</span><span class="v">{{ $peso($nd) }}</span></div>
@@ -158,8 +174,8 @@
             </div>
 
             <div class="settle">
-                <div class="row"><span>Gross Pay</span><span>{{ $peso($p->gross_pay) }}</span></div>
-                <div class="row"><span>Net Pay (after govt. premiums &amp; tax)</span><span>{{ $peso($p->net_pay) }}</span></div>
+                {{-- <div class="row"><span>Gross Pay</span><span>{{ $peso($p->gross_pay) }}</span></div>
+                <div class="row"><span>Net Pay (after govt. premiums &amp; tax)</span><span>{{ $peso($p->net_pay) }}</span></div> --}}
                 <div class="row net"><span>NET PAY RECEIVABLE</span><span>₱ {{ $peso($takehome) }}</span></div>
             </div>
 

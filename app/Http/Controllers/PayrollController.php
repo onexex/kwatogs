@@ -607,30 +607,24 @@ class PayrollController extends Controller
                             $eligibleViaLastScheduledWorkday = $wasEligibleViaLastScheduledWorkday($dateStr);
                             $hasOtToday    = $employeeOts->has($dateStr);
 
-                            if ($hasOtToday) {
-                                // Worked on the holiday and filed OT — the OT module already pays it.
-                                // Just make sure the day is not charged as an absence.
-                                if ($isAbsent && $absentDays > 0) {
-                                    $absentDays--;
-                                }
-                            } elseif (!$isTraineeForHoliday) {
-                                // No OT on this holiday — grant the standard holiday benefit.
-                                // (Trainees are excluded from this whole branch above, so
-                                // $holidayPay simply stays 0 for them — they still get paid
-                                // OT normally via the $hasOtToday branch if they worked it.)
-                                if ($holidayType == '0') { // REGULAR holiday
-                                    if ($worked) {
-                                        $holidayPay += $dailyRate * 1;
-                                    } elseif ($isPaidLeave || $onOB) {
-                                        // Unpaid leave ($isUnpaidLeave) does NOT grant holiday pay here —
-                                        // it can still qualify via $eligibleViaLastScheduledWorkday below,
-                                        // same as any other day the employee didn't work the holiday.
+                            // Grant the standard holiday benefit. Trainees are excluded
+                            // entirely ($holidayPay stays 0 for them — they still get paid
+                            // OT via $totalOT if they worked it).
+                            //
+                            // IMPORTANT: filing approved OT on the holiday does NOT cancel
+                            // this benefit. The holiday premium applies to the BASE worked/
+                            // eligible day (regular +100%, special +30%); OT pays the EXTRA
+                            // hours beyond schedule and is summed separately in $totalOT —
+                            // the two never overlap, so a worked holiday with OT earns both.
+                            if (!$isTraineeForHoliday) {
+                                if ($holidayType == '0') { // REGULAR holiday (+100% premium)
+                                    // Worked, on OB / approved PAID leave, or (if none of those)
+                                    // eligible via the last-scheduled-workday day-before rule.
+                                    // Unpaid leave ($isUnpaidLeave) does NOT grant it directly,
+                                    // but can still qualify via the lookback, same as any other
+                                    // day the employee didn't work the holiday.
+                                    if ($worked || $isPaidLeave || $onOB || $eligibleViaLastScheduledWorkday) {
                                         $holidayPay += $dailyRate;
-                                    } elseif ($eligibleViaLastScheduledWorkday) {
-                                        $holidayPay += $dailyRate;
-                                        if ($absentDays > 0) {
-                                            $absentDays--;
-                                        }
                                     }
                                 } elseif ($holidayType == '1' && ($worked || $isPaidLeave || $onOB)) {
                                     // SPECIAL holiday premium (+30%). OB and approved PAID leave are
@@ -640,6 +634,15 @@ class PayrollController extends Controller
                                     // (special holidays follow "no work, no pay"; no day-before rule).
                                     $holidayPay += $dailyRate * 0.3;
                                 }
+                            }
+
+                            // Don't charge the day as an absence if it was actually paid (via
+                            // the holiday benefit just granted) or the employee filed approved
+                            // OT that day. Single decrement — covers both the regular-holiday
+                            // lookback case and the OT-on-an-otherwise-absent-day case.
+                            if ($isAbsent && $absentDays > 0
+                                && ($hasOtToday || ($holidayPay - $holidayPayBefore) > 0)) {
+                                $absentDays--;
                             }
                         }
                           $logsType = $onLeave ? 'Leave' : ($onOB ? 'OB' : ($isAbsent ? 'Absent' : 'Present'));
@@ -670,11 +673,9 @@ class PayrollController extends Controller
                     }
                 }
 
-                //  PERFORMANCE: one bulk insert for all of this employee's daily rows
-                //     (the period's old rows were already deleted in the cleanup above).
-                if (!empty($detailRows)) {
-                    PayrollDetail::insert(array_values($detailRows));
-                }
+                //  PERFORMANCE: the daily rows are bulk-inserted AFTER the Payroll
+                //  record exists (below), with payroll_id stamped in directly — this
+                //  avoids a second per-employee UPDATE just to link them.
 
                 // ==============================
                 //  DAILY ALLOWANCE
@@ -980,6 +981,18 @@ class PayrollController extends Controller
                     ]
                 );
 
+                //  PERFORMANCE: one bulk insert for all of this employee's daily rows,
+                //  with payroll_id stamped in now that the Payroll record exists (the
+                //  period's old rows were already deleted in the cleanup above). This
+                //  replaces the previous insert-then-UPDATE-to-link two-query pattern.
+                if (!empty($detailRows)) {
+                    foreach ($detailRows as &$row) {
+                        $row['payroll_id'] = $payroll->id;
+                    }
+                    unset($row);
+                    PayrollDetail::insert(array_values($detailRows));
+                }
+
                 //  Persist the per-employee computation breakdown (Payroll Logs module)
                 PayrollLog::updateOrCreate(
                     ['employee_id' => $emp->empID, 'pay_date' => $payDate],
@@ -1020,12 +1033,8 @@ class PayrollController extends Controller
                     }
                 }
 
-                // ==============================
-                //  LINK PAYROLL DETAILS
-                // ==============================
-                PayrollDetail::where('employee_id', $emp->empID)
-                    ->whereBetween('date', [$startDate, $endDate])
-                    ->update(['payroll_id' => $payroll->id]);
+                // PayrollDetail rows are already linked to $payroll->id at insert
+                // time (see the bulk insert above) — no separate link UPDATE needed.
             }
 
             // ==============================
@@ -1238,11 +1247,17 @@ class PayrollController extends Controller
                 ->get(['employee_id', 'pay_date', 'breakdown'])
                 ->each(function ($log) use (&$allowanceByKey) {
                     $bd = $log->breakdown ?? [];
-                    if (!is_array($bd) || empty($bd['allowance'])) { return; }
+                    if (!is_array($bd)) { return; }
                     $key = $log->employee_id.'|'.\Carbon\Carbon::parse($log->pay_date)->format('Y-m-d');
                     $allowanceByKey->put($key, [
-                        'allowance'        => $bd['allowance'],
+                        'allowance'        => $bd['allowance'] ?? null,
                         'allowance_hourly' => $bd['rates']['allowance_hourly'] ?? 0,
+                        // Daily-paid employees: the payrolls table stores only the DAILY RATE
+                        // in basicPay; the real regular pay (days_present × daily_rate) is
+                        // folded into gross_pay. Surface the day count + rate from the log so
+                        // the payslip can show days worked and foot Basic Pay to the gross.
+                        'days_present'     => $bd['attendance']['days_present'] ?? null,
+                        'daily_rate'       => $bd['rates']['daily_rate'] ?? null,
                     ]);
                 });
         }

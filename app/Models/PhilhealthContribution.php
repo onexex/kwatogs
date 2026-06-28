@@ -33,6 +33,21 @@ class PhilhealthContribution extends Model
     }
 
     /**
+     * ⚡ PERFORMANCE: load the (small, static) rate table ONCE per request and
+     * resolve the bracket in PHP, instead of one DB query per employee during
+     * payroll generation. Cache is per-request so edits apply on the next run.
+     */
+    protected static $bracketCache = null;
+
+    protected static function brackets()
+    {
+        if (static::$bracketCache === null) {
+            static::$bracketCache = static::orderByDesc('effective_year')->get();
+        }
+        return static::$bracketCache;
+    }
+
+    /**
      * 🧮 Compute PhilHealth contribution based on salary.
      */
     public static function compute($salary, $employeeClass = null)
@@ -46,9 +61,8 @@ class PhilhealthContribution extends Model
             ];
         }
 
-        $record = self::forSalary($salary)
-            ->orderByDesc('effective_year')
-            ->first();
+        $record = self::brackets()
+            ->first(fn ($r) => $r->range_from <= $salary && $r->range_to >= $salary);
 
         if (!$record) {
             // Default PhilHealth rule if no table match

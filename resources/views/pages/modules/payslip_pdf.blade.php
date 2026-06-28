@@ -13,7 +13,22 @@
         ? strtoupper(trim(($emp->lname ?? '') . ', ' . ($emp->fname ?? '')))
         : 'UNKNOWN';
 
-    $basic   = (float) $p->basicPay;
+    // Daily-paid employees (classification ≠ RGLR): basicPay stores only the daily
+    // rate; the real regular pay (days × rate) is folded into gross_pay. Rebuild it
+    // from the day count passed in by PayslipPdfService so Total Earnings foots and
+    // the slip shows how many days were reported.
+    $class      = optional($detail)->empClassification;
+    $isDaily    = $class && $class !== 'RGLR';
+    $daysWorked = $daysWorked ?? null;
+    $dailyRate  = $dailyRate ?? (float) $p->basicPay;
+
+    if ($isDaily && $daysWorked !== null) {
+        $basic      = $daysWorked * $dailyRate;
+        $basicLabel = $daysWorked.' day'.($daysWorked == 1 ? '' : 's').' × '.number_format($dailyRate, 2);
+    } else {
+        $basic      = (float) $p->basicPay;
+        $basicLabel = 'Semi-monthly';
+    }
     $holiday = (float) $p->holiday_pay;
     $ot      = (float) $p->overtime_pay;
     $nd      = (float) $p->night_diff_pay;
@@ -70,7 +85,7 @@
         <td width="50%" valign="top">
             <table width="100%" cellpadding="4" cellspacing="0" style="font-size: 9.5pt;">
                 <tr><td colspan="2" style="border-bottom: 1px solid #e5e7eb; color: #6b7280; font-size: 8.5pt; text-transform: uppercase;">EARNINGS</td></tr>
-                <tr><td>Basic Pay (Semi-monthly)</td><td align="right">{{ $peso($basic) }}</td></tr>
+                <tr><td>Basic Pay ({{ $basicLabel }})</td><td align="right">{{ $peso($basic) }}</td></tr>
                 <tr><td>Holiday Pay</td><td align="right">{{ $peso($holiday) }}</td></tr>
                 <tr><td>Overtime Pay</td><td align="right">{{ $peso($ot) }}</td></tr>
                 <tr><td>Night Differential</td><td align="right">{{ $peso($nd) }}</td></tr>

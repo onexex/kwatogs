@@ -33,6 +33,22 @@ class SssContribution extends Model
     }
 
     /**
+     * ⚡ PERFORMANCE: payroll generation calls compute() once per employee.
+     * Load the (small, static) rate table ONCE per request and resolve the
+     * bracket in PHP, instead of one DB query per employee. Cache is per-request
+     * so rate-table edits are picked up on the next payroll run.
+     */
+    protected static $bracketCache = null;
+
+    protected static function brackets()
+    {
+        if (static::$bracketCache === null) {
+            static::$bracketCache = static::orderByDesc('effective_year')->get();
+        }
+        return static::$bracketCache;
+    }
+
+    /**
      * 🧮 Helper method to compute employee share based on salary.
      */
     public static function compute($salary, $employeeClass = null)
@@ -49,9 +65,8 @@ class SssContribution extends Model
         }
 
         // Otherwise, compute based on salary range
-        $record = self::forSalary($salary)
-            ->orderByDesc('effective_year')
-            ->first();
+        $record = self::brackets()
+            ->first(fn ($r) => $r->range_from <= $salary && $r->range_to >= $salary);
 
         return [
             'employee_share' => $record->employee_share ?? 0,

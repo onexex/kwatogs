@@ -18,7 +18,19 @@ class PayslipPdfService
 {
     public function generate(Payroll $payroll, ?string $password): string
     {
-        $html = view('pages.modules.payslip_pdf', ['p' => $payroll])->render();
+        // Daily-paid employees store only the daily rate in basicPay; the day count
+        // and rate needed to show/foot the real "Basic Pay" live in the computation log.
+        $bd = \App\Models\PayrollLog::where('employee_id', $payroll->employee_id)
+            ->whereDate('pay_date', $payroll->pay_date)
+            ->value('breakdown');
+        $daysWorked = is_array($bd) ? ($bd['attendance']['days_present'] ?? null) : null;
+        $dailyRate  = is_array($bd) ? ($bd['rates']['daily_rate'] ?? null) : null;
+
+        $html = view('pages.modules.payslip_pdf', [
+            'p'          => $payroll,
+            'daysWorked' => $daysWorked,
+            'dailyRate'  => $dailyRate,
+        ])->render();
 
         $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
         $pdf->SetCreator(config('app.name', 'HRIS'));

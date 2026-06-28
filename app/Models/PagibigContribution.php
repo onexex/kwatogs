@@ -33,6 +33,21 @@ class PagibigContribution extends Model
                      ->where('range_to', '>=', $salary);
     }
 
+    /**
+     * ⚡ PERFORMANCE: load the (small, static) rate table ONCE per request and
+     * resolve the bracket in PHP, instead of one DB query per employee during
+     * payroll generation. Cache is per-request so edits apply on the next run.
+     */
+    protected static $bracketCache = null;
+
+    protected static function brackets()
+    {
+        if (static::$bracketCache === null) {
+            static::$bracketCache = static::orderByDesc('effective_year')->get();
+        }
+        return static::$bracketCache;
+    }
+
      public static function compute($salary, $employeeClass = null)
     {
         // ❗ No Pag-IBIG deduction for "TRN" employees
@@ -45,9 +60,8 @@ class PagibigContribution extends Model
         }
 
         // Get the latest applicable contribution table row
-        $record = self::forSalary($salary)
-            ->orderByDesc('effective_year')
-            ->first();
+        $record = self::brackets()
+            ->first(fn ($r) => $r->range_from <= $salary && $r->range_to >= $salary);
 
         // If not found, fallback to standard rule
         if (!$record) {
