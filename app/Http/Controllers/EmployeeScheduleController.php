@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\department;
 use App\Models\EmployeeSchedule;
 use App\Models\User;
 use Carbon\Carbon;
@@ -14,8 +15,9 @@ class EmployeeScheduleController extends Controller
     public function index()
     {
         $employees = User::orderBy('lname')->get();
-      
-        return view('pages.management.empscheduler', compact('employees'));
+        $departments = department::orderBy('dep_name')->get(['id', 'dep_name']);
+
+        return view('pages.management.empscheduler', compact('employees', 'departments'));
     }
  
 
@@ -59,38 +61,109 @@ class EmployeeScheduleController extends Controller
 
 
     /**
-     * Active employees who have NO schedule in the given window.
-     * - from/to blank  => "never scheduled at all" (no schedule row ever)
-     * - from/to given  => no schedule overlapping that date range
+     * Active employees missing a schedule.
      * Active = emp_details.empStatus = '1' (same rule payroll uses).
+     *
+     * Modes:
+     *  - from AND to given => per-day check: flag anyone missing a schedule on
+     *    ANY calendar day in [from, to] (employees can work any day, weekends
+     *    included), and report exactly which days are missing.
+     *  - only one bound, or both blank => "never scheduled" style: flag anyone
+     *    with no schedule row in that open window (blank = no schedule ever).
      */
     public function unscheduled(Request $request)
     {
-        $from = $request->filled('from') ? $request->from : null;
-        $to   = $request->filled('to')   ? $request->to   : null;
+        $from   = $request->filled('from') ? substr($request->from, 0, 10) : null;
+        $to     = $request->filled('to')   ? substr($request->to, 0, 10)   : null;
+        $depId  = $request->filled('department_id') ? $request->department_id : null;
 
+        // Active employees only, optionally scoped to one department/company.
         $employees = User::query()
             ->join('emp_details', 'users.empID', '=', 'emp_details.empID')
             ->where('emp_details.empStatus', '1')
-            ->whereNotExists(function ($q) use ($from, $to) {
-                $q->select(DB::raw(1))
-                  ->from('employee_schedules')
-                  ->whereColumn('employee_schedules.employee_id', 'users.empID');
-
-                // Only restrict to the window when a range is supplied;
-                // otherwise any schedule row at all excludes the employee.
-                if ($from) {
-                    $q->whereDate('employee_schedules.sched_end_date', '>=', $from);
-                }
-                if ($to) {
-                    $q->whereDate('employee_schedules.sched_start_date', '<=', $to);
-                }
-            })
+            ->when($depId, fn($q) => $q->where('emp_details.empDepID', $depId))
             ->orderBy('users.lname')
             ->orderBy('users.fname')
             ->get(['users.empID', 'users.fname', 'users.lname']);
 
-        $list = $employees->map(fn($e) => [
+        // ── Per-day mode (both dates given) ──────────────────────────────
+        if ($from && $to) {
+            $start = Carbon::parse($from);
+            $end   = Carbon::parse($to);
+            if ($end->lt($start)) {
+                [$start, $end] = [$end, $start];
+            }
+
+            // Guard against an unreasonably large range.
+            if ($start->diffInDays($end) > 366) {
+                return response()->json([
+                    'error' => 'Please choose a range of one year or less.',
+                ], 422);
+            }
+
+            // Every calendar day in the range.
+            $allDates = [];
+            for ($d = $start->copy(); $d->lte($end); $d->addDay()) {
+                $allDates[] = $d->toDateString();
+            }
+
+            // Scheduled rows per employee within the range
+            // (each schedule row's working day = sched_start_date).
+            $rowsByEmp = DB::table('employee_schedules')
+                ->whereDate('sched_start_date', '>=', $start->toDateString())
+                ->whereDate('sched_start_date', '<=', $end->toDateString())
+                ->orderBy('sched_start_date')
+                ->orderBy('sched_in')
+                ->get(['employee_id', 'sched_start_date', 'sched_in', 'sched_out', 'shift_type'])
+                ->groupBy('employee_id');
+
+            $list = collect();
+            foreach ($employees as $e) {
+                $empRows = $rowsByEmp[$e->empID] ?? collect();
+                $covDates = $empRows->pluck('sched_start_date')
+                    ->map(fn($x) => substr($x, 0, 10))->unique()->all();
+                $missing = array_values(array_diff($allDates, $covDates));
+
+                if (count($missing) > 0) {
+                    // Keep one entry per scheduled day (first shift of the day) for the breakdown.
+                    $scheduled = $empRows->groupBy(fn($r) => substr($r->sched_start_date, 0, 10))
+                        ->map(fn($dayRows) => [
+                            'date'  => substr($dayRows->first()->sched_start_date, 0, 10),
+                            'in'    => substr((string) $dayRows->first()->sched_in, 0, 5),
+                            'out'   => substr((string) $dayRows->first()->sched_out, 0, 5),
+                            'shift' => $dayRows->first()->shift_type,
+                        ])->values();
+
+                    $list->push([
+                        'empID'         => $e->empID,
+                        'name'          => strtoupper($e->lname . ', ' . $e->fname),
+                        'missing_count' => count($missing),
+                        'missing'       => $missing,
+                        'scheduled'     => $scheduled,
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'count'      => $list->count(),
+                'total_days' => count($allDates),
+                'range'      => $allDates,
+                'employees'  => $list->values(),
+            ]);
+        }
+
+        // ── Open-window / never-scheduled mode (blank or one-sided) ──────
+        $list = $employees->filter(function ($e) use ($from, $to) {
+            $q = DB::table('employee_schedules')
+                ->where('employee_id', $e->empID);
+            if ($from) {
+                $q->whereDate('sched_end_date', '>=', $from);
+            }
+            if ($to) {
+                $q->whereDate('sched_start_date', '<=', $to);
+            }
+            return !$q->exists();
+        })->map(fn($e) => [
             'empID' => $e->empID,
             'name'  => strtoupper($e->lname . ', ' . $e->fname),
         ])->values();
