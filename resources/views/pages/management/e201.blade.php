@@ -229,7 +229,7 @@
                         <span>{{ strtoupper(substr($user->fname, 0, 1) . substr($user->lname, 0, 1)) }}</span>
                     </div>
                     <div class="flex-grow-1">
-                        <div class="fw-bold text-dark mb-0 small">{{ strtoupper($user->lname) }}, {{ $user->fname }}</div>
+                        <div class="fw-bold text-dark mb-0 small">{{ strtoupper($user->lname) }}, {{ strtoupper($user->fname) }}</div>
                         <div class="text-muted" style="font-size: 0.65rem;">
                              {{ $user->empDetail->department->dep_name ?? 'No Dept' }} | {{ $user->empDetail->position->pos_desc ?? 'No Position' }}
                         </div>

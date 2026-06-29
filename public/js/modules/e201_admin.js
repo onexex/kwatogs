@@ -275,7 +275,9 @@ $(document).ready(function() {
         const statusText = isActive ? 'ACTIVE' : 'INACTIVE';
         const statusClass = isActive ? 'bg-success' : 'bg-danger';
 
-        $('#view_name').text(`${user.lname}, ${user.fname} ${user.mname ?? ''}`);
+        const toTitleCase = s => (s || '').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+        const fullName = [user.lname, ',', user.fname, user.mname ?? ''].filter(Boolean).join(' ');
+        $('#view_name').text(toTitleCase(fullName.replace(' ,', ',')));
         $('#view_status').text(statusText).removeClass('bg-success bg-danger bg-secondary').addClass(statusClass);
         $('#view_email').text(user.email);
         $('#view_empid_val').text(user.empID);
