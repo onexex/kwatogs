@@ -383,6 +383,7 @@
                             <th scope="col">Purpose</th>
                             <th scope="col">Leave Kind</th>
                             <th scope="col">Status</th>
+                            <th scope="col">Remarks</th>
                             <th scope="col" class="pe-4">Delete</th>
                         </tr>
                     </thead>
@@ -515,6 +516,17 @@
                     });
 
                     return
+                } else if (response.data.auto_disapproved) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Auto-Disapproved',
+                        text: response.data.message,
+                        confirmButtonText: 'OK',
+                        customClass: { confirmButton: 'rounded-pill' }
+                    });
+                    $('#mdlLeaveApp').modal('hide');
+                    datas[0].reset();
+                    fetchLeaves();
                 } else {
                     Swal.fire({
                         icon: 'success',
@@ -656,6 +668,10 @@
                         buttonAction = `<button class="btn btn-outline-danger btn-sm rounded-pill px-3 delete-leave" data-leave-id="${leave.id}">Delete</button>`;
                     }
 
+                    const remarks = (leave.status === 'DISAPPROVED' && leave.disapproved_remarks)
+                        ? `<span class="text-danger small">${leave.disapproved_remarks}</span>`
+                        : `<span class="text-muted small">—</span>`;
+
                     const row = `
                         <tr>
                             <td class="ps-4">${leave.leave_type.type_leave}</td>
@@ -668,6 +684,7 @@
                             <td>
                                 ${status}
                             </td>
+                            <td>${remarks}</td>
                             <td class="pe-4">
                                 ${buttonAction}
                             </td>

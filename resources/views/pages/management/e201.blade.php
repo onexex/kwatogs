@@ -170,7 +170,7 @@
 
     /* Dossier Styling */
     .dossier-header { background: linear-gradient(135deg, #008080 0%, #005a5a 100%); color: white; border-radius: 15px; padding: 30px; }
-    .profile-pic-large { width: 120px; height: 120px; border: 5px solid rgba(255,255,255,0.3); border-radius: 15px; object-fit: cover; background: white; }
+    .profile-pic-large { width: 120px; height: 120px; border: 5px solid rgba(255,255,255,0.3); border-radius: 50%; object-fit: cover; background: white; }
     .info-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
     
     .label-caps { font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
@@ -229,7 +229,7 @@
                         <span>{{ strtoupper(substr($user->fname, 0, 1) . substr($user->lname, 0, 1)) }}</span>
                     </div>
                     <div class="flex-grow-1">
-                        <div class="fw-bold text-dark mb-0 small">{{ strtoupper($user->lname) }}, {{ $user->fname }}</div>
+                        <div class="fw-bold text-dark mb-0 small">{{ strtoupper($user->lname) }}, {{ strtoupper($user->fname) }}</div>
                         <div class="text-muted" style="font-size: 0.65rem;">
                              {{ $user->empDetail->department->dep_name ?? 'No Dept' }} | {{ $user->empDetail->position->pos_desc ?? 'No Position' }}
                         </div>
@@ -244,7 +244,8 @@
                 <div class="dossier-header mb-4">
                     <div class="row align-items-center">
                         <div class="col-auto">
-                            <img id="view_img" src="" class="profile-pic-large" alt="Profile">
+                            <img id="view_img" src="" class="profile-pic-large" alt="Profile" style="display:none;">
+                            <div id="view_img_placeholder" class="profile-pic-large align-items-center justify-content-center" style="background:#f1f5f9;display:none;"></div>
                         </div>
                         <div class="col">
                             <span class="badge bg-secondary text-white mb-2" id="view_status">STATUS</span>

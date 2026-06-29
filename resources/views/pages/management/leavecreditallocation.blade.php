@@ -390,7 +390,7 @@
                             <div class="row g-3">
                                 <div class="col-lg-6">
                                     <label class="field-label" for="txtleave_credit">Leave Credit <span class="req">*</span></label>
-                                    <input class="form-control" id="txtleave_credit" required name="leave_credit" type="number" placeholder="Days Before"/>
+                                    <input class="form-control" id="txtleave_credit" required name="leave_credit" type="number" placeholder="Enter number of days"/>
                                     <span class="text-danger small error-text leave_credit_error"></span>
                                 </div>
                                 <div class="col-lg-6">
