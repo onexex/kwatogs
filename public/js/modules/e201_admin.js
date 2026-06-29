@@ -56,10 +56,27 @@ $(document).ready(function() {
             success: function(response) {
                 renderDossier(response.data);
                 
+                const $img = $('#view_img');
+                const $placeholder = $('#view_img_placeholder');
+
+                function showPlaceholder(gender) {
+                    $img.hide();
+                    const g = (gender || '').toLowerCase();
+                    const iconClass = g === 'female' ? 'fa-solid fa-circle-user' : 'fa-solid fa-circle-user';
+                    const color     = g === 'female' ? '#e91e8c' : '#1976d2';
+                    $placeholder
+                        .html(`<i class="${iconClass}" style="font-size:3.5rem;color:${color};"></i>`)
+                        .css('display', 'flex');
+                }
+
                 if (response.image_url) {
-                    $('#view_img').attr('src', response.image_url);
+                    $img.off('error').on('error', function () {
+                        showPlaceholder(response.gender);
+                    });
+                    $img.attr('src', response.image_url).show();
+                    $placeholder.hide();
                 } else {
-                    $('#view_img').attr('src', '/img/undraw_profile.svg');
+                    showPlaceholder(response.gender);
                 }
             },
             error: function() {

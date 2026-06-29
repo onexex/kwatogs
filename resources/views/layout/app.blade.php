@@ -494,11 +494,22 @@
                         <li class="nav-item dropdown no-arrow">
                             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" data-bs-toggle="dropdown">
                                 <div class="d-flex flex-column text-end me-3 d-none d-lg-flex">
-                                    <span class="text-dark small fw-bold">{{ session()->get('loggedEmployee') }}</span>
+                                    <span class="text-dark small fw-bold">{{ ucwords(strtolower(session()->get('loggedEmployee'))) }}</span>
                                     {{-- Real job designation from the employee record (positions.pos_desc), not a fixed label --}}
                                     <span class="text-muted" style="font-size: 0.6rem;">{{ optional(optional(auth()->user()?->empDetail)->position)->pos_desc ?: 'Employee' }}</span>
                                 </div>
-                                <img class="img-profile rounded-circle border shadow-sm" src="{{ URL::asset('/img/undraw_profile.svg') }}" width="35">
+                                @php
+                                    $authEmp = auth()->user()?->empDetail;
+                                    $authPic = $authEmp?->empPicPath;
+                                    $authGender = auth()->user()?->employeeInformation?->gender;
+                                @endphp
+                                @if($authPic && file_exists(public_path('img/profile/' . $authPic)))
+                                    <img class="img-profile rounded-circle border shadow-sm" src="{{ asset('img/profile/' . $authPic) }}" width="35">
+                                @else
+                                    <div class="img-profile rounded-circle border shadow-sm d-flex align-items-center justify-content-center" style="width:35px;height:35px;background:#f1f5f9;flex-shrink:0;">
+                                        <i class="fa-solid fa-circle-user" style="font-size:1.3rem;color:{{ $authGender == 2 ? '#e91e8c' : '#1976d2' }};"></i>
+                                    </div>
+                                @endif
                             </a>
                             
                             <div class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3">
