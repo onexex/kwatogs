@@ -19,6 +19,12 @@ $root   = dirname(__DIR__);
 $outDir = $root . DIRECTORY_SEPARATOR . 'public';
 $outFile = $outDir . DIRECTORY_SEPARATOR . 'changelog.json';
 
+// Changelog "launch" date — only commits on/after this date (Manila time, +08:00)
+// are shown, so the page starts fresh from go-live instead of dumping all history.
+// Set to null to include the full history again.
+$sinceDate = '2026-06-29';
+$tzOffset  = '+08:00';
+
 /**
  * Run a git command from the repo root, return trimmed stdout or null on failure.
  * Uses proc_open with an argument array (no shell) so quoting is identical on
@@ -57,7 +63,16 @@ if (git(['rev-parse', '--is-inside-work-tree'], $root) !== 'true') {
 
 // Field separator \x1f, record separator \x1e — safe against commas/quotes/newlines in messages.
 $format = '%H%x1f%h%x1f%s%x1f%cI%x1f%an%x1e';
-$raw = git(['log', '-n', '500', '--no-merges', '--pretty=format:' . $format], $root);
+$logArgs = ['log', '-n', '500', '--no-merges', '--pretty=format:' . $format];
+
+// Cutoff: include only commits on/after $sinceDate at 00:00 Manila time.
+$sinceTs = null;
+if ($sinceDate !== null) {
+    $sinceTs = strtotime($sinceDate . 'T00:00:00' . $tzOffset);
+    $logArgs[] = '--since=' . $sinceDate . 'T00:00:00' . $tzOffset; // prune most history at the git level
+}
+
+$raw = git($logArgs, $root);
 
 $entries = [];
 if ($raw !== null) {
@@ -72,6 +87,15 @@ if ($raw !== null) {
         }
         [$hash, $short, $subject, $date, $author] = $fields;
         $subject = trim($subject);
+
+        // Enforce the launch-date cutoff precisely (tz-aware) — git --since can be
+        // fuzzy across timezones, so re-check each commit's committer date here.
+        if ($sinceTs !== null) {
+            $commitTs = strtotime($date);
+            if ($commitTs === false || $commitTs < $sinceTs) {
+                continue;
+            }
+        }
 
         // Conventional commit: type(scope)!: description
         $type     = 'other';
