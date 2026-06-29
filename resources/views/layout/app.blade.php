@@ -274,6 +274,7 @@
                     'pendingleaverequests' => ['name' => 'Pending Leave Requests', 'url' => '/pages/modules/leaverequests', 'icon' => 'fa-calendar-day'],
                     'obttracker'       => ['name' => 'OB Tracker', 'url' => '/pages/modules/obtTracker', 'icon' => 'fa-map-location-dot'],
                     'overtime'         => ['name' => 'Overtime', 'url' => '/pages/modules/overtime', 'icon' => 'fa-user-clock'],
+                    'adminovertime'    => ['name' => 'Apply Employee Overtime', 'url' => '/pages/modules/admin-overtime', 'icon' => 'fa-stopwatch'],
                     'pendingovertimerequests' => ['name' => 'Pending Overtime Requests', 'url' => '/pages/modules/overtimerequests', 'icon' => 'fa-calendar-day'],
                     'payroll'          => ['name' => 'Payroll System', 'url' => '/pages/modules/payroll', 'icon' => 'fa-file-invoice-dollar'],
                     'payrolllogs'      => ['name' => 'Payroll Logs', 'url' => '/payroll-logs', 'icon' => 'fa-clipboard-list'],

@@ -37,6 +37,7 @@ use App\Http\Controllers\PayAdjustmentController;
 use App\Http\Controllers\loginCtrl;
 use App\Http\Controllers\obValidationsCtrl;
 use App\Http\Controllers\otfillingCtrl;
+use App\Http\Controllers\Overtime\AdminOvertimeController;
 use App\Http\Controllers\Overtime\OvertimeRequestController;
 use App\Http\Controllers\OvertimeController;
 use App\Http\Controllers\pageCtrl;
@@ -243,6 +244,10 @@ Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip
     Route::get('/pages/modules/leaverequests', [LeaveRequestContoller::class, 'index'])->name('leave-requests.index')->middleware('can:pendingleaverequests');
     Route::get('/leaverequests/getAll', [LeaveRequestContoller::class, 'getAll'])->name('leave-requests.get')->middleware('can:pendingleaverequests');
     Route::post('/leaverequests/updateStatus', [LeaveRequestContoller::class, 'updateStatus'])->name('leave-requests.update');
+
+    // admin apply overtime
+    Route::get('/pages/modules/admin-overtime', [AdminOvertimeController::class, 'index'])->name('admin.overtime.index')->middleware('can:adminovertime');
+    Route::post('/admin/overtime/store', [AdminOvertimeController::class, 'store'])->name('admin.overtime.store')->middleware('can:adminovertime');
 
     // overtime approval
     Route::get('/pages/modules/overtimerequests', [OvertimeRequestController::class, 'index'])->name('overtime-requests.index')->middleware('can:pendingovertimerequests');
