@@ -21,7 +21,7 @@ class ProfileController extends Controller
             'required',
             'confirmed',           // expects new_password_confirmation
             'different:current_password',
-            Password::min(8)->mixedCase()->numbers()->symbols(),
+            Password::min(6)->mixedCase()->numbers()->symbols(),
         ];
     }
 
@@ -30,7 +30,7 @@ class ProfileController extends Controller
         return [
             'new_password.confirmed' => 'Hindi magkatugma ang New Password at Confirm Password.',
             'new_password.different' => 'Ang bagong password ay dapat iba sa kasalukuyan.',
-            'new_password.min'       => 'Dapat ay hindi bababa sa 8 characters ang password.',
+            'new_password.min'       => 'Dapat ay hindi bababa sa 6 characters ang password.',
             'new_password.mixed'     => 'Dapat may malaki at maliit na letra ang password.',
             'new_password.numbers'   => 'Dapat may kahit isang numero ang password.',
             'new_password.symbols'   => 'Dapat may kahit isang simbolo ang password (e.g. !@#$).',

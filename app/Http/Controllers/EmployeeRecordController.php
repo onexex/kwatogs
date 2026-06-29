@@ -11,6 +11,7 @@ use App\Models\position;
 use App\Models\department;
 use Illuminate\Http\Request;
 use App\Models\classification;
+use Illuminate\Support\Facades\Hash;
 
 class EmployeeRecordController extends Controller
 {
@@ -99,5 +100,35 @@ class EmployeeRecordController extends Controller
     }
 
         return response()->json(['status' => 404, 'message' => 'Record not found']);
+    }
+
+    /**
+     * Admin "forgot password" reset, triggered from the E-201 Personnel Viewer.
+     * Resets the account to the same default temp password used for new hires
+     * ("123456") and raises the must_change_password flag, so the employee is
+     * forced through ForcePasswordChange to set their own private password on
+     * next login — the admin never learns the final password.
+     */
+    public function resetPassword(User $user)
+    {
+        $tempPassword = '123456';
+
+        try {
+            $user->update([
+                'password'             => Hash::make($tempPassword),
+                'must_change_password' => true,
+            ]);
+
+            return response()->json([
+                'status'        => 200,
+                'message'       => "Password reset for {$user->fname} {$user->lname}. They must set a new password on their next login.",
+                'temp_password' => $tempPassword,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Failed to reset password: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

@@ -64,6 +64,49 @@ $(document).ready(function() {
         $(this).hide();
     });
 
+    // 4. Reset Password (admin "forgot password")
+    const csrfToken = $('meta[name="csrf-token"]').attr('content');
+
+    $('#resetPasswordBtn').on('click', function() {
+        const $btn = $(this);
+        const id = $btn.data('id');
+        const name = $btn.data('name') || 'this employee';
+
+        if (!id) {
+            alert('Please select an employee first.');
+            return;
+        }
+
+        const ok = confirm(
+            `Reset the password for ${name}?\n\n` +
+            `It will be set to the default temporary password (123456), and ` +
+            `${name} will be forced to choose a new password on their next login.`
+        );
+        if (!ok) return;
+
+        const originalHtml = $btn.html();
+        $btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin me-2"></i>Resetting...');
+
+        $.ajax({
+            url: `/admin/e201/reset-password/${id}`,
+            type: 'POST',
+            dataType: 'json',
+            headers: { 'X-CSRF-TOKEN': csrfToken },
+            success: function(response) {
+                alert(response.message || 'Password has been reset.');
+            },
+            error: function(xhr) {
+                const msg = (xhr.responseJSON && xhr.responseJSON.message)
+                    ? xhr.responseJSON.message
+                    : 'Failed to reset password. Please try again.';
+                alert(msg);
+            },
+            complete: function() {
+                $btn.prop('disabled', false).html(originalHtml);
+            }
+        });
+    });
+
     function renderDossier(user) {
         const detail = user.emp_detail;
 
@@ -81,6 +124,9 @@ $(document).ready(function() {
         $('#view_empid_val').text(user.empID);
         $('#view_username').text(user.username || '---');
         $('#editEmployee').attr('href', '/admin/e201/edit/' + user.id);
+        $('#resetPasswordBtn')
+            .attr('data-id', user.id)
+            .attr('data-name', `${user.fname} ${user.lname}`);
 
         if (detail) {
             const pos = detail.position ? detail.position.pos_desc : 'N/A';

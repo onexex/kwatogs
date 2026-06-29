@@ -88,7 +88,8 @@
     .employee-list-panel,
     nav[aria-label="breadcrumb"],
     .container-fluid > .d-flex.mb-4,
-    button[onclick="window.print()"], 
+    button[onclick="window.print()"],
+    #resetPasswordBtn,
     #editEmployee {
         display: none !important;
     }
@@ -96,7 +97,8 @@
     .employee-list-panel,
     nav[aria-label="breadcrumb"],
     .container-fluid > .d-flex.mb-4, /* Hides the top header and back button */
-    button[onclick="window.print()"], 
+    button[onclick="window.print()"],
+    #resetPasswordBtn,
     #editEmployee {
         display: none !important;
     }
@@ -252,6 +254,9 @@
                         <div class="col-auto text-end d-flex gap-2">
                             <button class="btn btn-light rounded-pill px-4 fw-bold shadow-sm" onclick="window.print()">
                                 <i class="fa-solid fa-print me-2"></i>Print
+                            </button>
+                            <button type="button" class="btn btn-light rounded-pill px-4 fw-bold shadow-sm text-danger" id="resetPasswordBtn" data-id="" data-name="">
+                                <i class="fa-solid fa-key me-2"></i>Reset Password
                             </button>
                             <a target="_blank" class="btn btn-light rounded-pill px-4 fw-bold shadow-sm" id="editEmployee">
                                 <i class="fa-solid fa-pencil me-2"></i>Edit

@@ -70,7 +70,7 @@
             </div>
 
             <p class="text-muted" style="font-size:.75rem;">
-                Must be at least 8 characters and include upper &amp; lower case letters, a number, and a symbol.
+                Must be at least 6 characters and include upper &amp; lower case letters, a number, and a symbol.
             </p>
 
             <button type="button" id="btnForceUpdate" class="btn btn-color mt-2">

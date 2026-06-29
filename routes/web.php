@@ -142,6 +142,7 @@ Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip
     Route::post('/employee/update',[registerCtrl::class, 'update']);
     Route::get('admin/e201/fetch/{empID}', [EmployeeRecordController::class, 'getEmployeeDetails']);
     Route::get('admin/e201/edit/{user}', [EmployeeRecordController::class, 'editEmployee']);
+    Route::post('admin/e201/reset-password/{user}', [EmployeeRecordController::class, 'resetPassword']);
 
 
     // JMC
