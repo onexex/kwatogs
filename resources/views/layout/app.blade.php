@@ -197,6 +197,17 @@
                 </li>
             @endcan
 
+            {{-- "What's New" changelog — walang permission/role; lalabas lang kung may na-generate na
+                 public/changelog.json (staging deploy lang gumagawa nito), kaya itinatago sa production --}}
+            @if (file_exists(public_path('changelog.json')))
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->is('pages/management/whatsnew*') ? 'active-page' : '' }}" href="{{ route('whatsnew') }}">
+                        <i class="fas fa-fw fa-bullhorn"></i>
+                        <span>What's New</span>
+                    </a>
+                </li>
+            @endif
+
             @can('kuboaccess')
                 <li class="nav-item">
                     <a class="nav-link {{ request()->is('kubo*') ? 'active-page' : '' }}" href="{{ route('kubo.feed') }}">
@@ -454,13 +465,6 @@
                                 <a class="dropdown-item py-2" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#changePassModal">
                                     <i class="fas fa-user-cog fa-sm fa-fw me-2 text-primary"></i> Password Settings
                                 </a>
-
-                                {{-- "What's New" — lalabas lang kung may na-generate na changelog (staging); itinatago sa production --}}
-                                @if (file_exists(public_path('changelog.json')))
-                                    <a class="dropdown-item py-2" href="{{ route('whatsnew') }}">
-                                        <i class="fas fa-bullhorn fa-sm fa-fw me-2 text-primary"></i> What's New
-                                    </a>
-                                @endif
 
                                 <div class="dropdown-divider"></div> {{-- Divider line para malinis tignan --}}
                                 
