@@ -18,7 +18,9 @@ class LeaveCreditAllocationController extends Controller
         if (!(Auth::user()->can('leavecreditallocation'))) {
             abort(403, 'Unauthorized action.');
         }
-        $employees = User::orderBy('lname')->get();
+        $employees = User::whereHas('empDetail', function ($q) {
+                $q->where('empClassification', 'RGLR');
+            })->orderBy('lname')->get();
         $leavetypes = leavetype::all();
         $leaveCreditAllocations = LeaveCreditAllocation::where('year', date('Y'))->get();
         return view('pages.management.leavecreditallocation', compact('employees', 'leavetypes', 'leaveCreditAllocations'));

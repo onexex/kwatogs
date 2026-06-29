@@ -244,7 +244,8 @@
                 <div class="dossier-header mb-4">
                     <div class="row align-items-center">
                         <div class="col-auto">
-                            <img id="view_img" src="" class="profile-pic-large" alt="Profile">
+                            <img id="view_img" src="" class="profile-pic-large" alt="Profile" style="display:none;">
+                            <div id="view_img_placeholder" class="profile-pic-large align-items-center justify-content-center" style="background:#f1f5f9;display:none;"></div>
                         </div>
                         <div class="col">
                             <span class="badge bg-secondary text-white mb-2" id="view_status">STATUS</span>
