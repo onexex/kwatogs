@@ -79,13 +79,22 @@ class LeaveController extends Controller
             $leaveType = leavetype::where('id', $request->leavetype)->first();
             $empDetail = $user->empDetail;
 
+            // Gender check for maternity/paternity leave
+            $leaveTypeName = strtolower($leaveType->type_leave ?? '');
+            $empGender = $user->employeeInformation->gender ?? null; // 1 = Male, 2 = Female
+            if ((str_contains($leaveTypeName, 'maternity') || str_contains($leaveTypeName, 'maternal')) && $empGender != 2) {
+                $autoDisapproveReason = 'This leave type is only applicable for female employees.';
+            } elseif ((str_contains($leaveTypeName, 'paternity') || str_contains($leaveTypeName, 'paternal')) && $empGender != 1) {
+                $autoDisapproveReason = 'This leave type is only applicable for male employees.';
+            }
+
             $leaveValidation = leavevalidationModel::where('leave_type', $leaveType->id)
                 ->where('compID', $empDetail->empCompID)
                 ->first();
 
-            if (!$leaveValidation) {
+            if (!$autoDisapproveReason && !$leaveValidation) {
                 $autoDisapproveReason = 'No leave validation found for this leave type. Contact supervisor.';
-            } else {
+            } elseif (!$autoDisapproveReason) {
                 $today = Carbon::now()->startOfDay();
                 $targetDate = Carbon::parse($request->date_from);
                 $diff = $today->diffInDays($targetDate, false);
