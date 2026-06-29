@@ -44,7 +44,9 @@ class loginCtrl extends Controller
 
         $current_date_time = Carbon::now()->toDateTimeString();
         $validator = Validator::make($request->all(),[
-            'username'=>'required|max:50|email',
+            // Accepts either a short login username OR an email address — the
+            // email rule was removed so long emails are no longer rejected here.
+            'username'=>'required|max:50',
             'password'=>'required|max:500',
         ]);
 
@@ -63,8 +65,13 @@ class loginCtrl extends Controller
             ]);
         }
 
+        // Detect whether the typed value is an email or a username and query the
+        // matching column. Existing accounts without a username still resolve via
+        // email, so nobody is locked out by the new login field.
+        $loginField = filter_var($request->username, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+
         $userinfo =  User::select('users.*', 'emp_details.empPos', 'emp_details.empISID','emp_details.empCompID', 'emp_details.empDepID' )
-            ->where('email','=',$request->username)
+            ->where("users.$loginField",'=',$request->username)
             ->leftjoin('emp_details','users.empID','=','emp_details.empID')
             ->first();
 

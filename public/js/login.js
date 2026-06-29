@@ -47,7 +47,7 @@ $(document).ready(function() {
         if (!username || !password) {
             if (!username) {
                 $('#floatingInput').addClass('border border-danger is-invalid');
-                $('.username_error').text('Email address is required.');
+                $('.username_error').text('Email or username is required.');
             }
             if (!password) {
                 $('#floatingPassword').addClass('border border-danger is-invalid');

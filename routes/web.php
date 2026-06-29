@@ -88,7 +88,7 @@ Route::get('/logoutSystem',[loginCtrl::class, 'logoutSystem']);
 // Route::get('/', function () {return view('home');});
 
 
-Route::group(['middleware' => ['AuthCheck', 'check.employee.ip', 'check.maintenance']], function () {
+Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip', 'check.maintenance']], function () {
 
     ##
 
@@ -548,6 +548,11 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip', 'check.maintena
     Route::post('/registerCtrl/checkEmailAvailability', [registerCtrl::class, 'checkEmailAvailability']);
     Route::get('/check-fullname', [registerCtrl::class, 'checkFullName']);
     Route::post('/update-password', [ProfileController::class, 'updatePassword'])->name('password.update');
+
+    // Forced password change (one-time security stretch). Exempt from the
+    // 'force.password' middleware so flagged users can actually reach it.
+    Route::get('/force-password-change', [ProfileController::class, 'forceChangeForm'])->name('password.force');
+    Route::post('/force-password-change/update', [ProfileController::class, 'forceUpdatePassword'])->name('password.force.update');
 
     // ============================================
     // KwHub - Community Platform Routes

@@ -169,15 +169,15 @@
                         {{-- Honeypot: bots fill this, humans don't --}}
                         <input type="text" name="website" style="display:none" tabindex="-1" autocomplete="off">
 
-                        {{-- Email --}}
+                        {{-- Email or Username --}}
                         <div class="form-floating mb-3">
-                            <input type="email"
+                            <input type="text"
                                    class="form-control"
                                    id="floatingInput"
                                    name="username"
-                                   placeholder="name@example.com"
+                                   placeholder="Email or Username"
                                    autocomplete="username">
-                            <label for="floatingInput">Email address</label>
+                            <label for="floatingInput">Email or Username</label>
                             <span class="error-text username_error text-danger" style="font-size:.8rem;"></span>
                         </div>
 

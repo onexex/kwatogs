@@ -657,6 +657,12 @@
                                     <input type="email" class="form-control" id="txtEmailAddress" name="email" autocomplete="off">
                                     <span class="error-text email_error"></span>
                                 </div>
+                                <div class="col-lg-3 col-md-6">
+                                    <label for="txtUsername" class="field-label">Login Username</label>
+                                    <input type="text" class="form-control" id="txtUsername" name="username" autocomplete="off" placeholder="Leave blank to auto-generate">
+                                    <small class="text-muted" style="font-size:.75rem;">Blank = first initial + surname (e.g. jdelacruz)</small>
+                                    <span class="error-text username_error"></span>
+                                </div>
                             </div>
                         </div>
                     </div>
