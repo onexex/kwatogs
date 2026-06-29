@@ -362,6 +362,10 @@
                                 <div class="label-caps">Employee ID</div>
                                 <div class="value-text" id="view_empid_val">---</div>
                             </div>
+                            <div class="mb-4">
+                                <div class="label-caps">Login Username</div>
+                                <div class="value-text text-break" id="view_username">---</div>
+                            </div>
                             <div class="mb-1">
                                 <div class="label-caps">Current Company</div>
                                 <div class="value-text" id="view_company">---</div>

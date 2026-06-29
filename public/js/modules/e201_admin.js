@@ -79,6 +79,7 @@ $(document).ready(function() {
         $('#view_status').text(statusText).removeClass('bg-success bg-danger bg-secondary').addClass(statusClass);
         $('#view_email').text(user.email);
         $('#view_empid_val').text(user.empID);
+        $('#view_username').text(user.username || '---');
         $('#editEmployee').attr('href', '/admin/e201/edit/' + user.id);
 
         if (detail) {
