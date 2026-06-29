@@ -208,6 +208,34 @@
                 </li>
             @endif
 
+            {{-- "My Notices" — walang permission; nakikita ng lahat ng naka-login na empleyado
+                 para makita ang sariling notices/memo. May badge kung may bagong hindi pa nababasa. --}}
+            @php
+                $myUnreadNotices = 0;
+                if (auth()->check() && auth()->user()->empID) {
+                    $myUnreadNotices = \App\Models\Notice::where('employee_id', auth()->user()->empID)
+                        ->where('status', 'active')->where('is_read', false)->count();
+                }
+            @endphp
+            <li class="nav-item">
+                <a class="nav-link {{ request()->is('pages/modules/mynotices*') ? 'active-page' : '' }}" href="{{ route('notices.mine') }}">
+                    <i class="fas fa-fw fa-bell"></i>
+                    <span>My Notices</span>
+                    @if ($myUnreadNotices > 0)
+                        <span class="badge rounded-pill bg-danger ms-auto">{{ $myUnreadNotices }}</span>
+                    @endif
+                </a>
+            </li>
+
+            {{-- "My COE" — walang permission; nakikita ng lahat ng naka-login na empleyado
+                 para makahingi ng Certificate of Employment at ma-download kapag aprubado. --}}
+            <li class="nav-item">
+                <a class="nav-link {{ request()->is('pages/modules/mycoe*') ? 'active-page' : '' }}" href="{{ route('coe.mine') }}">
+                    <i class="fas fa-fw fa-file-signature"></i>
+                    <span>My COE</span>
+                </a>
+            </li>
+
             @can('kuboaccess')
                 <li class="nav-item">
                     <a class="nav-link {{ request()->is('kubo*') ? 'active-page' : '' }}" href="{{ route('kubo.feed') }}">
@@ -234,6 +262,9 @@
                     'enrollemployee'   => ['name' => 'Enroll Employee', 'url' => '/pages/modules/registration', 'icon' => 'fa-user-gear'],
                     'loanmanagement'   => ['name' => 'Loans & Charges', 'url' => '/pages/modules/loanManagement', 'icon' => 'fa-hand-holding-dollar'],
                     'payadjustments'   => ['name' => 'Pay Adjustments', 'url' => '/pages/modules/payadjustments', 'icon' => 'fa-sliders'],
+                    'noticemanagement' => ['name' => 'Notices & Memos', 'url' => '/pages/modules/notices', 'icon' => 'fa-file-circle-exclamation'],
+                    'coemanagement'    => ['name' => 'Certificate of Employment', 'url' => '/pages/modules/coe', 'icon' => 'fa-file-signature'],
+                    'programs'         => ['name' => 'Programs', 'url' => '/pages/modules/programs', 'icon' => 'fa-award'],
                     'attendanceimport' => ['name' => 'Attendance Import', 'url' => '/attendance-import', 'icon' => 'fa-file-import'],
                     'overtimeimport'   => ['name' => 'Overtime Import', 'url' => '/overtime-import', 'icon' => 'fa-clock'],
                     'leaveimport'      => ['name' => 'Leave Import', 'url' => '/leave-import', 'icon' => 'fa-calendar-check'],
@@ -449,6 +480,17 @@
                     </button>
 
                     <ul class="navbar-nav ms-auto">
+                        {{-- Notices bell — links to My Notices, badge = own unread active notices --}}
+                        <li class="nav-item no-arrow me-2">
+                            <a class="nav-link position-relative" href="{{ route('notices.mine') }}" title="My Notices">
+                                <i class="fas fa-bell text-secondary"></i>
+                                @if ($myUnreadNotices > 0)
+                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:.6rem;">
+                                        {{ $myUnreadNotices > 99 ? '99+' : $myUnreadNotices }}
+                                    </span>
+                                @endif
+                            </a>
+                        </li>
                         <li class="nav-item dropdown no-arrow">
                             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" data-bs-toggle="dropdown">
                                 <div class="d-flex flex-column text-end me-3 d-none d-lg-flex">

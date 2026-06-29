@@ -25,6 +25,12 @@ class empDetail extends Model
         'empPagibig', 'empPhilhealth', 'empSSS', 'empTIN', 'empUMID', 'empPrevDesignation',
         // Per-employee government-dues enrolment toggles (default enrolled)
         'sss_enabled', 'philhealth_enabled', 'pagibig_enabled',
+        // Separation (employment exit) metadata + independent flag layer — see E-201 Update Status
+        'separation_reason', 'separation_date', 'years_rendered',
+        'flag_status', 'flag_reason', 'flagged_at', 'flagged_by',
+        // Offboarding clearance checklist (ticked in the Update Status modal on exit)
+        'cl_resignation_letter', 'cl_office_notice', 'cl_clearance_form', 'cl_company_items', 'cl_quitclaim',
+        'clearance_refs', 'cleared_by', 'cleared_at',
     ];
 
     protected $casts = [
@@ -38,6 +44,17 @@ class empDetail extends Model
         'sss_enabled' => 'boolean',
         'philhealth_enabled' => 'boolean',
         'pagibig_enabled' => 'boolean',
+        'separation_date' => 'date',
+        'flagged_at' => 'date',
+        'years_rendered' => 'float',
+        // Offboarding clearance
+        'cl_resignation_letter' => 'boolean',
+        'cl_office_notice' => 'boolean',
+        'cl_clearance_form' => 'boolean',
+        'cl_company_items' => 'boolean',
+        'cl_quitclaim' => 'boolean',
+        'clearance_refs' => 'array',
+        'cleared_at' => 'date',
     ];
 
     public function company(): BelongsTo

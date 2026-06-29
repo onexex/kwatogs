@@ -29,6 +29,10 @@ use App\Http\Controllers\leavetypeCtrl;
 use App\Http\Controllers\leavevalidationCtrl;
 use App\Http\Controllers\liloValidationsCtrl;
 use App\Http\Controllers\LoanController;
+use App\Http\Controllers\ProgramController;
+use App\Http\Controllers\NoticeController;
+use App\Http\Controllers\CoeController;
+use App\Http\Controllers\CoeSignatoryController;
 use App\Http\Controllers\PayAdjustmentController;
 use App\Http\Controllers\loginCtrl;
 use App\Http\Controllers\obValidationsCtrl;
@@ -88,7 +92,7 @@ Route::get('/logoutSystem',[loginCtrl::class, 'logoutSystem']);
 // Route::get('/', function () {return view('home');});
 
 
-Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip', 'check.maintenance']], function () {
+Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip', 'check.maintenance', 'block.separated']], function () {
 
     ##
 
@@ -144,6 +148,8 @@ Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip
     Route::get('admin/e201/fetch/{empID}', [EmployeeRecordController::class, 'getEmployeeDetails']);
     Route::get('admin/e201/edit/{user}', [EmployeeRecordController::class, 'editEmployee']);
     Route::post('admin/e201/reset-password/{user}', [EmployeeRecordController::class, 'resetPassword']);
+    Route::post('admin/e201/update-status/{user}', [EmployeeRecordController::class, 'updateStatus'])
+        ->middleware('can:manageemployeestatus');
 
 
     // JMC
@@ -257,6 +263,10 @@ Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip
     Route::post('/department/create_update',[departmentCtrl::class, 'create_update']);
     Route::get('/department/getall',[departmentCtrl::class, 'getall']);
     Route::get('/department/edit',[departmentCtrl::class, 'edit']);
+    Route::get('/department/documents',[departmentCtrl::class, 'documents']);
+    Route::post('/department/document/upload',[departmentCtrl::class, 'uploadDocument']);
+    Route::get('/department/document/download',[departmentCtrl::class, 'downloadDocument']);
+    Route::get('/department/document/delete',[departmentCtrl::class, 'deleteDocument']);
 
     //relationship
     Route::post('/relationship/create_update',[relationshipCtrl::class, 'create_update']);
@@ -495,6 +505,49 @@ Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip
     Route::get('/payroll-logs/print', [PayrollLogController::class, 'print'])->name('payroll-logs.print')->middleware('can:payrolllogs');
     
 
+
+    // Notices / Memo — HR admin side (gated) + employee "My Notices" (auth-only)
+    Route::get('pages/modules/notices', [NoticeController::class, 'index'])->name('notices.index')->middleware('can:noticemanagement');
+    Route::get('/notices/list', [NoticeController::class, 'list'])->middleware('can:noticemanagement');
+    Route::get('/notices/employees', [NoticeController::class, 'employees'])->middleware('can:noticemanagement');
+    Route::post('/notices/save', [NoticeController::class, 'save'])->middleware('can:noticemanagement');
+    Route::post('/notices/delete', [NoticeController::class, 'delete'])->middleware('can:noticemanagement');
+    Route::get('/notices/recommendations', [NoticeController::class, 'recommendations'])->middleware('can:noticemanagement');
+    Route::post('/notices/recommendation/resolve', [NoticeController::class, 'resolveRecommendation'])->middleware('can:noticemanagement');
+    // Employee-facing: every authenticated employee can see their own notices.
+    Route::get('pages/modules/mynotices', [NoticeController::class, 'mine'])->name('notices.mine');
+    Route::get('/mynotices/list', [NoticeController::class, 'myList'])->name('notices.mine.list');
+
+    // Certificate of Employment — HR admin side (gated) + employee "My COE" (auth-only)
+    Route::get('pages/modules/coe', [CoeController::class, 'index'])->name('coe.index')->middleware('can:coemanagement');
+    Route::get('/coe/list', [CoeController::class, 'list'])->middleware('can:coemanagement');
+    Route::post('/coe/approve', [CoeController::class, 'approve'])->middleware('can:coemanagement');
+    Route::post('/coe/reject', [CoeController::class, 'reject'])->middleware('can:coemanagement');
+    // HR issues a COE for a separated employee (gated on offboarding clearance).
+    Route::get('/coe/separated-employees', [CoeController::class, 'separatedEmployees'])->middleware('can:coemanagement');
+    Route::post('/coe/issue', [CoeController::class, 'issue'])->middleware('can:coemanagement');
+    // COE signatories (Settings) + the active list that feeds the approve/issue pickers.
+    Route::get('pages/management/coe-signatories', [CoeSignatoryController::class, 'index'])->name('coe.signatories')->middleware('can:coemanagement');
+    Route::get('/coe/signatories/list', [CoeSignatoryController::class, 'list'])->middleware('can:coemanagement');
+    Route::get('/coe/signatories/active', [CoeSignatoryController::class, 'activeList'])->middleware('can:coemanagement');
+    Route::post('/coe/signatories/save', [CoeSignatoryController::class, 'save'])->middleware('can:coemanagement');
+    Route::post('/coe/signatories/delete', [CoeSignatoryController::class, 'delete'])->middleware('can:coemanagement');
+    // Employee-facing: every authenticated employee can manage their own COE requests.
+    Route::get('pages/modules/mycoe', [CoeController::class, 'mine'])->name('coe.mine');
+    Route::get('/mycoe/list', [CoeController::class, 'myList'])->name('coe.mine.list');
+    Route::get('/mycoe/requirements', [CoeController::class, 'requirements'])->name('coe.requirements');
+    Route::post('/mycoe/store', [CoeController::class, 'store'])->name('coe.store');
+    // PDF download — owner employee OR a COE manager (authorized inside the controller).
+    Route::get('/coe/{coe}/pdf', [CoeController::class, 'pdf'])->name('coe.pdf');
+
+    // Programs Management — tenure-milestone benefits (Workforce)
+    Route::get('pages/modules/programs', [ProgramController::class, 'index'])->name('programs.index')->middleware('can:programs');
+    Route::get('/programs/list', [ProgramController::class, 'list'])->middleware('can:programs');
+    Route::post('/programs/save', [ProgramController::class, 'save'])->middleware('can:programs');
+    Route::post('/programs/delete', [ProgramController::class, 'delete'])->middleware('can:programs');
+    Route::get('/programs/eligibility', [ProgramController::class, 'eligibility'])->middleware('can:programs');
+    Route::post('/programs/grant', [ProgramController::class, 'grant'])->middleware('can:programs');
+    Route::post('/programs/revoke', [ProgramController::class, 'revoke'])->middleware('can:programs');
 
     Route::get('pages/modules/loanManagement', [LoanController::class, 'index'])->name('loans.index');
     Route::post('/loans/store', [LoanController::class, 'store'])->name('loans.store');

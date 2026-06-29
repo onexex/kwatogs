@@ -58,7 +58,7 @@
 <table width="100%" cellpadding="4" cellspacing="0" style="font-family: helvetica; font-size: 10pt; color: #1f2937;">
     <tr>
         <td width="60%" style="font-size: 13pt; font-weight: bold;">
-            {{ $company->comp_name ?? config('app.name', 'Company') }}
+            {{ optional($detail)->department->dep_name ?? ($company->comp_name ?? config('app.name', 'Company')) }}
             <br><span style="font-size: 9pt; color: #6b7280; font-weight: normal;">Payslip</span>
         </td>
         <td width="40%" align="right" style="font-size: 11pt; font-weight: bold; color: #008080;">

@@ -320,7 +320,7 @@
 </div>
 
 <div class="modal fade" id="mdlDepartment" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
@@ -332,17 +332,106 @@
 
             <div class="modal-body">
 
-                <div class="sub-divider"><span>Department Details</span></div>
-
                 <form id="frmDepartment">
+                    {{-- ── Company Profile ── --}}
+                    <div class="sub-divider"><span>Company Profile</span></div>
                     <div class="row g-3">
-                        <div class="col-12">
-                            <label for="txtDeptName" class="field-label">Department Name <span class="req">*</span></label>
-                            <input class="form-control" id="txtDeptName" name="department" type="text" placeholder="e.g. Human Resources" />
+                        <div class="col-md-6">
+                            <label for="txtDeptName" class="field-label">Department / Company Name <span class="req">*</span></label>
+                            <input class="form-control" id="txtDeptName" name="department" type="text" placeholder="e.g. KwaTogs Inc." />
                             <span class="text-danger small error-text department_error"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="txtDeptPhone" class="field-label">Contact Phone</label>
+                            <input class="form-control" id="txtDeptPhone" name="dep_contact_phone" type="text" placeholder="e.g. (02) 8123 4567" />
+                        </div>
+                        <div class="col-md-6">
+                            <label for="txtDeptEmail" class="field-label">Email</label>
+                            <input class="form-control" id="txtDeptEmail" name="dep_email" type="text" placeholder="e.g. hr@company.com" />
+                            <span class="text-danger small error-text dep_email_error"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="txtDeptAddress" class="field-label">Address</label>
+                            <input class="form-control" id="txtDeptAddress" name="dep_address" type="text" placeholder="Office address" />
+                        </div>
+                        <div class="col-12">
+                            <label for="txtDeptDescription" class="field-label">Description / Notes</label>
+                            <textarea class="form-control" id="txtDeptDescription" name="dep_description" rows="2" placeholder="Optional notes about this company/department"></textarea>
+                        </div>
+                    </div>
+
+                    {{-- ── Government Employer Numbers ── --}}
+                    <div class="sub-divider mt-4"><span>Government Employer Numbers</span></div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="txtDeptTin" class="field-label">TIN</label>
+                            <input class="form-control" id="txtDeptTin" name="dep_tin" type="text" placeholder="000-000-000-000" />
+                        </div>
+                        <div class="col-md-6">
+                            <label for="txtDeptSss" class="field-label">SSS Employer No.</label>
+                            <input class="form-control" id="txtDeptSss" name="dep_sss_employer_no" type="text" placeholder="" />
+                        </div>
+                        <div class="col-md-6">
+                            <label for="txtDeptPhilhealth" class="field-label">PhilHealth Employer No.</label>
+                            <input class="form-control" id="txtDeptPhilhealth" name="dep_philhealth_employer_no" type="text" placeholder="" />
+                        </div>
+                        <div class="col-md-6">
+                            <label for="txtDeptPagibig" class="field-label">Pag-IBIG Employer No.</label>
+                            <input class="form-control" id="txtDeptPagibig" name="dep_pagibig_employer_no" type="text" placeholder="" />
+                        </div>
+                    </div>
+
+                    {{-- ── Logo ── --}}
+                    <div class="sub-divider mt-4"><span>Company Logo</span></div>
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-8">
+                            <label for="txtDeptLogo" class="field-label">Upload Logo</label>
+                            <input class="form-control" id="txtDeptLogo" name="logo" type="file" accept="image/*" />
+                            <span class="text-danger small error-text logo_error"></span>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <img id="imgDeptLogoPreview" src="" alt="Logo preview"
+                                 style="max-height:70px; max-width:100%; display:none; border:1px solid var(--border); border-radius:8px; padding:4px; background:#fff;" />
                         </div>
                     </div>
                 </form>
+
+                {{-- ── Related Documents (edit mode only — needs an existing department) ── --}}
+                <div id="deptDocsSection" style="display:none;">
+                    <div class="sub-divider mt-4"><span>Related Documents</span></div>
+
+                    <form id="frmDeptDoc">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-5">
+                                <label for="txtDeptDocLabel" class="field-label">Document Label</label>
+                                <input class="form-control" id="txtDeptDocLabel" name="label" type="text" placeholder="e.g. BIR Registration" />
+                            </div>
+                            <div class="col-md-5">
+                                <label for="txtDeptDocFile" class="field-label">PDF File</label>
+                                <input class="form-control" id="txtDeptDocFile" name="document" type="file" accept="application/pdf,.pdf" />
+                                <span class="text-danger small error-text document_error"></span>
+                            </div>
+                            <div class="col-md-2">
+                                <button id="btnUploadDeptDoc" type="button" class="btn btn-add-department w-100 justify-content-center">
+                                    <i class="fa-solid fa-upload"></i> Upload
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <div class="table-responsive mt-3" style="max-height: 240px; overflow-y: auto;">
+                        <table class="table table-hover align-middle departments-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="ps-3">Label</th>
+                                    <th>File</th>
+                                    <th class="text-end pe-3" style="width: 110px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tblDeptDocs"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
             <div class="modal-footer">

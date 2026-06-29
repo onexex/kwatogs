@@ -10,13 +10,16 @@ use App\Models\Overtime;
 use App\Models\Payroll;
 use App\Models\PayrollApproval;
 use App\Models\ScheduleRequest;
+use App\Services\CoeService;
+use App\Services\NoticeService;
+use App\Services\TenureProgramService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class HrDashboardController extends Controller
 {
-    public function index()
+    public function index(TenureProgramService $tenurePrograms, NoticeService $notices, CoeService $coe)
     {
         $today = Carbon::today()->toDateString();
         $d = [];
@@ -239,6 +242,27 @@ class HrDashboardController extends Controller
             ->whereDate('s.sched_start_date', '>=', $start30)->whereDate('s.sched_start_date', '<=', $today)
             ->selectRaw("COALESCE(dp.dep_name,'Unassigned') as name, COUNT(*) as scheduled, COUNT(CASE WHEN a.total_hours>0 THEN 1 END) as present")
             ->groupBy('name')->havingRaw('COUNT(*) > 0')->orderByDesc('scheduled')->limit(8)->get();
+
+        // ── Tenure-milestone programs (Programs Management) ─────────────
+        // Reuses the same eligibility computation as the Programs screen so the
+        // dashboard widget and the screen never drift. Trimmed to the few rows
+        // the widget shows (pending grants + nearest anniversaries).
+        $milestones = $tenurePrograms->eligibility();
+        $d['msStats']    = $milestones['stats'];
+        $d['msPending']  = collect($milestones['reached'])->where('status', 'pending')->take(6)->values();
+        $d['msUpcoming'] = collect($milestones['upcoming'])->take(6)->values();
+
+        // ── Disciplinary notices / suspension escalation ────────────────
+        $noticeData = $notices->dashboard();
+        $d['ntcStats']  = $noticeData['stats'];
+        $d['ntcOver']   = $noticeData['over'];        // names shown in the alert flash (suspend threshold)
+        $d['ntcAtRisk'] = $noticeData['atRisk'];      // approaching the limit
+
+        // ── Certificate of Employment requests ──────────────────────────
+        // Same service as the COE screen so the widget and the screen never drift.
+        $coeData = $coe->dashboard();
+        $d['coeStats']   = $coeData['stats'];
+        $d['coePending'] = $coeData['pending'];
 
         return view('pages.management.hr_dashboard', ['d' => $d]);
     }

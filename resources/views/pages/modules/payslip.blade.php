@@ -122,7 +122,7 @@
                 <div class="ps-company">
                     <img src="{{ asset('img/kwatogslogo.jpg') }}" alt="logo">
                     <div>
-                        <div class="name">{{ $company->comp_name ?? config('app.name', 'Company') }}</div>
+                        <div class="name">{{ optional($detail)->department->dep_name ?? ($company->comp_name ?? config('app.name', 'Company')) }}</div>
                         <div class="sub">Payslip</div>
                     </div>
                 </div>
