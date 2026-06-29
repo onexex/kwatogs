@@ -354,13 +354,19 @@
     {{-- ── Filters ── --}}
     <div class="scheduler-filterbar">
         <div class="row g-3 align-items-center">
-            <div class="col-lg-8">
+            <div class="col-lg-5">
                 <div class="input-group">
                     <span class="input-group-text"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
                     <input type="text" id="txtSearchEmp" class="form-control" placeholder="Search by Employee Name...">
                 </div>
             </div>
             <div class="col-lg-4">
+                <select id="selScheduleView" class="form-select">
+                    <option value="scheduled">Show: All schedules</option>
+                    <option value="unscheduled">Show: Unscheduled employees</option>
+                </select>
+            </div>
+            <div class="col-lg-3" id="perPageWrap">
                 <select id="selPerPage" class="form-select">
                     <option value="10">10 entries per page</option>
                     <option value="25">25 entries</option>
@@ -369,10 +375,45 @@
                 </select>
             </div>
         </div>
+
+        {{-- Date-range scope (only for the Unscheduled view) --}}
+        <div class="row g-3 align-items-end mt-1 d-none" id="unschedRangeWrap">
+            <div class="col-lg-3">
+                <label class="field-label" for="fromDate">From</label>
+                <input type="date" id="fromDate" class="form-control">
+            </div>
+            <div class="col-lg-3">
+                <label class="field-label" for="toDate">To</label>
+                <input type="date" id="toDate" class="form-control">
+            </div>
+            <div class="col-lg-6 d-flex gap-2">
+                <button type="button" class="btn-cancel-schedule" id="btnThisMonth" style="padding:8px 16px;">This Month</button>
+                <button type="button" class="btn-cancel-schedule" id="btnClearRange" style="padding:8px 16px;">Clear (Never Scheduled)</button>
+            </div>
+            <div class="col-12">
+                <small class="text-muted">Leave both dates blank to list employees who have <strong>never</strong> been given a schedule.</small>
+            </div>
+        </div>
+    </div>
+
+    {{-- ── Unscheduled employees panel (always visible) ── --}}
+    <div class="sc" id="unscheduledPanel">
+        <div class="sc-head">
+            <div class="sc-head-left">
+                <div class="sc-icon" style="background:#fff5f5;color:var(--danger);"><i class="fa-solid fa-user-clock"></i></div>
+                <h5 class="sc-title">Employees with no schedule</h5>
+                <span class="badge rounded-pill ms-1" id="unscheduledCount"
+                      style="background:var(--danger);color:#fff;font-weight:700;">0</span>
+            </div>
+            <span class="text-muted small" id="unscheduledScopeLabel">Never scheduled</span>
+        </div>
+        <div class="sc-body" style="padding:16px 22px;">
+            <div id="unscheduledList" class="d-flex flex-wrap gap-2"></div>
+        </div>
     </div>
 
     {{-- ── Schedule list ── --}}
-    <div class="sc">
+    <div class="sc" id="scheduledView">
         <div class="sc-head">
             <div class="sc-head-left">
                 <div class="sc-icon"><i class="fa-solid fa-calendar-days"></i></div>
@@ -594,8 +635,97 @@ $(document).ready(function(){
         });
     };
 
+    // 🧩 LOAD UNSCHEDULED EMPLOYEES
+    const loadUnscheduled = () => {
+        const from = $('#fromDate').val();
+        const to   = $('#toDate').val();
+
+        // Scope label
+        let scope = 'Never scheduled';
+        if (from && to)       scope = `No schedule ${from} → ${to}`;
+        else if (from)        scope = `No schedule from ${from}`;
+        else if (to)          scope = `No schedule until ${to}`;
+        $('#unscheduledScopeLabel').text(scope);
+
+        $('#unscheduledList').html('<div class="spinner-border spinner-border-sm text-danger opacity-50" role="status"></div>');
+
+        axios.get("{{ route('employee-schedules.unscheduled') }}", { params: { from, to } })
+            .then(res => {
+                const emps = res.data.employees || [];
+                $('#unscheduledCount').text(res.data.count);
+
+                if (emps.length === 0) {
+                    $('#unscheduledList').html('<span class="text-success small fw-bold">🎉 Everyone has a schedule for this period.</span>');
+                    return;
+                }
+
+                let html = '';
+                emps.forEach(e => {
+                    html += `
+                        <span class="badge rounded-pill d-inline-flex align-items-center gap-2 px-3 py-2 fw-medium employee-tag">
+                            ${e.name}
+                            <button type="button" class="btn btn-sm p-0 border-0 bg-transparent btnQuickSched"
+                                    data-id="${e.empID}" data-name="${e.name}" title="Add schedule for this employee"
+                                    style="line-height:1;">
+                                <i class="fa-solid fa-circle-plus" style="color:var(--teal-dark);"></i>
+                            </button>
+                        </span>`;
+                });
+                $('#unscheduledList').html(html);
+            })
+            .catch(() => {
+                $('#unscheduledList').html('<span class="text-danger small">Unable to load unscheduled employees.</span>');
+            });
+    };
+
+    // View toggle: schedule table vs. unscheduled employees
+    $('#selScheduleView').on('change', function () {
+        const isUnsched = $(this).val() === 'unscheduled';
+        $('#unschedRangeWrap').toggleClass('d-none', !isUnsched);
+        // In the unscheduled view, the schedule table / pagination / per-page are not relevant
+        $('#scheduledView, #paginationContainer, #perPageWrap').toggleClass('d-none', isUnsched);
+        if (isUnsched) loadUnscheduled();
+    });
+
+    // Date-range controls
+    $('#fromDate, #toDate').on('change', loadUnscheduled);
+    $('#btnThisMonth').on('click', function () {
+        const now = new Date();
+        const first = new Date(now.getFullYear(), now.getMonth(), 1);
+        const last  = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        const fmt = d => d.toISOString().slice(0, 10);
+        $('#fromDate').val(fmt(first));
+        $('#toDate').val(fmt(last));
+        loadUnscheduled();
+    });
+    $('#btnClearRange').on('click', function () {
+        $('#fromDate, #toDate').val('');
+        loadUnscheduled();
+    });
+
+    // Quick "Add Schedule" from an unscheduled pill → open modal pre-selecting that employee
+    $(document).on('click', '.btnQuickSched', function () {
+        const id   = $(this).data('id');
+        const name = String($(this).data('name'));
+
+        // Reset modal like the Create button does
+        $('#schedule_id').val('');
+        $('#frmEmpScheduler')[0].reset();
+        $('.day-label').removeClass('bg-primary text-white border-primary').addClass('bg-transparent text-muted');
+        $('.error-text').text('');
+        $('input, select').removeClass('border-danger');
+        resetEmployeeArray();
+
+        // Pre-tag the chosen employee
+        selectedEmployees.push({ id: id, name: name });
+        renderEmployeeTags();
+
+        $('#mdlEmpScheduler').modal('show');
+    });
+
     // 🔹 Initial Load
     loadSchedules();
+    loadUnscheduled();
 
     // Reset Modal on Open
     $('#btnCreateModal').on('click', function() {
@@ -665,6 +795,7 @@ $(document).ready(function(){
                     Swal.fire({ icon: 'success', title: 'Success', text: res.data.message, timer: 1500, showConfirmButton: false });
                     $('#mdlEmpScheduler').modal('hide');
                     loadSchedules();
+                    loadUnscheduled();
                 })
                 .catch(err => {
                     Swal.close();
@@ -720,6 +851,7 @@ $(document).ready(function(){
                 axios.delete(`{{ url('employee-schedules/delete') }}/${id}`).then(res => {
                     Swal.fire('Deleted!', res.data.message, 'success');
                     loadSchedules();
+                    loadUnscheduled();
                 });
             }
         });

@@ -419,6 +419,7 @@ Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip
     Route::prefix('employee-schedules')->group(function() {
         Route::get('/', [EmployeeScheduleController::class, 'index'])->name('employee-schedules.index');
         Route::get('/all', [EmployeeScheduleController::class, 'getSchedules'])->name('employee-schedules.get');
+        Route::get('/unscheduled', [EmployeeScheduleController::class, 'unscheduled'])->name('employee-schedules.unscheduled');
         Route::post('/store', [EmployeeScheduleController::class, 'store'])->name('employee-schedules.store');
         Route::get('/edit/{id}', [EmployeeScheduleController::class, 'edit'])->name('employee-schedules.edit');
         Route::put('/update/{id}', [EmployeeScheduleController::class, 'update'])->name('employee-schedules.update');

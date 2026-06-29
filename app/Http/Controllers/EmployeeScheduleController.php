@@ -58,6 +58,50 @@ class EmployeeScheduleController extends Controller
     }
 
 
+    /**
+     * Active employees who have NO schedule in the given window.
+     * - from/to blank  => "never scheduled at all" (no schedule row ever)
+     * - from/to given  => no schedule overlapping that date range
+     * Active = emp_details.empStatus = '1' (same rule payroll uses).
+     */
+    public function unscheduled(Request $request)
+    {
+        $from = $request->filled('from') ? $request->from : null;
+        $to   = $request->filled('to')   ? $request->to   : null;
+
+        $employees = User::query()
+            ->join('emp_details', 'users.empID', '=', 'emp_details.empID')
+            ->where('emp_details.empStatus', '1')
+            ->whereNotExists(function ($q) use ($from, $to) {
+                $q->select(DB::raw(1))
+                  ->from('employee_schedules')
+                  ->whereColumn('employee_schedules.employee_id', 'users.empID');
+
+                // Only restrict to the window when a range is supplied;
+                // otherwise any schedule row at all excludes the employee.
+                if ($from) {
+                    $q->whereDate('employee_schedules.sched_end_date', '>=', $from);
+                }
+                if ($to) {
+                    $q->whereDate('employee_schedules.sched_start_date', '<=', $to);
+                }
+            })
+            ->orderBy('users.lname')
+            ->orderBy('users.fname')
+            ->get(['users.empID', 'users.fname', 'users.lname']);
+
+        $list = $employees->map(fn($e) => [
+            'empID' => $e->empID,
+            'name'  => strtoupper($e->lname . ', ' . $e->fname),
+        ])->values();
+
+        return response()->json([
+            'count'     => $list->count(),
+            'employees' => $list,
+        ]);
+    }
+
+
     // public function store(Request $request)
     // {
     //     $validator = Validator::make($request->all(), [
