@@ -454,7 +454,14 @@
                                 <a class="dropdown-item py-2" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#changePassModal">
                                     <i class="fas fa-user-cog fa-sm fa-fw me-2 text-primary"></i> Password Settings
                                 </a>
-                                
+
+                                {{-- "What's New" — lalabas lang kung may na-generate na changelog (staging); itinatago sa production --}}
+                                @if (file_exists(public_path('changelog.json')))
+                                    <a class="dropdown-item py-2" href="{{ route('whatsnew') }}">
+                                        <i class="fas fa-bullhorn fa-sm fa-fw me-2 text-primary"></i> What's New
+                                    </a>
+                                @endif
+
                                 <div class="dropdown-divider"></div> {{-- Divider line para malinis tignan --}}
                                 
                                 <a class="dropdown-item py-2" href="#" data-bs-toggle="modal" data-bs-target="#logoutModal">

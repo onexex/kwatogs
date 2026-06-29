@@ -32,6 +32,11 @@ jobs:
       run: |
         composer install --no-dev --optimize-autoloader --no-ansi --no-interaction --no-scripts --prefer-dist
 
+    # 📝 CHANGELOG: Gawin ang public/changelog.json mula sa git history (full history dahil fetch-depth: 0).
+    # Kailangan dito sa CI dahil tinatanggal ang .git sa deploy zip — di tatakbo ang git log sa server.
+    - name: 📝 Generate Changelog from Git History
+      run: php scripts/generate-changelog.php
+
     # 🤐 ZIP PREPARATION: Isang zip file para sa buong project
     - name: 🤐 Package Everything into One ZIP
       run: |

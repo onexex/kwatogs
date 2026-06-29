@@ -106,6 +106,7 @@ Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip
     Route::get('/pages/management/companies',[pageCtrl::class, 'companies']);
     Route::get('/pages/management/classification',[pageCtrl::class, 'classification']);
     Route::get('/pages/management/e201',[pageCtrl::class, 'e201']);
+    Route::get('/pages/management/whatsnew',[pageCtrl::class, 'whatsnew'])->name('whatsnew');
     Route::get('/pages/modules/registration',[pageCtrl::class, 'registration']);
 
     //work time function
