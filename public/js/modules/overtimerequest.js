@@ -24,7 +24,7 @@
                     status = `<span class="badge bg-warning text-dark p-2">FOR APPROVAL</span>`;
                 }
 
-                if (window.userPermissions.includes("approveleave") && row.status === 'FORAPPROVAL') {
+                if (window.userPermissions.includes("approveovertime") && row.status === 'FORAPPROVAL') {
                     actionButtons += `
                             <button class="btn btn-sm btn-success ms-1 btnApproveLeave" data-id="${row.id}" id="btnApproveLeave">
                                 APPROVE
@@ -35,7 +35,7 @@
                             </button>`;
                 }
 
-                if (window.userPermissions.includes("approvecfoleave") && row.status === 'APPROVED') {
+                if (window.userPermissions.includes("approvecfoovertime") && row.status === 'APPROVED') {
                     actionButtons += `
                             <button class="btn btn-sm btn-primary ms-1 btnConfirmLeave" data-id="${row.id}" id="btnConfirmLeave">
                                 CONFIRM

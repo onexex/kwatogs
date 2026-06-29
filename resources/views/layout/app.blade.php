@@ -294,7 +294,8 @@
                 // 4. Determine if the current URL belongs to this group, so we can keep
                 //    it expanded and highlight the active item after navigation.
                 $modulePagesActiveKey = collect($modulePages)->keys()->first(function ($key) use ($modulePages) {
-                    return request()->is(ltrim($modulePages[$key]['url'], '/') . '*');
+                    $path = ltrim($modulePages[$key]['url'], '/');
+                    return request()->is($path) || request()->is($path . '/*');
                 });
                 $modulePagesGroupActive = !is_null($modulePagesActiveKey);
 
