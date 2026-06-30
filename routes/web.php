@@ -36,7 +36,9 @@ use App\Http\Controllers\CoeSignatoryController;
 use App\Http\Controllers\PayAdjustmentController;
 use App\Http\Controllers\loginCtrl;
 use App\Http\Controllers\obValidationsCtrl;
+use App\Http\Controllers\obsCtrl;
 use App\Http\Controllers\otfillingCtrl;
+use App\Http\Controllers\OB\AdminObController;
 use App\Http\Controllers\Overtime\AdminOvertimeController;
 use App\Http\Controllers\Overtime\OvertimeRequestController;
 use App\Http\Controllers\OvertimeController;
@@ -228,6 +230,9 @@ Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip
     //MODULE
     Route::get('/pages/modules/obtTracker',[pageCtrl::class, 'obtTracker']);
     Route::get('/pages/modules/sendOBT',[pageCtrl::class, 'sendOBT']);
+    Route::get('/obtTracker/getall', [obsCtrl::class, 'getall']);
+    Route::get('/obtTracker/get_details', [obsCtrl::class, 'get_details']);
+    Route::post('/obtTracker/create_obt', [obsCtrl::class, 'create_obt']);
     Route::get('/pages/modules/overtime',[OvertimeController::class, 'index']);
     Route::get('/pages/modules/earlyout',[pageCtrl::class, 'earlyout']);
     Route::get('/pages/modules/debitAdvise',[pageCtrl::class, 'debitAdvise']);
@@ -248,6 +253,10 @@ Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip
     // admin apply overtime
     Route::get('/pages/modules/admin-overtime', [AdminOvertimeController::class, 'index'])->name('admin.overtime.index')->middleware('can:adminovertime');
     Route::post('/admin/overtime/store', [AdminOvertimeController::class, 'store'])->name('admin.overtime.store')->middleware('can:adminovertime');
+
+    // admin apply OB
+    Route::get('/pages/modules/admin-ob', [AdminObController::class, 'index'])->name('admin.ob.index')->middleware('can:adminob');
+    Route::post('/admin/ob/store', [AdminObController::class, 'store'])->name('admin.ob.store')->middleware('can:adminob');
 
     // overtime approval
     Route::get('/pages/modules/overtimerequests', [OvertimeRequestController::class, 'index'])->name('overtime-requests.index')->middleware('can:pendingovertimerequests');

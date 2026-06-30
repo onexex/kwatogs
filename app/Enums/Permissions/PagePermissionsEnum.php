@@ -20,6 +20,7 @@ enum PagePermissionsEnum: string
     case obttracker = 'Official Business Trip';
     case overtime = 'Overtime';
     case adminovertime = 'Apply Employee Overtime';
+    case adminob = 'Apply Employee OB';
     case pendingovertimerequests = 'Pending Overtime Requests';
     case payroll = 'Payroll System';
     case hrdashboard = 'HR Dashboard';

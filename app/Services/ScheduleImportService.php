@@ -19,9 +19,10 @@ class ScheduleImportService
     use CreatesImportBatch;
 
     // 0-based column positions (must match the import template order)
+    // Col 1 = Employee Name (display-only, ignored during import)
     private const C = [
-        'employee_id' => 0, 'sched_start_date' => 1, 'sched_end_date' => 2, 'sched_in' => 3,
-        'sched_out' => 4, 'break_start' => 5, 'break_end' => 6, 'shift_type' => 7, 'days' => 8,
+        'employee_id' => 0, 'sched_start_date' => 2, 'sched_end_date' => 3, 'sched_in' => 4,
+        'sched_out' => 5, 'break_start' => 6, 'break_end' => 7, 'shift_type' => 8, 'days' => 9,
     ];
 
     // Carbon format('D') tokens, used for the optional weekday filter.
@@ -253,7 +254,11 @@ class ScheduleImportService
 
     private function isBlankRow(array $row): bool
     {
-        foreach ($row as $v) { if (trim((string) $v) !== '') { return false; } }
+        // Skip rows where no schedule data is present (cols 2+), even if Employee ID/Name are filled
+        $scheduleCells = array_slice($row, 2);
+        foreach ($scheduleCells as $v) {
+            if (trim((string) $v) !== '') { return false; }
+        }
         return true;
     }
 
