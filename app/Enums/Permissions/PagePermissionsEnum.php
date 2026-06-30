@@ -33,7 +33,7 @@ enum PagePermissionsEnum: string
     case approveschedulechange = 'Pending Schedule Requests';
     // case debitadvise = 'Debit Advise';
     // case sendobt = 'Send to OBT';
-    // case accessrights = 'Access Rights';
+    case accessrights = 'Access Rights';
     // case agencies = 'Agencies';
     // case archive = 'Archive Management';
     case classification = 'Classification';
