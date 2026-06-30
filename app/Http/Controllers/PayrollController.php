@@ -1261,6 +1261,9 @@ class PayrollController extends Controller
                         // the payslip can show days worked and foot Basic Pay to the gross.
                         'days_present'     => $bd['attendance']['days_present'] ?? null,
                         'daily_rate'       => $bd['rates']['daily_rate'] ?? null,
+                        // HR one-time pay adjustments (frozen at compute time) so the
+                        // payslip can show each as its own labeled earnings/deduction line.
+                        'adjustments'      => $bd['adjustments']['entries'] ?? [],
                     ]);
                 });
         }
