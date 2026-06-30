@@ -220,7 +220,7 @@
     <div class="obvalidations-topbar">
         <div>
             <p class="page-title">OB Validation</p>
-            <p class="page-sub">Configure official business filing rules</p>
+            <p class="page-sub">Official Business Trip &mdash; Configure official business filing rules</p>
         </div>
         <button class="btn-add-obvalidation" name="btnCreateMdl" id="btnCreateMdl" data-bs-toggle="modal" data-bs-target="#mdlOBVal">
             <i class="fa fa-plus"></i> OB Validation
@@ -231,7 +231,7 @@
     <div class="sc">
         <div class="sc-head">
             <div class="sc-head-left">
-                <div class="sc-icon"><i class="fa-solid fa-map-check"></i></div>
+                <div class="sc-icon"><i class="fa-solid fa-briefcase"></i></div>
                 <h5 class="sc-title">OB Validation Records</h5>
             </div>
         </div>
