@@ -79,25 +79,27 @@ class EmployeeRecordController extends Controller
             'empDetail.position',
             'empDetail.company',
             'empDetail.classification',
+            'employeeInformation',
             'education'
         ])
         ->where('empID', $empID)
         ->first();
-    
+
         if ($user) {
         // 1. Get the path from the relationship
         $imageName = $user->empDetail->empPicPath ?? null;
 
-        // 2. Build the URL. 
+        // 2. Build the URL.
         // If you are on Folder 2 (cPanel), asset() is perfect.
-        $fullUrl = $imageName 
-            ? asset("img/profile/" . $imageName) 
-            : asset("img/undraw_profile.svg");
+        $fullUrl = $imageName
+            ? asset("img/profile/" . $imageName)
+            : null;
 
         return response()->json([
-            'status' => 200, 
+            'status' => 200,
             'data' => $user,
-            'image_url' => $fullUrl // Pass it as a top-level key for easy access
+            'image_url' => $fullUrl,
+            'gender'    => $user->employeeInformation->gender ?? null,
         ]);
     }
 

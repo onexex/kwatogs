@@ -9,26 +9,18 @@ class obs extends Model
 {
     use HasFactory;
     protected $table = "obs";
-    protected $primaryKey = "obID";
+    protected $primaryKey = "id";
     public $timestamps = true;
-    protected $fillable =
-    [
-    'empID',
-    'empISID',
-    'obFD',
-    'obDateFrom',
-    'obDateTo',
-    'obIFrom',
-    'obITo',
-    'obCAAmt',
-    'obCAPurpose',
-    'obPurpose',
-    'obTFrom',
-    'obTTo',
-    'obDuration',
-    'obStatus',
-    'obISReason',
-    'obHRReason',
-    'obType'
+    protected $fillable = [
+        'employee_id',
+        'start_date',
+        'end_date',
+        'destination',
+        'purpose',
+        'total_hrs',
+        'status',
+        'approved_by',
+        'approved_at',
+        'remarks',
     ];
 }

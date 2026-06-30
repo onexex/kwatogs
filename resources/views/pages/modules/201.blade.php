@@ -210,8 +210,17 @@
         <div class="card-body p-4 p-lg-5">
             <div class="row align-items-center">
                 <div class="col-lg-2 text-center mb-3 mb-lg-0">
-                    <img src="{{ $emp->path ?? URL::asset('/img/undraw_profile.svg') }}"
-                         alt="profile" class="rounded-circle profile-img-container shadow-lg">
+                    @if($emp->empPicPath && file_exists(public_path('img/profile/' . $emp->empPicPath)))
+                        <img src="{{ asset('img/profile/' . $emp->empPicPath) }}"
+                             alt="profile" class="rounded-circle profile-img-container shadow-lg">
+                    @else
+                        @php $gender = $user->employeeInformation->gender ?? null; @endphp
+                        <div class="rounded-circle profile-img-container shadow-lg d-flex align-items-center justify-content-center"
+                             style="background:#f1f5f9;">
+                            <i class="fa-solid fa-circle-user"
+                               style="font-size:4rem;color:{{ $gender == 2 ? '#e91e8c' : '#1976d2' }};"></i>
+                        </div>
+                    @endif
                 </div>
                 <div class="col-lg-10 text-center text-lg-start">
                     <div class="d-flex align-items-center justify-content-center justify-content-lg-start mb-2 flex-wrap gap-2">
