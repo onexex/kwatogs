@@ -247,4 +247,103 @@ class PunchLoginTest extends TestCase
         $this->assertNotNull($summary);
         $this->assertSame(300, (int) $summary->mins_night_diff, '5h night diff (was 0 before fix)');
     }
+
+    /**
+     * #1 — Overnight break taken as a gap must count as break, not Outpass. On a 22:00–06:00
+     * shift with a 02:00–03:00 break, clocking out 02:00 and back in 03:00 is the scheduled
+     * break. Before the fix the over-break window wasn't shifted to the next day, so this
+     * 60-min gap was misclassified as out-pass.
+     */
+    public function test_overnight_break_gap_is_not_outpass(): void
+    {
+        $sched = $this->schedule([
+            'sched_in'       => '22:00:00',
+            'sched_out'      => '06:00:00',
+            'sched_end_date' => '2026-06-17',
+            'break_start'    => '02:00:00',
+            'break_end'      => '03:00:00',
+        ]);
+        homeAttendance::create([
+            'employee_id' => $this->emp, 'schedule_id' => $sched->id, 'attendance_date' => '2026-06-16',
+            'time_in' => '2026-06-16 22:00:00', 'time_out' => '2026-06-17 02:00:00', 'duration_hours' => 4, 'status' => 'present',
+        ]);
+        $last = homeAttendance::create([
+            'employee_id' => $this->emp, 'schedule_id' => $sched->id, 'attendance_date' => '2026-06-16',
+            'time_in' => '2026-06-17 03:00:00', 'time_out' => '2026-06-17 06:00:00', 'duration_hours' => 3, 'status' => 'present',
+        ]);
+        $last->updateDailySummary();
+
+        $summary = AttendanceSummary::where('employee_id', $this->emp)->whereDate('attendance_date', '2026-06-16')->first();
+        $this->assertSame(0, (int) $summary->outpass_minutes, 'scheduled overnight break must not be outpass');
+        $this->assertSame(0, (int) $summary->over_break_minutes, '60m break is under the 180m cap');
+    }
+
+    /**
+     * #2 — The summary must use the PUNCH's schedule, not the date-latest one. A range
+     * schedule (the punch's) and a later single-day schedule both cover the day; late must be
+     * computed against the punch's shift.
+     */
+    public function test_summary_uses_punch_schedule_not_date_latest(): void
+    {
+        $punchSched = EmployeeSchedule::create([
+            'employee_id' => $this->emp, 'sched_start_date' => '2026-06-10', 'sched_end_date' => '2026-06-20',
+            'sched_in' => '08:00:00', 'sched_out' => '17:00:00', 'break_start' => '12:00:00', 'break_end' => '13:00:00',
+        ]);
+        EmployeeSchedule::create([ // later start date → would win the date-based fallback
+            'employee_id' => $this->emp, 'sched_start_date' => '2026-06-16', 'sched_end_date' => '2026-06-16',
+            'sched_in' => '06:00:00', 'sched_out' => '15:00:00', 'break_start' => '10:00:00', 'break_end' => '11:00:00',
+        ]);
+        $punch = homeAttendance::create([
+            'employee_id' => $this->emp, 'schedule_id' => $punchSched->id, 'attendance_date' => '2026-06-16',
+            'time_in' => '2026-06-16 08:30:00', 'time_out' => '2026-06-16 17:00:00', 'duration_hours' => 8, 'status' => 'present',
+        ]);
+        $punch->updateDailySummary();
+
+        $summary = AttendanceSummary::where('employee_id', $this->emp)->whereDate('attendance_date', '2026-06-16')->first();
+        // Against the punch's 08:00 shift: 30m late. Against the 06:00 shift it would be 150m.
+        $this->assertSame(30, (int) $summary->mins_late, 'late computed against the punch schedule');
+    }
+
+    /**
+     * #4 — A day with a still-open punch is not final, so no undertime is charged (and a null
+     * time_out is never parsed as "now"). Before the fix undertime was measured to the closed
+     * morning punch.
+     */
+    public function test_open_punch_does_not_accrue_undertime(): void
+    {
+        $sched = $this->schedule(['break_start' => '12:00:00', 'break_end' => '13:00:00']); // 08:00–17:00
+        homeAttendance::create([
+            'employee_id' => $this->emp, 'schedule_id' => $sched->id, 'attendance_date' => '2026-06-16',
+            'time_in' => '2026-06-16 08:00:00', 'time_out' => '2026-06-16 12:00:00', 'duration_hours' => 4, 'status' => 'present',
+        ]);
+        $open = homeAttendance::create([ // still clocked in
+            'employee_id' => $this->emp, 'schedule_id' => $sched->id, 'attendance_date' => '2026-06-16',
+            'time_in' => '2026-06-16 13:00:00', 'time_out' => null, 'status' => 'present',
+        ]);
+        $open->updateDailySummary();
+
+        $summary = AttendanceSummary::where('employee_id', $this->emp)->whereDate('attendance_date', '2026-06-16')->first();
+        $this->assertSame(0, (int) $summary->mins_undertime, 'no undertime while a punch is still open');
+    }
+
+    /**
+     * #6 — When two shift windows both contain "now", time-in picks the one that started most
+     * recently (latest schedIn), not whichever the DB returned first.
+     */
+    public function test_time_in_picks_latest_starting_overlapping_shift(): void
+    {
+        $early = EmployeeSchedule::create([ // created first; DB-order winner before the fix
+            'employee_id' => $this->emp, 'sched_start_date' => '2026-06-16', 'sched_end_date' => '2026-06-16',
+            'sched_in' => '06:00:00', 'sched_out' => '15:00:00', 'break_start' => '12:00:00', 'break_end' => '13:00:00',
+        ]);
+        $later = EmployeeSchedule::create([
+            'employee_id' => $this->emp, 'sched_start_date' => '2026-06-16', 'sched_end_date' => '2026-06-16',
+            'sched_in' => '08:00:00', 'sched_out' => '17:00:00', 'break_start' => '12:00:00', 'break_end' => '13:00:00',
+        ]);
+        Carbon::setTestNow(Carbon::parse('2026-06-16 09:00:00')); // inside both windows
+
+        $punch = homeAttendance::logTimeIn($this->emp);
+
+        $this->assertSame($later->id, $punch->schedule_id, 'should match the 08:00 shift, not the 06:00 one');
+    }
 }

@@ -89,9 +89,21 @@ use App\Http\Controllers\KuBo\ChatController;
 use App\Http\Controllers\KuBo\ImageUploadController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/auth/login', function () {return view('login.login');})->middleware('throttle:10,1');
+Route::get('/auth/login', function () {
+    // Prevent the browser from serving a cached (stale-CSRF) login page after logout/back —
+    // a common source of 419 "Page Expired" on the next sign-in.
+    return response(view('login.login'))
+        ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+        ->header('Pragma', 'no-cache');
+})->middleware('throttle:10,1');
 Route::post('/loginSystem',[loginCtrl::class, 'loginSystem'])->middleware('throttle:10,1');
 Route::get('/logoutSystem',[loginCtrl::class, 'logoutSystem']);
+
+// Lightweight endpoint the login page calls to refresh an expired/stale CSRF token so a
+// sign-in self-heals instead of failing with 419. Runs under the web (session) middleware.
+Route::get('/csrf-token', function () {
+    return response()->json(['token' => csrf_token()]);
+})->middleware('throttle:30,1');
 // Route::get('/', function () {return view('home');});
 
 
