@@ -86,5 +86,6 @@ enum PagePermissionsEnum: string
     case programs = 'Programs Management';
     case noticemanagement = 'Notices Management';
     case coemanagement = 'COE Management';
+    case summarylogs = 'Summary Logs Management';
 
 }

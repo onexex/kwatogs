@@ -282,6 +282,7 @@
                     'debitadvise'      => ['name' => 'Debit Advise', 'url' => '/pages/modules/debitAdvise', 'icon' => 'fa-receipt'],
                     'sendobt'          => ['name' => 'Send to OBT', 'url' => '/pages/modules/sendOBT', 'icon' => 'fa-paper-plane'],
                     'manual_entry'          => ['name' => 'Adjustment Time', 'url' => '/pages/modules/adjustmentTime', 'icon' => 'fa-paper-plane'],
+                    'summarylogs'      => ['name' => 'Summary Logs Management', 'url' => '/pages/modules/summary-logs', 'icon' => 'fa-pen-to-square'],
                 ];
                 
                 // 1. Sort the main array alphabetically (A→Z) by display name
