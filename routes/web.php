@@ -56,6 +56,7 @@ use App\Http\Controllers\LeaveImportController;
 use App\Http\Controllers\ScheduleRequestController;
 use App\Http\Controllers\HrDashboardController;
 use App\Http\Controllers\AuditController;
+use App\Http\Controllers\ErrorLogController;
 use App\Http\Controllers\PayrollLogController;
 use App\Http\Controllers\philhealthCtrl;
 use App\Http\Controllers\positionCtrl;
@@ -506,6 +507,8 @@ Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip
     // HR Control Center
     Route::get('/pages/management/hr-dashboard', [HrDashboardController::class, 'index'])->name('hr-dashboard.index')->middleware('can:hrdashboard');
     Route::get('/pages/management/audit-trail', [AuditController::class, 'index'])->name('audit-trail.index')->middleware('can:auditlog');
+    Route::get('/pages/management/error-logs', [ErrorLogController::class, 'index'])->name('error-logs.index')->middleware('can:errorlogs');
+    Route::post('/pages/management/error-logs/{errorLog}/resolve', [ErrorLogController::class, 'resolve'])->name('error-logs.resolve')->middleware('can:errorlogs');
     Route::get('/pages/management/hr-dashboard/live', [HrDashboardController::class, 'live'])->name('hr-dashboard.live')->middleware('can:hrdashboard');
     Route::get('/pages/management/hr-dashboard/whoin', [HrDashboardController::class, 'whoIn'])->name('hr-dashboard.whoin')->middleware('can:hrdashboard');
     Route::get('/pages/management/hr-dashboard/dept', [HrDashboardController::class, 'deptEmployees'])->name('hr-dashboard.dept')->middleware('can:hrdashboard');

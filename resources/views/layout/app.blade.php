@@ -355,6 +355,7 @@
                 $managementModules = [
                     'accessrights'        => ['name' => 'Employee Role', 'url' => '/pages/management/accessrights', 'icon' => 'fa-users-gear'],
                     'auditlog'            => ['name' => 'Audit Trail', 'url' => '/pages/management/audit-trail', 'icon' => 'fa-clipboard-list'],
+                    'errorlogs'           => ['name' => 'Error Logs', 'url' => '/pages/management/error-logs', 'icon' => 'fa-bug'],
                     'classification'      => ['name' => 'Classification', 'url' => '/pages/management/classification', 'icon' => 'fa-tags'],
                     'companies'           => ['name' => 'Companies', 'url' => '/pages/management/companies', 'icon' => 'fa-building'],
                     'databasebackup'      => ['name' => 'Database Backup', 'url' => '/pages/management/databasebackup', 'icon' => 'fa-database', 'permissions' => ['databasebackup', 'databasebackupcreate', 'databasebackuprestore', 'databasebackupdelete']],

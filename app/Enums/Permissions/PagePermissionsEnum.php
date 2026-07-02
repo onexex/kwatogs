@@ -25,6 +25,7 @@ enum PagePermissionsEnum: string
     case payroll = 'Payroll System';
     case hrdashboard = 'HR Dashboard';
     case auditlog = 'Audit Trail';
+    case errorlogs = 'Error Logs';
     case payrolllogs = 'Payroll Logs';
     case payadjustments = 'Pay Adjustments';
     case approvepayroll = 'Approve Payroll';
