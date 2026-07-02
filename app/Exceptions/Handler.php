@@ -2,7 +2,14 @@
 
 namespace App\Exceptions;
 
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Session\TokenMismatchException;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -44,7 +51,36 @@ class Handler extends ExceptionHandler
     public function register()
     {
         $this->reportable(function (Throwable $e) {
-            //
+            // Record real server-side errors into the error_logs table so they can be
+            // browsed/copied from the Error Logs screen. Falls through (no ->stop()),
+            // so default file logging to storage/logs/laravel.log is unchanged.
+            if ($this->shouldLogToDatabase($e)) {
+                \App\Models\ErrorLog::capture($e);
+            }
         });
+    }
+
+    /**
+     * Filter out noise so only genuine bugs are stored: skip 404s, method-not-allowed,
+     * auth/access denials, CSRF/token mismatches, validation errors, and any HTTP
+     * exception below 500. Everything else (real crashes) is captured.
+     */
+    protected function shouldLogToDatabase(Throwable $e): bool
+    {
+        if ($this->shouldntReport($e)) {
+            return false;
+        }
+        if ($e instanceof NotFoundHttpException
+            || $e instanceof MethodNotAllowedHttpException
+            || $e instanceof AccessDeniedHttpException
+            || $e instanceof TokenMismatchException
+            || $e instanceof ValidationException
+            || $e instanceof AuthenticationException) {
+            return false;
+        }
+        if ($e instanceof HttpExceptionInterface && $e->getStatusCode() < 500) {
+            return false;
+        }
+        return true;
     }
 }
