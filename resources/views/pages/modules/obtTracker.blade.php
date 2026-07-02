@@ -132,16 +132,12 @@
                 <table class="table-teal mb-0">
                     <thead>
                         <tr>
-                            <th>Filing Date</th>
-                            <th>Date From</th>
-                            <th>Date To</th>
-                            <th>Time From</th>
-                            <th>Time To</th>
-                            <th>Itinerary From</th>
-                            <th>Itinerary To</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Destination</th>
                             <th>Purpose</th>
-                            <th>Cash Advance</th>
-                            <th>CA Purpose</th>
+                            <th>Hours</th>
+                            <th>Remarks</th>
                             <th>Status</th>
                         </tr>
                     </thead>
@@ -170,30 +166,38 @@
                             <div class="col-lg-6">
                                 <div class="section-label">Personnel Information</div>
                                 <div class="row g-2">
+                                    @php
+                                        $authUser   = auth()->user();
+                                        $authDetail = $authUser->empDetail;
+                                    @endphp
                                     <div class="col-12 mb-2">
                                         <div class="form-floating form-floating-teal">
-                                            <input class="form-control" id="txtPersonnel" name="personnel" type="text" placeholder="-" readonly/>
+                                            <input class="form-control" id="txtPersonnel" name="personnel" type="text" placeholder="-"
+                                                value="{{ strtoupper($authUser->lname) }}, {{ ucwords(strtolower($authUser->fname)) }}" readonly/>
                                             <label for="txtPersonnel">Personnel Name <span class="text-danger">*</span></label>
                                             <span class="text-danger small error-text personnel_error"></span>
                                         </div>
                                     </div>
                                     <div class="col-12 mb-2">
                                         <div class="form-floating form-floating-teal">
-                                            <input class="form-control" id="txtCompany" name="company" type="text" placeholder="-" readonly/>
+                                            <input class="form-control" id="txtCompany" name="company" type="text" placeholder="-"
+                                                value="{{ optional($authDetail->company)->comp_name }}" readonly/>
                                             <label for="txtCompany">Company Name <span class="text-danger">*</span></label>
                                             <span class="text-danger small error-text company_error"></span>
                                         </div>
                                     </div>
                                     <div class="col-12 mb-2">
                                         <div class="form-floating form-floating-teal">
-                                            <input class="form-control" id="txtDept" name="department" type="text" placeholder="-" readonly/>
+                                            <input class="form-control" id="txtDept" name="department" type="text" placeholder="-"
+                                                value="{{ optional($authDetail->department)->dep_name }}" readonly/>
                                             <label for="txtDept">Department <span class="text-danger">*</span></label>
                                             <span class="text-danger small error-text department_error"></span>
                                         </div>
                                     </div>
                                     <div class="col-12 mb-2">
                                         <div class="form-floating form-floating-teal">
-                                            <input class="form-control" id="txtDesignation" name="designation" type="text" placeholder="-" readonly/>
+                                            <input class="form-control" id="txtDesignation" name="designation" type="text" placeholder="-"
+                                                value="{{ optional($authDetail->position)->pos_desc }}" readonly/>
                                             <label for="txtDesignation">Designation <span class="text-danger">*</span></label>
                                             <span class="text-danger small error-text designation_error"></span>
                                         </div>
@@ -320,20 +324,13 @@ $(document).ready(function() {
     var obID = 0;
     getall();
 
-    // Open modal - fetch employee details
-    $(document).on('click', '#btnCreateOBTModal', function(e) {
-        axios.get('/obtTracker/get_details')
-            .then(function(response) {
-                $(response.data.data).each(function(index, row) {
-                    $('#txtPersonnel').val(row.lname + " " + row.fname);
-                    $('#txtCompany').val(row.comp_name);
-                    $('#txtDept').val(row.dep_name);
-                    $('#txtDesignation').val(row.pos_desc);
-                });
-            })
-            .catch(function(error) {
-                Swal.fire('Error', 'Unable to fetch employee details.', 'error');
-            });
+    // Pre-fill date/time defaults when modal is about to show
+    $('#mdlOBT').on('show.bs.modal', function() {
+        const today = new Date().toISOString().split('T')[0];
+        $('#txtDateFromOB').val(today);
+        $('#txtDateToOB').val(today);
+        $('#txtTimeDeparture').val('08:00');
+        $('#txtTimeReturn').val('17:00');
     });
 
     // Save OBT
@@ -396,33 +393,24 @@ $(document).ready(function() {
         axios.get('/obtTracker/getall')
             .then(function(response) {
                 $(response.data.data).each(function(index, row) {
-                    var statusClass = '';
-                    var statusText = (row.obStatus || '').toUpperCase();
-                    if (statusText.includes('APPROVED') || statusText === 'APPROVED') {
-                        statusClass = 'badge-approved';
-                    } else if (statusText.includes('DISAPPROVED') || statusText.includes('DENIED')) {
-                        statusClass = 'badge-disapproved';
-                    } else {
-                        statusClass = 'badge-pending';
-                    }
+                    var statusText = (row.status || 'Pending');
+                    var statusClass = statusText === 'Approved'
+                        ? 'badge-approved'
+                        : (statusText === 'Rejected' ? 'badge-disapproved' : 'badge-pending');
 
                     htmlData += '<tr>' +
-                        '<td>' + row.obFD + '</td>' +
-                        '<td>' + row.obDateFrom + '</td>' +
-                        '<td>' + row.obDateTo + '</td>' +
-                        '<td>' + row.obTFrom + '</td>' +
-                        '<td>' + row.obTTo + '</td>' +
-                        '<td>' + row.obIFrom + '</td>' +
-                        '<td>' + row.obITo + '</td>' +
-                        '<td>' + row.obPurpose + '</td>' +
-                        '<td>' + (row.obCAAmt ? row.obCAAmt : '—') + '</td>' +
-                        '<td>' + (row.obCAPurpose ? row.obCAPurpose : '—') + '</td>' +
+                        '<td>' + (row.start_date || '—') + '</td>' +
+                        '<td>' + (row.end_date || '—') + '</td>' +
+                        '<td>' + (row.destination || '—') + '</td>' +
+                        '<td>' + (row.purpose || '—') + '</td>' +
+                        '<td>' + (row.total_hrs || '—') + ' hr(s)</td>' +
+                        '<td>' + (row.remarks || '—') + '</td>' +
                         '<td><span class="badge-status ' + statusClass + '">' + statusText + '</span></td>' +
                         '</tr>';
                 });
 
                 if (!response.data.data || response.data.data.length === 0) {
-                    htmlData = '<tr><td colspan="11" class="text-center py-5 text-muted">' +
+                    htmlData = '<tr><td colspan="7" class="text-center py-5 text-muted">' +
                         '<i class="fa fa-folder-open d-block mb-2 fs-4"></i>' +
                         'No business trip records found.' +
                         '</td></tr>';
@@ -432,7 +420,7 @@ $(document).ready(function() {
             })
             .catch(function(error) {
                 $("#tblOBTTracker").empty().append(
-                    '<tr><td colspan="11" class="text-center py-5 text-danger">' +
+                    '<tr><td colspan="7" class="text-center py-5 text-danger">' +
                     '<i class="fa fa-exclamation-triangle me-2"></i> Failed to load records. Please refresh.</td></tr>'
                 );
             });

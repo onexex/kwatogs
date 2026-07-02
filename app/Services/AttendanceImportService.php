@@ -100,6 +100,11 @@ class AttendanceImportService
 
         $breakStart = $this->normTime($this->cell($row, 'break_start'));
         $breakEnd   = $this->normTime($this->cell($row, 'break_end'));
+        // R1 (break required) + R2 (shift − break must net exactly 8h) — the schedule this
+        // row upserts must be valid, so a break-less/short-break row can't over-credit hours.
+        if ($netError = EmployeeSchedule::netValidationError($schedIn, $schedOut, $breakStart, $breakEnd)) {
+            throw new \Exception($netError);
+        }
         $shiftType  = trim($this->cell($row, 'shift_type')) ?: null;
 
         $status = strtolower(trim($this->cell($row, 'status'))) ?: 'present';
@@ -222,6 +227,18 @@ class AttendanceImportService
         $late = max(0, $aIn - $sIn);
         $undertime = max(0, $sOut - $aOut);
 
+        // A break isn't work, so a break falling inside the late gap ([sIn, aIn]) or the
+        // undertime gap ([aOut, sOut]) must not be charged as a deduction — mirrors
+        // homeAttendance::updateDailySummary so punch and import agree.
+        if ($breakStart && $breakEnd) {
+            $bs = $this->minutes($breakStart);
+            $be = $this->minutes($breakEnd);
+            if ($be > $bs) {
+                $late      = max(0, $late - $this->overlap($sIn, $aIn, $bs, $be));
+                $undertime = max(0, $undertime - $this->overlap($aOut, $sOut, $bs, $be));
+            }
+        }
+
         // Night differential window = 10 PM – 6 AM (00:00–06:00 plus 22:00–next 06:00).
         $night = $this->overlap($inC, $outC, 0, 360) + $this->overlap($inC, $outC, 1320, 1800);
 
@@ -254,7 +271,7 @@ class AttendanceImportService
     private ?array $userIndex = null;
     private array $empIdSet = [];
 
-    /** Bulk-check the prepared payloads against existing AttendanceSummary rows; move collisions to errors. */
+    /** Bulk-check the prepared payloads against existing attendance (summary OR punch); move collisions to errors. */
     private function flagExisting(array &$prepared, array &$result): void
     {
         if (empty($prepared)) { return; }
@@ -263,6 +280,12 @@ class AttendanceImportService
 
         $existing = [];
         foreach (AttendanceSummary::whereIn('employee_id', $empIds)->whereIn('attendance_date', $dates)
+                     ->get(['employee_id', 'attendance_date']) as $a) {
+            $existing[$a->employee_id . '|' . Carbon::parse($a->attendance_date)->toDateString()] = true;
+        }
+        // Also catch a day with a raw punch but no summary yet (e.g. still clocked in) —
+        // its schedule is locked, so importing over it would diverge the open punch.
+        foreach (homeAttendance::whereIn('employee_id', $empIds)->whereIn('attendance_date', $dates)
                      ->get(['employee_id', 'attendance_date']) as $a) {
             $existing[$a->employee_id . '|' . Carbon::parse($a->attendance_date)->toDateString()] = true;
         }

@@ -14,6 +14,7 @@ class ScheduleRequest extends Model
         'employee_id', 'request_date',
         'old_sched_in', 'old_sched_out',
         'new_sched_in', 'new_sched_out',
+        'new_break_start', 'new_break_end',
         'reason', 'status', 'approved_by', 'approved_at',
         'disapproved_remarks', 'applied',
     ];

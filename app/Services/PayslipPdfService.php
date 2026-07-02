@@ -25,11 +25,15 @@ class PayslipPdfService
             ->value('breakdown');
         $daysWorked = is_array($bd) ? ($bd['attendance']['days_present'] ?? null) : null;
         $dailyRate  = is_array($bd) ? ($bd['rates']['daily_rate'] ?? null) : null;
+        // HR one-time pay adjustments (frozen at compute time) so the PDF can show
+        // each as its own labeled earnings/deduction line, matching the on-screen slip.
+        $adjustments = is_array($bd) ? ($bd['adjustments']['entries'] ?? []) : [];
 
         $html = view('pages.modules.payslip_pdf', [
-            'p'          => $payroll,
-            'daysWorked' => $daysWorked,
-            'dailyRate'  => $dailyRate,
+            'p'           => $payroll,
+            'daysWorked'  => $daysWorked,
+            'dailyRate'   => $dailyRate,
+            'adjustments' => $adjustments,
         ])->render();
 
         $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);

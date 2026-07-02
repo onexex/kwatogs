@@ -197,6 +197,45 @@
                 </li>
             @endcan
 
+            {{-- "What's New" changelog — walang permission/role; lalabas lang kung may na-generate na
+                 public/changelog.json (staging deploy lang gumagawa nito), kaya itinatago sa production --}}
+            @if (file_exists(public_path('changelog.json')))
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->is('pages/management/whatsnew*') ? 'active-page' : '' }}" href="{{ route('whatsnew') }}">
+                        <i class="fas fa-fw fa-bullhorn"></i>
+                        <span>What's New</span>
+                    </a>
+                </li>
+            @endif
+
+            {{-- "My Notices" — walang permission; nakikita ng lahat ng naka-login na empleyado
+                 para makita ang sariling notices/memo. May badge kung may bagong hindi pa nababasa. --}}
+            @php
+                $myUnreadNotices = 0;
+                if (auth()->check() && auth()->user()->empID) {
+                    $myUnreadNotices = \App\Models\Notice::where('employee_id', auth()->user()->empID)
+                        ->where('status', 'active')->where('is_read', false)->count();
+                }
+            @endphp
+            <li class="nav-item">
+                <a class="nav-link {{ request()->is('pages/modules/mynotices*') ? 'active-page' : '' }}" href="{{ route('notices.mine') }}">
+                    <i class="fas fa-fw fa-bell"></i>
+                    <span>My Notices</span>
+                    @if ($myUnreadNotices > 0)
+                        <span class="badge rounded-pill bg-danger ms-auto">{{ $myUnreadNotices }}</span>
+                    @endif
+                </a>
+            </li>
+
+            {{-- "My COE" — walang permission; nakikita ng lahat ng naka-login na empleyado
+                 para makahingi ng Certificate of Employment at ma-download kapag aprubado. --}}
+            <li class="nav-item">
+                <a class="nav-link {{ request()->is('pages/modules/mycoe*') ? 'active-page' : '' }}" href="{{ route('coe.mine') }}">
+                    <i class="fas fa-fw fa-file-signature"></i>
+                    <span>My COE</span>
+                </a>
+            </li>
+
             @can('kuboaccess')
                 <li class="nav-item">
                     <a class="nav-link {{ request()->is('kubo*') ? 'active-page' : '' }}" href="{{ route('kubo.feed') }}">
@@ -223,6 +262,9 @@
                     'enrollemployee'   => ['name' => 'Enroll Employee', 'url' => '/pages/modules/registration', 'icon' => 'fa-user-gear'],
                     'loanmanagement'   => ['name' => 'Loans & Charges', 'url' => '/pages/modules/loanManagement', 'icon' => 'fa-hand-holding-dollar'],
                     'payadjustments'   => ['name' => 'Pay Adjustments', 'url' => '/pages/modules/payadjustments', 'icon' => 'fa-sliders'],
+                    'noticemanagement' => ['name' => 'Notices & Memos', 'url' => '/pages/modules/notices', 'icon' => 'fa-file-circle-exclamation'],
+                    'coemanagement'    => ['name' => 'Certificate of Employment', 'url' => '/pages/modules/coe', 'icon' => 'fa-file-signature'],
+                    'programs'         => ['name' => 'Programs', 'url' => '/pages/modules/programs', 'icon' => 'fa-award'],
                     'attendanceimport' => ['name' => 'Attendance Import', 'url' => '/attendance-import', 'icon' => 'fa-file-import'],
                     'overtimeimport'   => ['name' => 'Overtime Import', 'url' => '/overtime-import', 'icon' => 'fa-clock'],
                     'leaveimport'      => ['name' => 'Leave Import', 'url' => '/leave-import', 'icon' => 'fa-calendar-check'],
@@ -232,6 +274,8 @@
                     'pendingleaverequests' => ['name' => 'Pending Leave Requests', 'url' => '/pages/modules/leaverequests', 'icon' => 'fa-calendar-day'],
                     'obttracker'       => ['name' => 'OB Tracker', 'url' => '/pages/modules/obtTracker', 'icon' => 'fa-map-location-dot'],
                     'overtime'         => ['name' => 'Overtime', 'url' => '/pages/modules/overtime', 'icon' => 'fa-user-clock'],
+                    'adminovertime'    => ['name' => 'Apply Employee Overtime', 'url' => '/pages/modules/admin-overtime', 'icon' => 'fa-stopwatch'],
+                    'adminob'          => ['name' => 'Apply Employee OB', 'url' => '/pages/modules/admin-ob', 'icon' => 'fa-briefcase'],
                     'pendingovertimerequests' => ['name' => 'Pending Overtime Requests', 'url' => '/pages/modules/overtimerequests', 'icon' => 'fa-calendar-day'],
                     'payroll'          => ['name' => 'Payroll System', 'url' => '/pages/modules/payroll', 'icon' => 'fa-file-invoice-dollar'],
                     'payrolllogs'      => ['name' => 'Payroll Logs', 'url' => '/payroll-logs', 'icon' => 'fa-clipboard-list'],
@@ -251,7 +295,8 @@
                 // 4. Determine if the current URL belongs to this group, so we can keep
                 //    it expanded and highlight the active item after navigation.
                 $modulePagesActiveKey = collect($modulePages)->keys()->first(function ($key) use ($modulePages) {
-                    return request()->is(ltrim($modulePages[$key]['url'], '/') . '*');
+                    $path = ltrim($modulePages[$key]['url'], '/');
+                    return request()->is($path) || request()->is($path . '/*');
                 });
                 $modulePagesGroupActive = !is_null($modulePagesActiveKey);
 
@@ -317,11 +362,11 @@
                     'employeestatus'      => ['name' => 'Emp Status', 'url' => '/pages/management/employeestatus', 'icon' => 'fa-user-tag'],
                     'govdues'             => ['name' => 'Government Dues', 'url' => '/pages/management/govdues', 'icon' => 'fa-landmark'],
                     'holidaylogger'       => ['name' => 'Holidays', 'url' => '/pages/management/holidaylogger', 'icon' => 'fa-calendar'],
-                    'leavevalidations'    => ['name' => 'Leave Valid.', 'url' => '/pages/management/leavevalidations', 'icon' => 'fa-calendar-check'],
-                    'lilovalidations'     => ['name' => 'Lilo Valid.', 'url' => '/pages/management/lilovalidations', 'icon' => 'fa-clock-rotate-left'],
+                    'leavevalidations'    => ['name' => 'Leave Validation', 'url' => '/pages/management/leavevalidations', 'icon' => 'fa-calendar-check'],
+                    'lilovalidations'     => ['name' => 'Lilo Validation', 'url' => '/pages/management/lilovalidations', 'icon' => 'fa-clock-rotate-left'],
                     'mailintegration'     => ['name' => 'Mail Integration', 'url' => '/pages/management/mailintegration', 'icon' => 'fa-paper-plane'],
                     'maintenancemode'     => ['name' => 'Maintenance Mode', 'url' => '/pages/management/maintenancemode', 'icon' => 'fa-screwdriver-wrench'],
-                    'obvalidations'       => ['name' => 'OB Valid.', 'url' => '/pages/management/obvalidations', 'icon' => 'fa-map-check'],
+                    'obvalidations'       => ['name' => 'OB Validation', 'url' => '/pages/management/obvalidations', 'icon' => 'fa-briefcase', 'description' => 'Official Business Trip'],
                     'otfiling'            => ['name' => 'OT Maintenance', 'url' => '/pages/management/otfiling', 'icon' => 'fa-wrench'],
                     'pagibigcontribution' => ['name' => 'Pagibig Contri.', 'url' => '/pages/management/pagibigcontribution', 'icon' => 'fa-piggy-bank'],
                     'philhealth'          => ['name' => 'Philhealth', 'url' => '/pages/management/philhealth', 'icon' => 'fa-kit-medical'],
@@ -438,14 +483,36 @@
                     </button>
 
                     <ul class="navbar-nav ms-auto">
+                        {{-- Notices bell — links to My Notices, badge = own unread active notices --}}
+                        <li class="nav-item no-arrow me-2">
+                            <a class="nav-link position-relative" href="{{ route('notices.mine') }}" title="My Notices">
+                                <i class="fas fa-bell text-secondary"></i>
+                                @if ($myUnreadNotices > 0)
+                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:.6rem;">
+                                        {{ $myUnreadNotices > 99 ? '99+' : $myUnreadNotices }}
+                                    </span>
+                                @endif
+                            </a>
+                        </li>
                         <li class="nav-item dropdown no-arrow">
                             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" data-bs-toggle="dropdown">
                                 <div class="d-flex flex-column text-end me-3 d-none d-lg-flex">
-                                    <span class="text-dark small fw-bold">{{ session()->get('loggedEmployee') }}</span>
+                                    <span class="text-dark small fw-bold">{{ ucwords(strtolower(session()->get('loggedEmployee'))) }}</span>
                                     {{-- Real job designation from the employee record (positions.pos_desc), not a fixed label --}}
                                     <span class="text-muted" style="font-size: 0.6rem;">{{ optional(optional(auth()->user()?->empDetail)->position)->pos_desc ?: 'Employee' }}</span>
                                 </div>
-                                <img class="img-profile rounded-circle border shadow-sm" src="{{ URL::asset('/img/undraw_profile.svg') }}" width="35">
+                                @php
+                                    $authEmp = auth()->user()?->empDetail;
+                                    $authPic = $authEmp?->empPicPath;
+                                    $authGender = auth()->user()?->employeeInformation?->gender;
+                                @endphp
+                                @if($authPic && file_exists(public_path('img/profile/' . $authPic)))
+                                    <img class="img-profile rounded-circle border shadow-sm" src="{{ asset('img/profile/' . $authPic) }}" width="35">
+                                @else
+                                    <div class="img-profile rounded-circle border shadow-sm d-flex align-items-center justify-content-center" style="width:35px;height:35px;background:#f1f5f9;flex-shrink:0;">
+                                        <i class="fa-solid fa-circle-user" style="font-size:1.3rem;color:{{ $authGender == 2 ? '#e91e8c' : '#1976d2' }};"></i>
+                                    </div>
+                                @endif
                             </a>
                             
                             <div class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3">
@@ -454,7 +521,7 @@
                                 <a class="dropdown-item py-2" href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#changePassModal">
                                     <i class="fas fa-user-cog fa-sm fa-fw me-2 text-primary"></i> Password Settings
                                 </a>
-                                
+
                                 <div class="dropdown-divider"></div> {{-- Divider line para malinis tignan --}}
                                 
                                 <a class="dropdown-item py-2" href="#" data-bs-toggle="modal" data-bs-target="#logoutModal">

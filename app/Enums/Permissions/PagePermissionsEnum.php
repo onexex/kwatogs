@@ -19,6 +19,8 @@ enum PagePermissionsEnum: string
     // case memorandum = 'Memo Generator';
     case obttracker = 'Official Business Trip';
     case overtime = 'Overtime';
+    case adminovertime = 'Apply Employee Overtime';
+    case adminob = 'Apply Employee OB';
     case pendingovertimerequests = 'Pending Overtime Requests';
     case payroll = 'Payroll System';
     case hrdashboard = 'HR Dashboard';
@@ -33,7 +35,7 @@ enum PagePermissionsEnum: string
     case approveschedulechange = 'Pending Schedule Requests';
     // case debitadvise = 'Debit Advise';
     // case sendobt = 'Send to OBT';
-    // case accessrights = 'Access Rights';
+    case accessrights = 'Access Rights';
     // case agencies = 'Agencies';
     // case archive = 'Archive Management';
     case classification = 'Classification';
@@ -64,6 +66,7 @@ enum PagePermissionsEnum: string
     // case laboratory = 'Laboratory';
     case loanmanagement = 'Loan Management';
     case admine201 = 'Admin E-201';
+    case manageemployeestatus = 'Manage Employee Status';
     case leavecreditallocation = 'Leave Credit Allocations';
     case manual_entry = 'HR Manual Time Adjustment';
     case databasebackup = 'Database Backup';
@@ -79,5 +82,8 @@ enum PagePermissionsEnum: string
     case bypass_ip_restriction = 'Bypass IP Restriction';
     case maintenancemode = 'Maintenance Mode';
     case maintenancebypass = 'Maintenance Mode Bypass';
+    case programs = 'Programs Management';
+    case noticemanagement = 'Notices Management';
+    case coemanagement = 'COE Management';
 
 }

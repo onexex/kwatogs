@@ -342,10 +342,10 @@ class obsCtrl extends Controller
 
     //getall
     public function getall(Request $request){
-        $getA = obs::latest('created_at')->get();
-            if($getA){
-                return response()->json(['status'=>200, 'data'=>$getA]);
-            }
+        $getA = obs::where('employee_id', session()->get('LoggedUserEmpID'))
+            ->latest('created_at')
+            ->get();
+        return response()->json(['status'=>200, 'data'=>$getA]);
     }
 
 

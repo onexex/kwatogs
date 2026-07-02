@@ -92,7 +92,15 @@
             $ot      = (float) $p->overtime_pay;
             $nd      = (float) $p->night_diff_pay;
             $allow   = (float) $p->allowances;
-            $earnings = $basic + $holiday + $ot + $nd + $allow;
+
+            // HR one-time pay adjustments (frozen in the computation log). Additions
+            // show under Earnings, deductions under Deductions; both fold into the
+            // totals so the slip foots to NET PAY RECEIVABLE.
+            $adjustments = $meta['adjustments'] ?? [];
+            $adjAdd      = collect($adjustments)->where('kind', 'addition');
+            $adjDed      = collect($adjustments)->where('kind', 'deduction');
+
+            $earnings = $basic + $holiday + $ot + $nd + $allow + $adjAdd->sum('amount');
 
             // Deductions
             $absut   = (float) $p->abs_ut_deduction;
@@ -108,7 +116,7 @@
             $cashAdv = (float) $p->cash_advance;
             $charges = (float) $p->penalty_amount;
 
-            $listedDed = $absut + $ob + $op + $sss + $phil + $pag + $tax + $sssLoan + $pagLoan + $compLoan + $cashAdv + $charges;
+            $listedDed = $absut + $ob + $op + $sss + $phil + $pag + $tax + $sssLoan + $pagLoan + $compLoan + $cashAdv + $charges + $adjDed->sum('amount');
             $takehome  = (float) $p->pay_rec;
             // Residual (manual/custom deductions or rounding) so the slip always foots to pay receivable
             $residual  = round($earnings - $listedDed - $takehome, 2);
@@ -122,7 +130,7 @@
                 <div class="ps-company">
                     <img src="{{ asset('img/kwatogslogo.jpg') }}" alt="logo">
                     <div>
-                        <div class="name">{{ $company->comp_name ?? config('app.name', 'Company') }}</div>
+                        <div class="name">{{ optional($detail)->department->dep_name ?? ($company->comp_name ?? config('app.name', 'Company')) }}</div>
                         <div class="sub">Payslip</div>
                     </div>
                 </div>
@@ -151,6 +159,7 @@
                     <div class="ln"><span>Overtime Pay</span><span class="v">{{ $peso($ot) }}</span></div>
                     <div class="ln"><span>Night Differential</span><span class="v">{{ $peso($nd) }}</span></div>
                     <div class="ln"><span>Allowance</span><span class="v">{{ $peso($allow) }}</span></div>
+                    @foreach ($adjAdd as $a)<div class="ln"><span>Adjustment: {{ $a['label'] }}</span><span class="v">{{ $peso($a['amount']) }}</span></div>@endforeach
                     <div class="sub-tot"><span>Total Earnings</span><span>{{ $peso($earnings) }}</span></div>
                 </div>
 
@@ -168,6 +177,7 @@
                     @if ($compLoan > 0)<div class="ln"><span>Company Loan</span><span class="v">{{ $peso($compLoan) }}</span></div>@endif
                     @if ($cashAdv > 0)<div class="ln"><span>Cash Advance</span><span class="v">{{ $peso($cashAdv) }}</span></div>@endif
                     @if ($charges > 0)<div class="ln"><span>Charges / Penalty</span><span class="v">{{ $peso($charges) }}</span></div>@endif
+                    @foreach ($adjDed as $a)<div class="ln"><span>Adjustment: {{ $a['label'] }}</span><span class="v">{{ $peso($a['amount']) }}</span></div>@endforeach
                     @if ($residual > 0.005)<div class="ln"><span>Other Deductions</span><span class="v">{{ $peso($residual) }}</span></div>@endif
                     <div class="sub-tot"><span>Total Deductions</span><span>{{ $peso($totalDed) }}</span></div>
                 </div>

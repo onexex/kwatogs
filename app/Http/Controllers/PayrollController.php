@@ -156,6 +156,38 @@ class PayrollController extends Controller
                 ], 423);
             }
 
+            // ── Pending-payroll gate: only ONE payroll run may await approval at a time. ──
+            // A pay date that has generated Payroll rows but no payroll_approvals row is
+            // "pending". Hard-block generating a DIFFERENT pay date while any such pending
+            // run exists — the current pay date is excluded so recompute-before-approval
+            // still works. Clear the pending run first (approve it, or delete the unapproved
+            // payroll) before starting a new one. The `regeneratepayroll` permission is an
+            // admin override (same permission that can override the approved-lock above).
+            if (!optional($request->user())->can('regeneratepayroll')) {
+                $currentPayDateStr = Carbon::parse($payDate)->toDateString();
+                $payrollPayDates = \App\Models\Payroll::query()
+                    ->select('pay_date')->distinct()->pluck('pay_date')
+                    ->map(fn($d) => Carbon::parse($d)->toDateString());
+                $approvedPayDates = \App\Models\PayrollApproval::query()
+                    ->select('pay_date')->distinct()->pluck('pay_date')
+                    ->map(fn($d) => Carbon::parse($d)->toDateString())
+                    ->flip();
+                $pendingPayDates = $payrollPayDates
+                    ->reject(fn($d) => $d === $currentPayDateStr || $approvedPayDates->has($d))
+                    ->unique()->values();
+
+                if ($pendingPayDates->isNotEmpty()) {
+                    DB::rollBack();
+                    $list = $pendingPayDates->map(fn($d) => Carbon::parse($d)->format('M d, Y'))->implode(', ');
+                    return response()->json([
+                        'success'           => false,
+                        'validation'        => 'pending_payroll',
+                        'pending_pay_dates' => $pendingPayDates->all(),
+                        'message'           => "Payroll generation is blocked: there is already payroll pending approval for {$list}. Approve it (or delete that unapproved run) before generating a new pay date, or override with the Regenerate Payroll permission.",
+                    ], 423);
+                }
+            }
+
             // 'all' = compute every active employee; otherwise limit to one department
             $departmentId = $request->query('department_id', 'all') ?: 'all';
             $companyId    = $request->query('company_id', 'all') ?: 'all';
@@ -1261,6 +1293,9 @@ class PayrollController extends Controller
                         // the payslip can show days worked and foot Basic Pay to the gross.
                         'days_present'     => $bd['attendance']['days_present'] ?? null,
                         'daily_rate'       => $bd['rates']['daily_rate'] ?? null,
+                        // HR one-time pay adjustments (frozen at compute time) so the
+                        // payslip can show each as its own labeled earnings/deduction line.
+                        'adjustments'      => $bd['adjustments']['entries'] ?? [],
                     ]);
                 });
         }

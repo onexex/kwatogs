@@ -33,7 +33,15 @@
     $ot      = (float) $p->overtime_pay;
     $nd      = (float) $p->night_diff_pay;
     $allow   = (float) $p->allowances;
-    $earnings = $basic + $holiday + $ot + $nd + $allow;
+
+    // HR one-time pay adjustments (frozen in the computation log). Additions show
+    // under Earnings, deductions under Deductions; both fold into the totals so the
+    // slip foots to NET PAY RECEIVABLE. Keep in sync with payslip.blade.php.
+    $adjustments = $adjustments ?? [];
+    $adjAdd      = collect($adjustments)->where('kind', 'addition');
+    $adjDed      = collect($adjustments)->where('kind', 'deduction');
+
+    $earnings = $basic + $holiday + $ot + $nd + $allow + $adjAdd->sum('amount');
 
     $absut   = (float) $p->abs_ut_deduction;
     $ob      = (float) $p->overBreakDeduction;
@@ -48,7 +56,7 @@
     $cashAdv = (float) $p->cash_advance;
     $charges = (float) $p->penalty_amount;
 
-    $listedDed = $absut + $ob + $op + $sss + $phil + $pag + $tax + $sssLoan + $pagLoan + $compLoan + $cashAdv + $charges;
+    $listedDed = $absut + $ob + $op + $sss + $phil + $pag + $tax + $sssLoan + $pagLoan + $compLoan + $cashAdv + $charges + $adjDed->sum('amount');
     $takehome  = (float) $p->pay_rec;
     $residual  = round($earnings - $listedDed - $takehome, 2);
     $totalDed  = $listedDed + max($residual, 0);
@@ -58,7 +66,7 @@
 <table width="100%" cellpadding="4" cellspacing="0" style="font-family: helvetica; font-size: 10pt; color: #1f2937;">
     <tr>
         <td width="60%" style="font-size: 13pt; font-weight: bold;">
-            {{ $company->comp_name ?? config('app.name', 'Company') }}
+            {{ optional($detail)->department->dep_name ?? ($company->comp_name ?? config('app.name', 'Company')) }}
             <br><span style="font-size: 9pt; color: #6b7280; font-weight: normal;">Payslip</span>
         </td>
         <td width="40%" align="right" style="font-size: 11pt; font-weight: bold; color: #008080;">
@@ -90,6 +98,7 @@
                 <tr><td>Overtime Pay</td><td align="right">{{ $peso($ot) }}</td></tr>
                 <tr><td>Night Differential</td><td align="right">{{ $peso($nd) }}</td></tr>
                 <tr><td>Allowance</td><td align="right">{{ $peso($allow) }}</td></tr>
+                @foreach ($adjAdd as $a)<tr><td>Adjustment: {{ $a['label'] }}</td><td align="right">{{ $peso($a['amount']) }}</td></tr>@endforeach
                 <tr><td style="border-top: 1px solid #e5e7eb; font-weight: bold;">Total Earnings</td><td align="right" style="border-top: 1px solid #e5e7eb; font-weight: bold;">{{ $peso($earnings) }}</td></tr>
             </table>
         </td>
@@ -108,6 +117,7 @@
                 @if ($compLoan > 0)<tr><td>Company Loan</td><td align="right">{{ $peso($compLoan) }}</td></tr>@endif
                 @if ($cashAdv > 0)<tr><td>Cash Advance</td><td align="right">{{ $peso($cashAdv) }}</td></tr>@endif
                 @if ($charges > 0)<tr><td>Charges / Penalty</td><td align="right">{{ $peso($charges) }}</td></tr>@endif
+                @foreach ($adjDed as $a)<tr><td>Adjustment: {{ $a['label'] }}</td><td align="right">{{ $peso($a['amount']) }}</td></tr>@endforeach
                 @if ($residual > 0.005)<tr><td>Other Deductions</td><td align="right">{{ $peso($residual) }}</td></tr>@endif
                 <tr><td style="border-top: 1px solid #e5e7eb; font-weight: bold;">Total Deductions</td><td align="right" style="border-top: 1px solid #e5e7eb; font-weight: bold;">{{ $peso($totalDed) }}</td></tr>
             </table>

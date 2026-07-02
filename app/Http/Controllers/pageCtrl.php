@@ -47,6 +47,19 @@ class pageCtrl extends Controller
         return view('pages.management.documentation');
     }
 
+    // "What's New" changelog — reads public/changelog.json (generated during the
+    // staging CI deploy from git history). Null when the file isn't present
+    // (e.g. production, which doesn't generate it) so the view shows an empty state.
+    public function whatsnew()
+    {
+        $path = public_path('changelog.json');
+        $data = file_exists($path)
+            ? json_decode(file_get_contents($path), true)
+            : null;
+
+        return view('pages.management.whatsnew', ['changelog' => $data]);
+    }
+
     public function classification()
     {
         return view('pages.management.classification');

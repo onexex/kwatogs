@@ -20,6 +20,8 @@ class ScheduleRequestController extends Controller
                 'request_date'        => \Carbon\Carbon::parse($r->request_date)->format('M d, Y'),
                 'new_sched_in'        => substr((string) $r->new_sched_in, 0, 5),
                 'new_sched_out'       => substr((string) $r->new_sched_out, 0, 5),
+                'new_break_start'     => substr((string) $r->new_break_start, 0, 5),
+                'new_break_end'       => substr((string) $r->new_break_end, 0, 5),
                 'status'              => $r->status,
                 'reason'              => $r->reason,
                 'disapproved_remarks' => $r->disapproved_remarks,
@@ -38,6 +40,8 @@ class ScheduleRequestController extends Controller
             'has_schedule' => (bool) $sched,
             'sched_in'     => $sched->sched_in ?? null,
             'sched_out'    => $sched->sched_out ?? null,
+            'break_start'  => $sched->break_start ?? null,
+            'break_end'    => $sched->break_end ?? null,
         ]);
     }
 
@@ -47,12 +51,15 @@ class ScheduleRequestController extends Controller
             'request_date' => 'required|date',
             'new_sched_in' => 'required',
             'new_sched_out' => 'required',
+            'new_break_start' => 'required',
+            'new_break_end' => 'required',
             'reason' => 'nullable|string|max:255',
         ]);
 
         $res = $this->service->store(
             optional($request->user())->empID,
-            $data['request_date'], $data['new_sched_in'], $data['new_sched_out'], $data['reason'] ?? null
+            $data['request_date'], $data['new_sched_in'], $data['new_sched_out'],
+            $data['new_break_start'], $data['new_break_end'], $data['reason'] ?? null
         );
 
         return response()->json($res, $res['ok'] ? 200 : 422);

@@ -47,6 +47,7 @@
                         <th>Date</th>
                         <th>Current</th>
                         <th>Requested</th>
+                        <th>Break</th>
                         <th>Reason</th>
                         <th class="pe-4 text-end">Action</th>
                     </tr>
@@ -58,6 +59,7 @@
                         <td class="small">{{ \Carbon\Carbon::parse($r->request_date)->format('M d, Y') }}</td>
                         <td><span class="chip">{{ $r->old_sched_in ? substr($r->old_sched_in,0,5).'–'.substr($r->old_sched_out,0,5) : '—' }}</span></td>
                         <td><span class="chip chip-new">{{ substr($r->new_sched_in,0,5) }}–{{ substr($r->new_sched_out,0,5) }}</span></td>
+                        <td><span class="chip">{{ $r->new_break_start ? substr($r->new_break_start,0,5).'–'.substr($r->new_break_end,0,5) : '—' }}</span></td>
                         <td class="small text-muted">{{ $r->reason ?: '—' }}</td>
                         <td class="pe-4 text-end">
                             <div class="d-flex justify-content-end gap-2">
@@ -67,7 +69,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="6" class="text-center text-muted py-4">No pending schedule requests.</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted py-4">No pending schedule requests.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -82,7 +84,7 @@ $(function () {
         axios.post("{{ route('schedule-request.update') }}", { id, status, remarks: remarks || '' })
             .then(r => {
                 if (window.Swal) Swal.fire({ icon: 'success', title: status === 'APPROVED' ? 'Approved' : 'Disapproved', text: r.data.message, timer: 1900, showConfirmButton: false });
-                $(`tr[data-id="${id}"]`).fadeOut(250, function () { $(this).remove(); if (!$('#srBody tr').length) $('#srBody').html('<tr><td colspan="6" class="text-center text-muted py-4">No pending schedule requests.</td></tr>'); });
+                $(`tr[data-id="${id}"]`).fadeOut(250, function () { $(this).remove(); if (!$('#srBody tr').length) $('#srBody').html('<tr><td colspan="7" class="text-center text-muted py-4">No pending schedule requests.</td></tr>'); });
             })
             .catch(e => { const m = e.response?.data?.message || 'Failed.'; window.Swal ? Swal.fire('Error', m, 'error') : alert(m); });
     }

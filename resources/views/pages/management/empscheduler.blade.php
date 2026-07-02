@@ -256,6 +256,78 @@
         font-size: 0.72rem;
     }
 
+    /* ── Unscheduled per-day breakdown ───────────────────────── */
+    .unsched-emp {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--surface);
+    }
+    .unsched-emp-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        cursor: pointer;
+        transition: background .15s;
+    }
+    .unsched-emp-head:hover { background: var(--teal-light); }
+    .unsched-emp-head .emp-name {
+        font-weight: 700;
+        font-size: 0.8rem;
+        color: var(--slate);
+        text-transform: uppercase;
+    }
+    .unsched-emp-head .chevron { transition: transform .2s; color: var(--slate-light); }
+    .unsched-emp.open .chevron { transform: rotate(90deg); }
+    .unsched-emp-body {
+        padding: 12px 14px;
+        border-top: 1px dashed var(--border);
+        background: #fafbfc;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .day-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 8px;
+        padding: 5px 10px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .day-chip.ok   { background: var(--teal-light); color: var(--teal-dark); border: 1px solid var(--teal-mid); }
+    .day-chip.miss { background: #fff5f5; color: var(--danger); border: 1px dashed var(--danger); }
+    .day-chip .chip-date { font-weight: 800; }
+    .day-chip.miss .chip-add {
+        border: none;
+        background: var(--danger);
+        color: #fff;
+        border-radius: 50%;
+        width: 16px;
+        height: 16px;
+        line-height: 1;
+        font-size: .62rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+
+    .unsched-legend {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        font-size: 0.72rem;
+        color: var(--slate-light);
+        margin-bottom: 10px;
+        font-weight: 600;
+    }
+    .unsched-legend .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-right: 5px; }
+
     /* ── Modal styling ───────────────────────────────────────── */
     #mdlEmpScheduler .modal-content {
         border-radius: var(--radius-card);
@@ -354,13 +426,19 @@
     {{-- ── Filters ── --}}
     <div class="scheduler-filterbar">
         <div class="row g-3 align-items-center">
-            <div class="col-lg-8">
+            <div class="col-lg-5">
                 <div class="input-group">
                     <span class="input-group-text"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
                     <input type="text" id="txtSearchEmp" class="form-control" placeholder="Search by Employee Name...">
                 </div>
             </div>
             <div class="col-lg-4">
+                <select id="selScheduleView" class="form-select">
+                    <option value="scheduled">Show: All schedules</option>
+                    <option value="unscheduled">Show: Unscheduled employees</option>
+                </select>
+            </div>
+            <div class="col-lg-3" id="perPageWrap">
                 <select id="selPerPage" class="form-select">
                     <option value="10">10 entries per page</option>
                     <option value="25">25 entries</option>
@@ -369,10 +447,53 @@
                 </select>
             </div>
         </div>
+
+        {{-- Date-range scope (only for the Unscheduled view) --}}
+        <div class="row g-3 align-items-end mt-1 d-none" id="unschedRangeWrap">
+            <div class="col-lg-3">
+                <label class="field-label" for="fromDate">From</label>
+                <input type="date" id="fromDate" class="form-control">
+            </div>
+            <div class="col-lg-3">
+                <label class="field-label" for="toDate">To</label>
+                <input type="date" id="toDate" class="form-control">
+            </div>
+            <div class="col-lg-6 d-flex gap-2">
+                <button type="button" class="btn-cancel-schedule" id="btnThisMonth" style="padding:8px 16px;">This Month</button>
+                <button type="button" class="btn-cancel-schedule" id="btnClearRange" style="padding:8px 16px;">Clear (Never Scheduled)</button>
+            </div>
+            <div class="col-12">
+                <small class="text-muted">Leave both dates blank to list employees who have <strong>never</strong> been given a schedule.</small>
+            </div>
+        </div>
+    </div>
+
+    {{-- ── Unscheduled employees panel (always visible) ── --}}
+    <div class="sc" id="unscheduledPanel">
+        <div class="sc-head">
+            <div class="sc-head-left">
+                <div class="sc-icon" style="background:#fff5f5;color:var(--danger);"><i class="fa-solid fa-user-clock"></i></div>
+                <h5 class="sc-title">Employees with no schedule</h5>
+                <span class="badge rounded-pill ms-1" id="unscheduledCount"
+                      style="background:var(--danger);color:#fff;font-weight:700;">0</span>
+            </div>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <select id="selDepartment" class="form-select form-select-sm" style="min-width:180px;">
+                    <option value="">All Departments</option>
+                    @foreach($departments as $d)
+                        <option value="{{ $d->id }}">{{ $d->dep_name }}</option>
+                    @endforeach
+                </select>
+                <span class="text-muted small" id="unscheduledScopeLabel">Never scheduled</span>
+            </div>
+        </div>
+        <div class="sc-body" style="padding:16px 22px;">
+            <div id="unscheduledList" class="d-flex flex-wrap gap-2"></div>
+        </div>
     </div>
 
     {{-- ── Schedule list ── --}}
-    <div class="sc">
+    <div class="sc" id="scheduledView">
         <div class="sc-head">
             <div class="sc-head-left">
                 <div class="sc-icon"><i class="fa-solid fa-calendar-days"></i></div>
@@ -478,10 +599,12 @@
                         <div class="col-md-3">
                             <label class="field-label" for="break_start">Break Start</label>
                             <input type="time" class="form-control" name="break_start" id="break_start">
+                            <span class="text-danger small error-text break_start_error"></span>
                         </div>
                         <div class="col-md-3">
                             <label class="field-label" for="break_end">Break End</label>
                             <input type="time" class="form-control" name="break_end" id="break_end">
+                            <span class="text-danger small error-text break_end_error"></span>
                         </div>
                     </div>
 
@@ -594,8 +717,175 @@ $(document).ready(function(){
         });
     };
 
+    // 🧩 LOAD UNSCHEDULED EMPLOYEES
+    const loadUnscheduled = () => {
+        const from = $('#fromDate').val();
+        const to   = $('#toDate').val();
+        const department_id = $('#selDepartment').val();
+
+        const perDay = !!(from && to);
+
+        // Scope label
+        let scope = 'Never scheduled';
+        if (perDay)           scope = `Missing any day ${from} → ${to}`;
+        else if (from)        scope = `No schedule from ${from}`;
+        else if (to)          scope = `No schedule until ${to}`;
+        $('#unscheduledScopeLabel').text(scope);
+
+        $('#unscheduledList').html('<div class="spinner-border spinner-border-sm text-danger opacity-50" role="status"></div>');
+
+        axios.get("{{ route('employee-schedules.unscheduled') }}", { params: { from, to, department_id } })
+            .then(res => {
+                const emps = res.data.employees || [];
+                const totalDays = res.data.total_days;
+                const range = res.data.range || [];
+                $('#unscheduledCount').text(res.data.count);
+
+                if (emps.length === 0) {
+                    $('#unscheduledList').css('flex-direction', 'row');
+                    $('#unscheduledList').html('<span class="text-success small fw-bold">🎉 Everyone has a schedule for this period.</span>');
+                    return;
+                }
+
+                const fmtDay = (iso) => {
+                    const [, m, d] = iso.split('-').map(Number);
+                    return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1] + ' ' + d;
+                };
+
+                let html = '';
+
+                if (perDay) {
+                    // Expandable per-employee blocks with a day-by-day breakdown.
+                    $('#unscheduledList').css('flex-direction', 'column');
+                    html += `<div class="unsched-legend">
+                        <span><span class="dot" style="background:var(--teal-mid)"></span>Scheduled</span>
+                        <span><span class="dot" style="background:var(--danger)"></span>Missing</span>
+                        <span class="ms-auto">Click a name to see each day</span>
+                    </div>`;
+
+                    emps.forEach(e => {
+                        const schedMap = {};
+                        (e.scheduled || []).forEach(s => { schedMap[s.date] = s; });
+
+                        let days = '';
+                        range.forEach(d => {
+                            if (schedMap[d]) {
+                                const s = schedMap[d];
+                                days += `<span class="day-chip ok"><span class="chip-date">${fmtDay(d)}</span> ${s.in}–${s.out}</span>`;
+                            } else {
+                                days += `<span class="day-chip miss">
+                                            <span class="chip-date">${fmtDay(d)}</span> missing
+                                            <button type="button" class="chip-add btnQuickSchedDay"
+                                                    data-id="${e.empID}" data-name="${e.name}" data-date="${d}"
+                                                    title="Add schedule for ${fmtDay(d)}">+</button>
+                                         </span>`;
+                            }
+                        });
+
+                        html += `
+                            <div class="unsched-emp">
+                                <div class="unsched-emp-head js-emp-toggle">
+                                    <i class="fa-solid fa-chevron-right chevron"></i>
+                                    <span class="emp-name">${e.name}</span>
+                                    <span class="badge rounded-pill ms-1" style="background:var(--danger);color:#fff;font-size:.62rem;">${e.missing_count}/${totalDays} days missing</span>
+                                    <button type="button" class="btn btn-sm ms-auto btnQuickSched fw-bold"
+                                            data-id="${e.empID}" data-name="${e.name}" style="color:var(--teal-dark);font-size:.72rem;">
+                                        <i class="fa-solid fa-circle-plus"></i> Schedule
+                                    </button>
+                                </div>
+                                <div class="unsched-emp-body d-none">${days}</div>
+                            </div>`;
+                    });
+                } else {
+                    // Simple pill list (never-scheduled / open-window mode).
+                    $('#unscheduledList').css('flex-direction', 'row');
+                    emps.forEach(e => {
+                        html += `
+                            <span class="badge rounded-pill d-inline-flex align-items-center gap-2 px-3 py-2 fw-medium employee-tag">
+                                ${e.name}
+                                <button type="button" class="btn btn-sm p-0 border-0 bg-transparent btnQuickSched"
+                                        data-id="${e.empID}" data-name="${e.name}" title="Add schedule for this employee"
+                                        style="line-height:1;">
+                                    <i class="fa-solid fa-circle-plus" style="color:var(--teal-dark);"></i>
+                                </button>
+                            </span>`;
+                    });
+                }
+
+                $('#unscheduledList').html(html);
+            })
+            .catch(err => {
+                const msg = err.response?.data?.error || 'Unable to load unscheduled employees.';
+                $('#unscheduledCount').text('0');
+                $('#unscheduledList').html(`<span class="text-danger small">${msg}</span>`);
+            });
+    };
+
+    // View toggle: schedule table vs. unscheduled employees
+    $('#selScheduleView').on('change', function () {
+        const isUnsched = $(this).val() === 'unscheduled';
+        $('#unschedRangeWrap').toggleClass('d-none', !isUnsched);
+        // In the unscheduled view, the schedule table / pagination / per-page are not relevant
+        $('#scheduledView, #paginationContainer, #perPageWrap').toggleClass('d-none', isUnsched);
+        if (isUnsched) loadUnscheduled();
+    });
+
+    // Date-range + department controls
+    $('#fromDate, #toDate').on('change', loadUnscheduled);
+    $('#selDepartment').on('change', loadUnscheduled);
+    $('#btnThisMonth').on('click', function () {
+        const now = new Date();
+        const first = new Date(now.getFullYear(), now.getMonth(), 1);
+        const last  = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        const fmt = d => d.toISOString().slice(0, 10);
+        $('#fromDate').val(fmt(first));
+        $('#toDate').val(fmt(last));
+        loadUnscheduled();
+    });
+    $('#btnClearRange').on('click', function () {
+        $('#fromDate, #toDate').val('');
+        loadUnscheduled();
+    });
+
+    // Expand / collapse a per-day breakdown (ignore clicks on buttons inside the header)
+    $(document).on('click', '.js-emp-toggle', function (e) {
+        if ($(e.target).closest('button').length) return;
+        $(this).closest('.unsched-emp').toggleClass('open')
+            .find('.unsched-emp-body').toggleClass('d-none');
+    });
+
+    // Open the scheduler modal pre-filled. `date` (optional) pre-sets start+end date.
+    const openSchedulerFor = (id, name, date) => {
+        $('#schedule_id').val('');
+        $('#frmEmpScheduler')[0].reset();
+        $('.day-label').removeClass('bg-primary text-white border-primary').addClass('bg-transparent text-muted');
+        $('.error-text').text('');
+        $('input, select').removeClass('border-danger');
+        resetEmployeeArray();
+
+        selectedEmployees.push({ id: id, name: name });
+        renderEmployeeTags();
+
+        if (date) {
+            $('#sched_start_date').val(date);
+            $('#sched_end_date').val(date);
+        }
+        $('#mdlEmpScheduler').modal('show');
+    };
+
+    // Quick "Add Schedule" for the whole employee
+    $(document).on('click', '.btnQuickSched', function () {
+        openSchedulerFor($(this).data('id'), String($(this).data('name')));
+    });
+
+    // Quick "Add" for one specific missing day → pre-fills that date
+    $(document).on('click', '.btnQuickSchedDay', function () {
+        openSchedulerFor($(this).data('id'), String($(this).data('name')), $(this).data('date'));
+    });
+
     // 🔹 Initial Load
     loadSchedules();
+    loadUnscheduled();
 
     // Reset Modal on Open
     $('#btnCreateModal').on('click', function() {
@@ -665,6 +955,7 @@ $(document).ready(function(){
                     Swal.fire({ icon: 'success', title: 'Success', text: res.data.message, timer: 1500, showConfirmButton: false });
                     $('#mdlEmpScheduler').modal('hide');
                     loadSchedules();
+                    loadUnscheduled();
                 })
                 .catch(err => {
                     Swal.close();
@@ -676,10 +967,35 @@ $(document).ready(function(){
                             $(`#${key}`).addClass('border-danger');
                         });
                     } else {
-                        Swal.fire({ icon: 'error', title: 'Error', text: 'An unexpected error occurred.' });
+                        const msg = (err.response && err.response.data && (err.response.data.message || err.response.data.error)) || 'An unexpected error occurred.';
+                        Swal.fire({ icon: 'error', title: 'Error', text: msg });
                     }
                 });
         }
+
+        // Client-side R1 (break required) + R2 (net must equal 8h) — mirrors the
+        // server rule so the user gets instant feedback without a round-trip.
+        $('.break_start_error, .break_end_error').text('');
+        $('#break_start, #break_end').removeClass('border-danger');
+        const toMin = t => { if (!t) return null; const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+
+        if (!formData.break_start || !formData.break_end) {
+            $('.break_end_error').text('Break Start and Break End are required.');
+            $('#break_end').addClass('border-danger');
+            return;
+        }
+
+        if (formData.sched_in && formData.sched_out) {
+            let span = toMin(formData.sched_out) - toMin(formData.sched_in); if (span <= 0) span += 1440;
+            let brk  = toMin(formData.break_end) - toMin(formData.break_start); if (brk <= 0) brk += 1440;
+            if (span - brk !== 480) {
+                const fmt = m => { const s = m < 0 ? '-' : ''; m = Math.abs(m); const h = Math.floor(m / 60), mm = m % 60; return s + h + 'h' + (mm ? ' ' + mm + 'm' : ''); };
+                $('.break_end_error').text(`Net working hours must equal 8:00. This shift is ${fmt(span)} with a ${fmt(brk)} break = ${fmt(span - brk)}. Adjust the break so (shift − break) = 8 hours.`);
+                $('#break_end').addClass('border-danger');
+                return;
+            }
+        }
+
         submitSchedule(formData);
     });
 
@@ -720,6 +1036,10 @@ $(document).ready(function(){
                 axios.delete(`{{ url('employee-schedules/delete') }}/${id}`).then(res => {
                     Swal.fire('Deleted!', res.data.message, 'success');
                     loadSchedules();
+                    loadUnscheduled();
+                }).catch(err => {
+                    const msg = (err.response && err.response.data && (err.response.data.message || err.response.data.error)) || 'Unable to delete schedule.';
+                    Swal.fire({ icon: 'error', title: 'Cannot Delete', text: msg });
                 });
             }
         });

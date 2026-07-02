@@ -29,10 +29,17 @@ use App\Http\Controllers\leavetypeCtrl;
 use App\Http\Controllers\leavevalidationCtrl;
 use App\Http\Controllers\liloValidationsCtrl;
 use App\Http\Controllers\LoanController;
+use App\Http\Controllers\ProgramController;
+use App\Http\Controllers\NoticeController;
+use App\Http\Controllers\CoeController;
+use App\Http\Controllers\CoeSignatoryController;
 use App\Http\Controllers\PayAdjustmentController;
 use App\Http\Controllers\loginCtrl;
 use App\Http\Controllers\obValidationsCtrl;
+use App\Http\Controllers\obsCtrl;
 use App\Http\Controllers\otfillingCtrl;
+use App\Http\Controllers\OB\AdminObController;
+use App\Http\Controllers\Overtime\AdminOvertimeController;
 use App\Http\Controllers\Overtime\OvertimeRequestController;
 use App\Http\Controllers\OvertimeController;
 use App\Http\Controllers\pageCtrl;
@@ -82,13 +89,25 @@ use App\Http\Controllers\KuBo\ChatController;
 use App\Http\Controllers\KuBo\ImageUploadController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/auth/login', function () {return view('login.login');})->middleware('throttle:10,1');
+Route::get('/auth/login', function () {
+    // Prevent the browser from serving a cached (stale-CSRF) login page after logout/back —
+    // a common source of 419 "Page Expired" on the next sign-in.
+    return response(view('login.login'))
+        ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+        ->header('Pragma', 'no-cache');
+})->middleware('throttle:10,1');
 Route::post('/loginSystem',[loginCtrl::class, 'loginSystem'])->middleware('throttle:10,1');
 Route::get('/logoutSystem',[loginCtrl::class, 'logoutSystem']);
+
+// Lightweight endpoint the login page calls to refresh an expired/stale CSRF token so a
+// sign-in self-heals instead of failing with 419. Runs under the web (session) middleware.
+Route::get('/csrf-token', function () {
+    return response()->json(['token' => csrf_token()]);
+})->middleware('throttle:30,1');
 // Route::get('/', function () {return view('home');});
 
 
-Route::group(['middleware' => ['AuthCheck', 'check.employee.ip', 'check.maintenance']], function () {
+Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip', 'check.maintenance', 'block.separated']], function () {
 
     ##
 
@@ -106,6 +125,7 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip', 'check.maintena
     Route::get('/pages/management/companies',[pageCtrl::class, 'companies']);
     Route::get('/pages/management/classification',[pageCtrl::class, 'classification']);
     Route::get('/pages/management/e201',[pageCtrl::class, 'e201']);
+    Route::get('/pages/management/whatsnew',[pageCtrl::class, 'whatsnew'])->name('whatsnew');
     Route::get('/pages/modules/registration',[pageCtrl::class, 'registration']);
 
     //work time function
@@ -142,6 +162,9 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip', 'check.maintena
     Route::post('/employee/update',[registerCtrl::class, 'update']);
     Route::get('admin/e201/fetch/{empID}', [EmployeeRecordController::class, 'getEmployeeDetails']);
     Route::get('admin/e201/edit/{user}', [EmployeeRecordController::class, 'editEmployee']);
+    Route::post('admin/e201/reset-password/{user}', [EmployeeRecordController::class, 'resetPassword']);
+    Route::post('admin/e201/update-status/{user}', [EmployeeRecordController::class, 'updateStatus'])
+        ->middleware('can:manageemployeestatus');
 
 
     // JMC
@@ -219,6 +242,9 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip', 'check.maintena
     //MODULE
     Route::get('/pages/modules/obtTracker',[pageCtrl::class, 'obtTracker']);
     Route::get('/pages/modules/sendOBT',[pageCtrl::class, 'sendOBT']);
+    Route::get('/obtTracker/getall', [obsCtrl::class, 'getall']);
+    Route::get('/obtTracker/get_details', [obsCtrl::class, 'get_details']);
+    Route::post('/obtTracker/create_obt', [obsCtrl::class, 'create_obt']);
     Route::get('/pages/modules/overtime',[OvertimeController::class, 'index']);
     Route::get('/pages/modules/earlyout',[pageCtrl::class, 'earlyout']);
     Route::get('/pages/modules/debitAdvise',[pageCtrl::class, 'debitAdvise']);
@@ -235,6 +261,14 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip', 'check.maintena
     Route::get('/pages/modules/leaverequests', [LeaveRequestContoller::class, 'index'])->name('leave-requests.index')->middleware('can:pendingleaverequests');
     Route::get('/leaverequests/getAll', [LeaveRequestContoller::class, 'getAll'])->name('leave-requests.get')->middleware('can:pendingleaverequests');
     Route::post('/leaverequests/updateStatus', [LeaveRequestContoller::class, 'updateStatus'])->name('leave-requests.update');
+
+    // admin apply overtime
+    Route::get('/pages/modules/admin-overtime', [AdminOvertimeController::class, 'index'])->name('admin.overtime.index')->middleware('can:adminovertime');
+    Route::post('/admin/overtime/store', [AdminOvertimeController::class, 'store'])->name('admin.overtime.store')->middleware('can:adminovertime');
+
+    // admin apply OB
+    Route::get('/pages/modules/admin-ob', [AdminObController::class, 'index'])->name('admin.ob.index')->middleware('can:adminob');
+    Route::post('/admin/ob/store', [AdminObController::class, 'store'])->name('admin.ob.store')->middleware('can:adminob');
 
     // overtime approval
     Route::get('/pages/modules/overtimerequests', [OvertimeRequestController::class, 'index'])->name('overtime-requests.index')->middleware('can:pendingovertimerequests');
@@ -255,6 +289,10 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip', 'check.maintena
     Route::post('/department/create_update',[departmentCtrl::class, 'create_update']);
     Route::get('/department/getall',[departmentCtrl::class, 'getall']);
     Route::get('/department/edit',[departmentCtrl::class, 'edit']);
+    Route::get('/department/documents',[departmentCtrl::class, 'documents']);
+    Route::post('/department/document/upload',[departmentCtrl::class, 'uploadDocument']);
+    Route::get('/department/document/download',[departmentCtrl::class, 'downloadDocument']);
+    Route::get('/department/document/delete',[departmentCtrl::class, 'deleteDocument']);
 
     //relationship
     Route::post('/relationship/create_update',[relationshipCtrl::class, 'create_update']);
@@ -407,6 +445,7 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip', 'check.maintena
     Route::prefix('employee-schedules')->group(function() {
         Route::get('/', [EmployeeScheduleController::class, 'index'])->name('employee-schedules.index');
         Route::get('/all', [EmployeeScheduleController::class, 'getSchedules'])->name('employee-schedules.get');
+        Route::get('/unscheduled', [EmployeeScheduleController::class, 'unscheduled'])->name('employee-schedules.unscheduled');
         Route::post('/store', [EmployeeScheduleController::class, 'store'])->name('employee-schedules.store');
         Route::get('/edit/{id}', [EmployeeScheduleController::class, 'edit'])->name('employee-schedules.edit');
         Route::put('/update/{id}', [EmployeeScheduleController::class, 'update'])->name('employee-schedules.update');
@@ -494,6 +533,49 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip', 'check.maintena
     
 
 
+    // Notices / Memo — HR admin side (gated) + employee "My Notices" (auth-only)
+    Route::get('pages/modules/notices', [NoticeController::class, 'index'])->name('notices.index')->middleware('can:noticemanagement');
+    Route::get('/notices/list', [NoticeController::class, 'list'])->middleware('can:noticemanagement');
+    Route::get('/notices/employees', [NoticeController::class, 'employees'])->middleware('can:noticemanagement');
+    Route::post('/notices/save', [NoticeController::class, 'save'])->middleware('can:noticemanagement');
+    Route::post('/notices/delete', [NoticeController::class, 'delete'])->middleware('can:noticemanagement');
+    Route::get('/notices/recommendations', [NoticeController::class, 'recommendations'])->middleware('can:noticemanagement');
+    Route::post('/notices/recommendation/resolve', [NoticeController::class, 'resolveRecommendation'])->middleware('can:noticemanagement');
+    // Employee-facing: every authenticated employee can see their own notices.
+    Route::get('pages/modules/mynotices', [NoticeController::class, 'mine'])->name('notices.mine');
+    Route::get('/mynotices/list', [NoticeController::class, 'myList'])->name('notices.mine.list');
+
+    // Certificate of Employment — HR admin side (gated) + employee "My COE" (auth-only)
+    Route::get('pages/modules/coe', [CoeController::class, 'index'])->name('coe.index')->middleware('can:coemanagement');
+    Route::get('/coe/list', [CoeController::class, 'list'])->middleware('can:coemanagement');
+    Route::post('/coe/approve', [CoeController::class, 'approve'])->middleware('can:coemanagement');
+    Route::post('/coe/reject', [CoeController::class, 'reject'])->middleware('can:coemanagement');
+    // HR issues a COE for a separated employee (gated on offboarding clearance).
+    Route::get('/coe/separated-employees', [CoeController::class, 'separatedEmployees'])->middleware('can:coemanagement');
+    Route::post('/coe/issue', [CoeController::class, 'issue'])->middleware('can:coemanagement');
+    // COE signatories (Settings) + the active list that feeds the approve/issue pickers.
+    Route::get('pages/management/coe-signatories', [CoeSignatoryController::class, 'index'])->name('coe.signatories')->middleware('can:coemanagement');
+    Route::get('/coe/signatories/list', [CoeSignatoryController::class, 'list'])->middleware('can:coemanagement');
+    Route::get('/coe/signatories/active', [CoeSignatoryController::class, 'activeList'])->middleware('can:coemanagement');
+    Route::post('/coe/signatories/save', [CoeSignatoryController::class, 'save'])->middleware('can:coemanagement');
+    Route::post('/coe/signatories/delete', [CoeSignatoryController::class, 'delete'])->middleware('can:coemanagement');
+    // Employee-facing: every authenticated employee can manage their own COE requests.
+    Route::get('pages/modules/mycoe', [CoeController::class, 'mine'])->name('coe.mine');
+    Route::get('/mycoe/list', [CoeController::class, 'myList'])->name('coe.mine.list');
+    Route::get('/mycoe/requirements', [CoeController::class, 'requirements'])->name('coe.requirements');
+    Route::post('/mycoe/store', [CoeController::class, 'store'])->name('coe.store');
+    // PDF download — owner employee OR a COE manager (authorized inside the controller).
+    Route::get('/coe/{coe}/pdf', [CoeController::class, 'pdf'])->name('coe.pdf');
+
+    // Programs Management — tenure-milestone benefits (Workforce)
+    Route::get('pages/modules/programs', [ProgramController::class, 'index'])->name('programs.index')->middleware('can:programs');
+    Route::get('/programs/list', [ProgramController::class, 'list'])->middleware('can:programs');
+    Route::post('/programs/save', [ProgramController::class, 'save'])->middleware('can:programs');
+    Route::post('/programs/delete', [ProgramController::class, 'delete'])->middleware('can:programs');
+    Route::get('/programs/eligibility', [ProgramController::class, 'eligibility'])->middleware('can:programs');
+    Route::post('/programs/grant', [ProgramController::class, 'grant'])->middleware('can:programs');
+    Route::post('/programs/revoke', [ProgramController::class, 'revoke'])->middleware('can:programs');
+
     Route::get('pages/modules/loanManagement', [LoanController::class, 'index'])->name('loans.index');
     Route::post('/loans/store', [LoanController::class, 'store'])->name('loans.store');
     Route::post('/loans/update', [LoanController::class, 'update'])->name('loans.update');
@@ -548,6 +630,11 @@ Route::group(['middleware' => ['AuthCheck', 'check.employee.ip', 'check.maintena
     Route::post('/registerCtrl/checkEmailAvailability', [registerCtrl::class, 'checkEmailAvailability']);
     Route::get('/check-fullname', [registerCtrl::class, 'checkFullName']);
     Route::post('/update-password', [ProfileController::class, 'updatePassword'])->name('password.update');
+
+    // Forced password change (one-time security stretch). Exempt from the
+    // 'force.password' middleware so flagged users can actually reach it.
+    Route::get('/force-password-change', [ProfileController::class, 'forceChangeForm'])->name('password.force');
+    Route::post('/force-password-change/update', [ProfileController::class, 'forceUpdatePassword'])->name('password.force.update');
 
     // ============================================
     // KwHub - Community Platform Routes

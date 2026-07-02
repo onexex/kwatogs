@@ -381,7 +381,10 @@
                         <div class="row g-2">
                             <div class="col-6"><label class="field-label">New Time In</label><input type="time" id="saIn" class="form-control form-control-sm"></div>
                             <div class="col-6"><label class="field-label">New Time Out</label><input type="time" id="saOut" class="form-control form-control-sm"></div>
+                            <div class="col-6"><label class="field-label">Break Start</label><input type="time" id="saBreakIn" class="form-control form-control-sm"></div>
+                            <div class="col-6"><label class="field-label">Break End</label><input type="time" id="saBreakOut" class="form-control form-control-sm"></div>
                         </div>
+                        <div class="text-muted mt-1" style="font-size:.7rem;">Working hours minus break must equal 8:00.</div>
                     </div>
                     <div class="sa-step d-none" data-step="3">
                         <label class="field-label">Reason</label>
@@ -406,7 +409,9 @@
                         <div class="col-6"><label class="field-label">Reason</label><input type="text" id="qReason" class="form-control form-control-sm" maxlength="255"></div>
                         <div class="col-6"><label class="field-label">Time In</label><input type="time" id="qIn" class="form-control form-control-sm"></div>
                         <div class="col-6"><label class="field-label">Time Out</label><input type="time" id="qOut" class="form-control form-control-sm"></div>
-                        <div class="col-12"><button class="btn btn-teal btn-sm w-100" id="qSubmit" type="button">Submit request</button></div>
+                        <div class="col-6"><label class="field-label">Break Start</label><input type="time" id="qBreakIn" class="form-control form-control-sm"></div>
+                        <div class="col-6"><label class="field-label">Break End</label><input type="time" id="qBreakOut" class="form-control form-control-sm"></div>
+                        <div class="col-12"><div class="text-muted mb-1" style="font-size:.7rem;">Working hours minus break must equal 8:00.</div><button class="btn btn-teal btn-sm w-100" id="qSubmit" type="button">Submit request</button></div>
                     </div>
                 </div>
                 <hr class="my-3" style="opacity:.4;">
@@ -846,6 +851,8 @@ $(function () {
                 $('#saCurrent').html('Your schedule for ' + date + ': <b>' + (d.sched_in || '').substring(0, 5) + ' – ' + (d.sched_out || '').substring(0, 5) + '</b>');
                 if (!$('#saIn').val()) $('#saIn').val((d.sched_in || '').substring(0, 5));
                 if (!$('#saOut').val()) $('#saOut').val((d.sched_out || '').substring(0, 5));
+                if (!$('#saBreakIn').val()) $('#saBreakIn').val((d.break_start || '').substring(0, 5));
+                if (!$('#saBreakOut').val()) $('#saBreakOut').val((d.break_end || '').substring(0, 5));
             } else { $('#saCurrent').html('No schedule set for ' + date + ' yet.'); }
         }).catch(() => {});
     }
@@ -853,12 +860,14 @@ $(function () {
     function buildReview() {
         $('#saReview').html('<b>Date:</b> ' + $('#saDate').val() +
             '<br><b>New time:</b> ' + $('#saIn').val() + ' – ' + $('#saOut').val() +
+            '<br><b>Break:</b> ' + ($('#saBreakIn').val() || '—') + ' – ' + ($('#saBreakOut').val() || '—') +
             '<br><b>Reason:</b> ' + ($('#saReason').val() || '—'));
     }
 
     $('#saNext').on('click', function () {
         if (step === 1 && !sw($('#saDate').val(), 'Choose which day to adjust.', 'Pick a day')) return;
         if (step === 2 && !sw($('#saIn').val() && $('#saOut').val(), 'Enter both time in and out.', 'Times needed')) return;
+        if (step === 2 && !sw($('#saBreakIn').val() && $('#saBreakOut').val(), 'Enter the break start and end.', 'Break needed')) return;
         showStep(Math.min(step + 1, maxStep));
     });
     $('#saBack').on('click', () => showStep(Math.max(step - 1, 1)));
@@ -875,12 +884,12 @@ $(function () {
     }
 
     $('#saSubmit').on('click', () => submit(
-        { request_date: $('#saDate').val(), new_sched_in: $('#saIn').val(), new_sched_out: $('#saOut').val(), reason: $('#saReason').val() },
+        { request_date: $('#saDate').val(), new_sched_in: $('#saIn').val(), new_sched_out: $('#saOut').val(), new_break_start: $('#saBreakIn').val(), new_break_end: $('#saBreakOut').val(), reason: $('#saReason').val() },
         () => { $('#saReason').val(''); showStep(1); }
     ));
     $('#qSubmit').on('click', () => {
-        if (!sw($('#qDate').val() && $('#qIn').val() && $('#qOut').val(), 'Fill day, time in and out.', 'Missing')) return;
-        submit({ request_date: $('#qDate').val(), new_sched_in: $('#qIn').val(), new_sched_out: $('#qOut').val(), reason: $('#qReason').val() });
+        if (!sw($('#qDate').val() && $('#qIn').val() && $('#qOut').val() && $('#qBreakIn').val() && $('#qBreakOut').val(), 'Fill day, time in/out and break.', 'Missing')) return;
+        submit({ request_date: $('#qDate').val(), new_sched_in: $('#qIn').val(), new_sched_out: $('#qOut').val(), new_break_start: $('#qBreakIn').val(), new_break_end: $('#qBreakOut').val(), reason: $('#qReason').val() });
     });
 
     function fetchMine() {
@@ -888,7 +897,7 @@ $(function () {
             const rows = r.data || [];
             if (!rows.length) { $('#saList').html('No requests yet.'); return; }
             const style = s => ({ APPROVED: 'background:#dcfce7;color:#166534;', DISAPPROVED: 'background:#fee2e2;color:#991b1b;', FORAPPROVAL: 'background:#fef3c7;color:#92400e;' }[s] || 'background:#e2e8f0;color:#334155;');
-            $('#saList').html(rows.map(r => `<div class="sa-list-item"><span>${r.request_date} · <b>${r.new_sched_in}–${r.new_sched_out}</b></span><span class="sa-badge" style="${style(r.status)}">${r.status}</span></div>`).join(''));
+            $('#saList').html(rows.map(r => `<div class="sa-list-item"><span>${r.request_date} · <b>${r.new_sched_in}–${r.new_sched_out}</b>${r.new_break_start ? ` <span class="text-muted">(brk ${r.new_break_start}–${r.new_break_end})</span>` : ''}</span><span class="sa-badge" style="${style(r.status)}">${r.status}</span></div>`).join(''));
         }).catch(() => {});
     }
 

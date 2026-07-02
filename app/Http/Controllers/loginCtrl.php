@@ -44,7 +44,9 @@ class loginCtrl extends Controller
 
         $current_date_time = Carbon::now()->toDateTimeString();
         $validator = Validator::make($request->all(),[
-            'username'=>'required|max:50|email',
+            // Accepts either a short login username OR an email address — the
+            // email rule was removed so long emails are no longer rejected here.
+            'username'=>'required|max:50',
             'password'=>'required|max:500',
         ]);
 
@@ -63,8 +65,13 @@ class loginCtrl extends Controller
             ]);
         }
 
-        $userinfo =  User::select('users.*', 'emp_details.empPos', 'emp_details.empISID','emp_details.empCompID', 'emp_details.empDepID' )
-            ->where('email','=',$request->username)
+        // Detect whether the typed value is an email or a username and query the
+        // matching column. Existing accounts without a username still resolve via
+        // email, so nobody is locked out by the new login field.
+        $loginField = filter_var($request->username, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+
+        $userinfo =  User::select('users.*', 'emp_details.empPos', 'emp_details.empISID','emp_details.empCompID', 'emp_details.empDepID', 'emp_details.empStatus' )
+            ->where("users.$loginField",'=',$request->username)
             ->leftjoin('emp_details','users.empID','=','emp_details.empID')
             ->first();
 
@@ -133,6 +140,25 @@ class loginCtrl extends Controller
                     'msg'    => 'Access Denied. Your current IP address is not authorized.',
                 ]);
             }
+        }
+
+        // ── Separated-employee block ──────────────────────────────────────────
+        // Separated employees (empStatus 0=Resigned, 2=End of Contract) must not
+        // access the system, for data security. The legacy super admin (role==1)
+        // and the spatie 'admin' role are exempt to avoid locking out admins —
+        // same exemption rule as Maintenance Mode.
+        $isExemptFromStatusBlock = ((int) ($userinfo->role ?? 0) === 1)
+            || $userinfo->hasRole(self::ADMIN_ROLE);
+
+        if (!$isExemptFromStatusBlock && (string) ($userinfo->empStatus ?? '1') !== '1') {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return response()->json([
+                'status' => 403,
+                'msg'    => 'Your account is inactive. Please contact HR.',
+            ]);
         }
 
         // ── Record successful login ───────────────────────────────────────────

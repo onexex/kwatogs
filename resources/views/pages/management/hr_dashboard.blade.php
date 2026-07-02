@@ -132,6 +132,24 @@
         </div>
     </div>
 
+    {{-- Disciplinary alert flash — employees over the suspension threshold --}}
+    @if(!empty($d['ntcOver']))
+        <div style="background:linear-gradient(135deg,#fee2e2,#fff1f2);border:1px solid #fca5a5;border-left:5px solid var(--danger);border-radius:12px;padding:14px 18px;margin-bottom:18px;box-shadow:var(--shadow);">
+            <div style="color:#b91c1c;font-weight:800;font-size:.85rem;display:flex;align-items:center;gap:8px;">
+                <i class="fa fa-triangle-exclamation"></i>
+                {{ count($d['ntcOver']) }} employee(s) recommended for suspension review ({{ $d['ntcStats']['suspend'] }}+ disciplinary notices)
+                <a href="/pages/modules/notices" style="margin-left:auto;color:#b91c1c;font-size:.72rem;">Review &rarr;</a>
+            </div>
+            <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px;">
+                @foreach($d['ntcOver'] as $o)
+                    <span style="background:#fff;border:1px solid #fca5a5;color:#b91c1c;border-radius:20px;padding:5px 12px;font-size:.78rem;font-weight:700;" class="text-capitalize">
+                        {{ $o['name'] }} <span style="background:#b91c1c;color:#fff;border-radius:10px;padding:1px 7px;margin-left:5px;font-size:.68rem;">{{ $o['count'] }}</span>
+                    </span>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
     {{-- KPI ROW (clickable) --}}
     <div class="kpi-grid">
         <a class="kpi" href="/pages/management/e201"><div class="ic" style="background:var(--teal-light);color:var(--teal);"><i class="fa fa-users"></i></div><div><div class="val" data-kpi="active">{{ number_format($d['active']) }}</div><div class="lbl">Active Employees</div></div></a>
@@ -392,13 +410,106 @@
             </div>
         </div>
 
+        {{-- Tenure Milestones (Programs Management) --}}
+        <div class="cc-card cc-8">
+            <div class="cc-h">
+                <div class="i"><i class="fa fa-award"></i></div>
+                <h6>Tenure Milestones</h6>
+                <span class="right" style="font-size:.7rem;font-weight:700;">
+                    <span style="color:var(--warning);">{{ $d['msStats']['pendingCount'] }} pending</span>
+                    <span style="color:var(--slate-light);">&middot; {{ $d['msStats']['grantedCount'] }} granted &middot; {{ $d['msStats']['upcomingCount'] }} upcoming</span>
+                    <a href="/pages/modules/programs" class="ms-2" style="color:var(--teal);text-decoration:none;">Manage &rarr;</a>
+                </span>
+            </div>
+            <div class="cc-b">
+                @if($d['msStats']['programs'] == 0)
+                    <div class="empty">No milestone programs defined yet. <a href="/pages/modules/programs" style="color:var(--teal);">Create one</a> to start tracking tenure benefits.</div>
+                @else
+                    <div class="row g-3">
+                        <div class="col-md-6" style="max-height:220px;overflow:auto;">
+                            <div class="lgnd mb-2"><i class="fa fa-gift" style="color:var(--warning);"></i> <b>Benefits Due (not yet granted)</b></div>
+                            @forelse($d['msPending'] as $r)
+                                <div class="alert-row">
+                                    <span class="nm text-capitalize">{{ $r['name'] }}
+                                        <span class="meta d-block">{{ $r['program'] }} &middot; {{ number_format($r['tenure'], 2) }} yrs</span>
+                                    </span>
+                                    <span class="meta text-end">{{ implode(', ', $r['benefits']) ?: '—' }}</span>
+                                </div>
+                            @empty<div class="empty">No pending benefits — all caught up.</div>@endforelse
+                        </div>
+                        <div class="col-md-6" style="max-height:220px;overflow:auto;">
+                            <div class="lgnd mb-2"><i class="fa fa-calendar-day" style="color:var(--info);"></i> <b>Upcoming Anniversaries (60d)</b></div>
+                            @forelse($d['msUpcoming'] as $r)
+                                <div class="alert-row">
+                                    <span class="nm text-capitalize">{{ $r['name'] }}
+                                        <span class="meta d-block">{{ $r['program'] }}</span>
+                                    </span>
+                                    <span class="meta text-end">in {{ $r['days'] }}d<span class="d-block">{{ $r['date'] }}</span></span>
+                                </div>
+                            @empty<div class="empty">No anniversaries in the next 60 days.</div>@endforelse
+                        </div>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        {{-- Disciplinary Notices --}}
+        <div class="cc-card cc-4">
+            <div class="cc-h">
+                <div class="i"><i class="fa fa-gavel"></i></div><h6>Disciplinary Notices</h6>
+                <a href="/pages/modules/notices" class="right" style="font-size:.7rem;color:var(--teal);text-decoration:none;">Open &rarr;</a>
+            </div>
+            <div class="cc-b" style="max-height:220px;overflow:auto;">
+                <div class="att-grid mb-2">
+                    <div class="att"><div class="v" style="color:var(--danger);">{{ $d['ntcStats']['overCount'] }}</div><div class="l">Suspension Recs</div></div>
+                    <div class="att"><div class="v" style="color:var(--warning);">{{ $d['ntcStats']['atRiskCount'] }}</div><div class="l">At Risk ({{ $d['ntcStats']['warn'] }}+)</div></div>
+                </div>
+                @if(!empty($d['ntcAtRisk']))
+                    <div class="lgnd mb-2"><i class="fa fa-user-clock text-warning"></i> <b>Approaching the limit</b></div>
+                    @foreach($d['ntcAtRisk'] as $r)
+                        <div class="alert-row"><span class="nm text-capitalize">{{ $r['name'] }}</span><span class="meta text-warning">{{ $r['count'] }} notices</span></div>
+                    @endforeach
+                @elseif(empty($d['ntcOver']))
+                    <div class="empty">No employees near the disciplinary limit.</div>
+                @endif
+            </div>
+        </div>
+
+        {{-- Certificate of Employment requests --}}
+        <div class="cc-card cc-4">
+            <div class="cc-h">
+                <div class="i"><i class="fa fa-file-signature"></i></div><h6>COE Requests</h6>
+                <a href="/pages/modules/coe" class="right" style="font-size:.7rem;color:var(--teal);text-decoration:none;">Open &rarr;</a>
+            </div>
+            <div class="cc-b" style="max-height:220px;overflow:auto;">
+                <div class="att-grid mb-2">
+                    <div class="att"><div class="v" style="color:var(--warning);">{{ $d['coeStats']['pending'] }}</div><div class="l">Pending</div></div>
+                    <div class="att"><div class="v" style="color:var(--teal);">{{ $d['coeStats']['approvedMonth'] }}</div><div class="l">Approved (mo.)</div></div>
+                </div>
+                @if(!empty($d['coePending']))
+                    <div class="lgnd mb-2"><i class="fa fa-hourglass-half text-warning"></i> <b>Awaiting review</b></div>
+                    @foreach($d['coePending'] as $r)
+                        <div class="alert-row">
+                            <span class="nm text-capitalize">{{ $r['name'] }}
+                                <span class="meta d-block">{{ $r['purpose'] }}</span>
+                            </span>
+                            <span class="meta text-end">{{ $r['date_needed'] ? 'by ' . $r['date_needed'] : $r['requested'] }}</span>
+                        </div>
+                    @endforeach
+                @else
+                    <div class="empty">No COE requests awaiting review.</div>
+                @endif
+            </div>
+        </div>
+
         {{-- Quick actions --}}
-        <div class="cc-card cc-12">
+        <div class="cc-card cc-4">
             <div class="cc-h"><div class="i"><i class="fa fa-bolt"></i></div><h6>Quick Actions</h6></div>
             <div class="cc-b">
                 <div class="qa">
                     <a href="/pages/modules/payroll"><i class="fa fa-file-invoice-dollar"></i> Payroll</a>
                     <a href="/pages/modules/registration"><i class="fa fa-user-plus"></i> Enroll Employee</a>
+                    <a href="/pages/modules/notices"><i class="fa fa-gavel"></i> Notices</a>
                     <a href="/pages/modules/leaverequests"><i class="fa fa-calendar-check"></i> Leave Requests</a>
                     <a href="/pages/modules/overtimerequests"><i class="fa fa-user-clock"></i> OT Requests</a>
                     <a href="/pages/modules/schedulerequests"><i class="fa fa-calendar-plus"></i> Schedule Requests</a>

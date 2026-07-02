@@ -56,10 +56,17 @@ function department_get() {
     //create Function
     $(document).on('click', '#btnCreateDept', function(e) {
         formAction=1;
+        depID=0;
+        $('#lblTitleDept').text('Add Department');
         $('.lblActionDesc').text('Creating Department');
         $('span.error-text').text("");
         $('input.border').removeClass('border border-danger');
         $('#frmDepartment')[0].reset();
+        $('#imgDeptLogoPreview').hide().attr('src', '');
+        // Documents need an existing department — only available when editing.
+        $('#deptDocsSection').hide();
+        $('#frmDeptDoc')[0].reset();
+        $('#tblDeptDocs').empty();
     });
 
     //edit Function
@@ -67,7 +74,10 @@ function department_get() {
 
         formAction=2;
         depID=$(this).val();
+        $('#lblTitleDept').text('Edit Department');
         $('.lblActionDesc').text('Updating Department');
+        $('#frmDepartment')[0].reset();
+        $('#frmDeptDoc')[0].reset();
         axios.get('/department/edit',{
             params: {
                 depID: depID
@@ -78,16 +88,125 @@ function department_get() {
                 $('span.error-text').text("");
                 $('input.border').removeClass('border border-danger');
                 $('#txtDeptName').val(row.dep_name);
+                $('#txtDeptPhone').val(row.dep_contact_phone);
+                $('#txtDeptEmail').val(row.dep_email);
+                $('#txtDeptAddress').val(row.dep_address);
+                $('#txtDeptDescription').val(row.dep_description);
+                $('#txtDeptTin').val(row.dep_tin);
+                $('#txtDeptSss').val(row.dep_sss_employer_no);
+                $('#txtDeptPhilhealth').val(row.dep_philhealth_employer_no);
+                $('#txtDeptPagibig').val(row.dep_pagibig_employer_no);
 
+                if (row.dep_logo_path) {
+                    $('#imgDeptLogoPreview').attr('src', '/img/departments/' + row.dep_logo_path).show();
+                } else {
+                    $('#imgDeptLogoPreview').hide().attr('src', '');
+                }
             })
         })
         .catch(function (error) {
-            dialog.alert({
-                message: error
-            });
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Could not load department: ' + error });
         })
         .then(function () {});
 
+        // Show + load the related-documents panel for this department.
+        $('#deptDocsSection').show();
+        deptDocs_get(depID);
+
+    });
+
+    // ── Related Documents ───────────────────────────────────────
+    function deptDocs_get(id) {
+        axios.get('/department/documents', { params: { depID: id } })
+            .then(function (response) {
+                var rows = response.data.data || [];
+                var html = '';
+                if (rows.length > 0) {
+                    $(rows).each(function (i, doc) {
+                        html += "<tr>" +
+                            "<td class='ps-3'>" + (doc.label || '') + "</td>" +
+                            "<td class='small text-muted'>" + (doc.original_name || '') + "</td>" +
+                            "<td class='text-end pe-3'>" +
+                                "<div class='d-flex justify-content-end gap-2'>" +
+                                    "<a href='/department/document/download?id=" + doc.id + "' class='icon-action-btn' title='Download'>" +
+                                        "<i class='fa-solid fa-download text-primary'></i></a>" +
+                                    "<button type='button' class='icon-action-btn danger btnDeleteDeptDoc' data-id='" + doc.id + "' title='Delete'>" +
+                                        "<i class='fa-solid fa-trash text-danger'></i></button>" +
+                                "</div>" +
+                            "</td>" +
+                        "</tr>";
+                    });
+                } else {
+                    html = "<tr><td colspan='3' class='text-center py-4 text-muted small'>No documents uploaded.</td></tr>";
+                }
+                $('#tblDeptDocs').empty().append(html);
+            })
+            .catch(function (error) {
+                $('#tblDeptDocs').empty().append("<tr><td colspan='3' class='text-center py-4 text-danger small'>Could not load documents.</td></tr>");
+            });
+    }
+
+    // Upload a document
+    $(document).on('click', '#btnUploadDeptDoc', function(e) {
+        e.preventDefault();
+        $('span.document_error').text("");
+        $('#txtDeptDocFile').removeClass('border border-danger');
+
+        var formData = new FormData($('#frmDeptDoc')[0]);
+        formData.append('depID', depID);
+
+        Swal.fire({
+            title: 'Uploading...',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        axios.post('/department/document/upload', formData)
+            .then(function (response) {
+                var status = response.data.status;
+                if (status == 201) { // Validation errors
+                    Swal.close();
+                    $.each(response.data.error, function(prefix, val) {
+                        $('input[name=' + prefix + ']').addClass("border border-danger");
+                        $('span.' + prefix + '_error').text(val[0]);
+                    });
+                } else if (status == 200) {
+                    $('#frmDeptDoc')[0].reset();
+                    deptDocs_get(depID);
+                    Swal.fire({ icon: 'success', title: 'Uploaded', text: response.data.msg, timer: 1500, showConfirmButton: false });
+                }
+            })
+            .catch(function (error) {
+                Swal.fire({ icon: 'error', title: 'Upload Failed', text: 'Something went wrong: ' + error.message });
+            });
+    });
+
+    // Delete a document
+    $(document).on('click', '.btnDeleteDeptDoc', function(e) {
+        var id = $(this).data('id');
+        Swal.fire({
+            title: 'Delete Document?',
+            text: "This will permanently remove the file.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, delete it!',
+            cancelButtonText: 'Cancel',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                axios.get('/department/document/delete', { params: { id: id } })
+                    .then(function (response) {
+                        deptDocs_get(depID);
+                        Swal.fire({ icon: 'success', title: 'Deleted!', text: response.data.msg, timer: 1500, showConfirmButton: false });
+                    })
+                    .catch(function (error) {
+                        Swal.fire({ icon: 'error', title: 'Error!', text: 'An error occurred: ' + error.message });
+                    });
+            }
+        });
     });
 
    $(document).on('click', '#btnDepSave', function(e) {

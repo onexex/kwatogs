@@ -24,8 +24,10 @@ class User extends Authenticatable
     protected $fillable = [
         'empID',
         'email',
+        'username',
         'password',
-        
+        'must_change_password',
+
         'status',
         'suffix',
         'lname',
@@ -51,6 +53,7 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'must_change_password' => 'boolean',
     ];
 
      // 🧩 Relationship

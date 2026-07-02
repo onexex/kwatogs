@@ -688,6 +688,12 @@
                                         style="text-transform:lowercase;">
                                     <span class="error-text email_error"></span>
                                 </div>
+                                <div class="col-lg-3 col-md-6">
+                                    <label for="txtUsername" class="field-label">Login Username</label>
+                                    <input type="text" class="form-control" id="txtUsername" name="username"
+                                        value="{{ $user->username }}" placeholder="Optional short login name">
+                                    <span class="error-text username_error"></span>
+                                </div>
                             </div>
                         </div>
                     </div>

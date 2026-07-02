@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\department;
 use App\Models\EmployeeSchedule;
+use App\Models\homeAttendance;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -14,8 +16,9 @@ class EmployeeScheduleController extends Controller
     public function index()
     {
         $employees = User::orderBy('lname')->get();
-      
-        return view('pages.management.empscheduler', compact('employees'));
+        $departments = department::orderBy('dep_name')->get(['id', 'dep_name']);
+
+        return view('pages.management.empscheduler', compact('employees', 'departments'));
     }
  
 
@@ -55,6 +58,121 @@ class EmployeeScheduleController extends Controller
         ]);
 
         return response()->json($schedules);
+    }
+
+
+    /**
+     * Active employees missing a schedule.
+     * Active = emp_details.empStatus = '1' (same rule payroll uses).
+     *
+     * Modes:
+     *  - from AND to given => per-day check: flag anyone missing a schedule on
+     *    ANY calendar day in [from, to] (employees can work any day, weekends
+     *    included), and report exactly which days are missing.
+     *  - only one bound, or both blank => "never scheduled" style: flag anyone
+     *    with no schedule row in that open window (blank = no schedule ever).
+     */
+    public function unscheduled(Request $request)
+    {
+        $from   = $request->filled('from') ? substr($request->from, 0, 10) : null;
+        $to     = $request->filled('to')   ? substr($request->to, 0, 10)   : null;
+        $depId  = $request->filled('department_id') ? $request->department_id : null;
+
+        // Active employees only, optionally scoped to one department/company.
+        $employees = User::query()
+            ->join('emp_details', 'users.empID', '=', 'emp_details.empID')
+            ->where('emp_details.empStatus', '1')
+            ->when($depId, fn($q) => $q->where('emp_details.empDepID', $depId))
+            ->orderBy('users.lname')
+            ->orderBy('users.fname')
+            ->get(['users.empID', 'users.fname', 'users.lname']);
+
+        // ── Per-day mode (both dates given) ──────────────────────────────
+        if ($from && $to) {
+            $start = Carbon::parse($from);
+            $end   = Carbon::parse($to);
+            if ($end->lt($start)) {
+                [$start, $end] = [$end, $start];
+            }
+
+            // Guard against an unreasonably large range.
+            if ($start->diffInDays($end) > 366) {
+                return response()->json([
+                    'error' => 'Please choose a range of one year or less.',
+                ], 422);
+            }
+
+            // Every calendar day in the range.
+            $allDates = [];
+            for ($d = $start->copy(); $d->lte($end); $d->addDay()) {
+                $allDates[] = $d->toDateString();
+            }
+
+            // Scheduled rows per employee within the range
+            // (each schedule row's working day = sched_start_date).
+            $rowsByEmp = DB::table('employee_schedules')
+                ->whereDate('sched_start_date', '>=', $start->toDateString())
+                ->whereDate('sched_start_date', '<=', $end->toDateString())
+                ->orderBy('sched_start_date')
+                ->orderBy('sched_in')
+                ->get(['employee_id', 'sched_start_date', 'sched_in', 'sched_out', 'shift_type'])
+                ->groupBy('employee_id');
+
+            $list = collect();
+            foreach ($employees as $e) {
+                $empRows = $rowsByEmp[$e->empID] ?? collect();
+                $covDates = $empRows->pluck('sched_start_date')
+                    ->map(fn($x) => substr($x, 0, 10))->unique()->all();
+                $missing = array_values(array_diff($allDates, $covDates));
+
+                if (count($missing) > 0) {
+                    // Keep one entry per scheduled day (first shift of the day) for the breakdown.
+                    $scheduled = $empRows->groupBy(fn($r) => substr($r->sched_start_date, 0, 10))
+                        ->map(fn($dayRows) => [
+                            'date'  => substr($dayRows->first()->sched_start_date, 0, 10),
+                            'in'    => substr((string) $dayRows->first()->sched_in, 0, 5),
+                            'out'   => substr((string) $dayRows->first()->sched_out, 0, 5),
+                            'shift' => $dayRows->first()->shift_type,
+                        ])->values();
+
+                    $list->push([
+                        'empID'         => $e->empID,
+                        'name'          => strtoupper($e->lname . ', ' . $e->fname),
+                        'missing_count' => count($missing),
+                        'missing'       => $missing,
+                        'scheduled'     => $scheduled,
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'count'      => $list->count(),
+                'total_days' => count($allDates),
+                'range'      => $allDates,
+                'employees'  => $list->values(),
+            ]);
+        }
+
+        // ── Open-window / never-scheduled mode (blank or one-sided) ──────
+        $list = $employees->filter(function ($e) use ($from, $to) {
+            $q = DB::table('employee_schedules')
+                ->where('employee_id', $e->empID);
+            if ($from) {
+                $q->whereDate('sched_end_date', '>=', $from);
+            }
+            if ($to) {
+                $q->whereDate('sched_start_date', '<=', $to);
+            }
+            return !$q->exists();
+        })->map(fn($e) => [
+            'empID' => $e->empID,
+            'name'  => strtoupper($e->lname . ', ' . $e->fname),
+        ])->values();
+
+        return response()->json([
+            'count'     => $list->count(),
+            'employees' => $list,
+        ]);
     }
 
 
@@ -148,6 +266,12 @@ class EmployeeScheduleController extends Controller
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
+
+        // R2: a schedule must net exactly 8 working hours ((shift − break) === 8h).
+        if ($netError = EmployeeSchedule::netValidationError($request->sched_in, $request->sched_out, $request->break_start, $request->break_end)) {
+            return response()->json(['errors' => ['break_end' => [$netError]]], 422);
+        }
+
         DB::beginTransaction();
 
         try {
@@ -254,6 +378,17 @@ class EmployeeScheduleController extends Controller
 
     public function update(Request $request, $id)
     {
+        $schedule = EmployeeSchedule::findOrFail($id);
+
+        // Safeguard: once the employee has any attendance tied to this schedule it is
+        // LOCKED — editing it would silently diverge already-recorded attendance (late/
+        // undertime/night-diff were computed against the old shift) or re-clamp an open punch.
+        if ($this->scheduleHasAttendance($schedule)) {
+            return response()->json([
+                'message' => 'This schedule is locked and can no longer be edited — the employee already has attendance recorded for it.'
+            ], 409);
+        }
+
         $validator = Validator::make($request->all(), [
             'employee_id' => 'required|exists:users,empID',
             'sched_start_date' => 'required|date',
@@ -269,7 +404,10 @@ class EmployeeScheduleController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $schedule = EmployeeSchedule::findOrFail($id);
+        // R2: a schedule must net exactly 8 working hours ((shift − break) === 8h).
+        if ($netError = EmployeeSchedule::netValidationError($request->sched_in, $request->sched_out, $request->break_start, $request->break_end)) {
+            return response()->json(['errors' => ['break_end' => [$netError]]], 422);
+        }
 
         $startDateTime = Carbon::parse($request->sched_start_date . ' ' . $request->sched_in);
         $endDateTime = Carbon::parse($request->sched_end_date . ' ' . $request->sched_out);
@@ -316,8 +454,33 @@ class EmployeeScheduleController extends Controller
     public function destroy($id)
     {
         $schedule = EmployeeSchedule::findOrFail($id);
+
+        // Safeguard: a schedule with attendance tied to it can't be deleted — doing so
+        // would orphan the employee's recorded punches (schedule_id has no DB cascade).
+        if ($this->scheduleHasAttendance($schedule)) {
+            return response()->json([
+                'message' => 'This schedule is locked and can no longer be deleted — the employee already has attendance recorded for it.'
+            ], 409);
+        }
+
         $schedule->delete();
         return response()->json(['message' => 'Schedule deleted successfully!']);
+    }
+
+    /**
+     * A schedule is "locked" once the employee has any attendance tied to it — either a
+     * punch that references this schedule row, or any punch on a date the schedule covers.
+     * After that point, editing or deleting the schedule would diverge or orphan the
+     * already-recorded attendance, so both are blocked.
+     */
+    private function scheduleHasAttendance(EmployeeSchedule $schedule): bool
+    {
+        return homeAttendance::where('schedule_id', $schedule->id)
+            ->orWhere(function ($q) use ($schedule) {
+                $q->where('employee_id', $schedule->employee_id)
+                  ->whereBetween('attendance_date', [$schedule->sched_start_date, $schedule->sched_end_date]);
+            })
+            ->exists();
     }
 
      public function edit($id)

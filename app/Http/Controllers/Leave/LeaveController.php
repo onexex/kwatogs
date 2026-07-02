@@ -36,112 +36,109 @@ class LeaveController extends Controller
 
         if(!$validator->passes()){
             return response()->json([
-                'status'=>201, 
+                'status'=>201,
                 'error'=>$validator->errors()->toArray()
             ]);
-        } else {
-            if (isset($request->halfday)) {
-                if ($request->date_from != $request->date_to) {
-                    return response()->json([
-                        'status' => 201,
-                        'error' => ['date_to' => ['For half-day leave, Start Date and End Date must be the same.']]
-                    ]); 
-                }
-            }
+        }
 
-            $leavel = Leave::where('employee_id', $user->empID)
-                ->where(function ($query) use ($request) {
-                    $query->whereBetween('start_date', [$request->date_from, $request->date_to])
-                          ->orWhereBetween('end_date', [$request->date_from, $request->date_to])
-                          ->orWhere(function ($query) use ($request) {
-                              $query->where('start_date', '<=', $request->date_from)
-                                    ->where('end_date', '>=', $request->date_to);
-                          });
-                })
-                ->where('status', '!=', LeaveStatusEnum::DISAPPROVED->name)
-                ->first();
-
-            if ($leavel) {
+        if (isset($request->halfday)) {
+            if ($request->date_from != $request->date_to) {
                 return response()->json([
                     'status' => 201,
-                    'error' => ['date_from' => ['You already have a leave application that overlaps with the selected dates.']]
-                ]); 
+                    'error' => ['date_to' => ['For half-day leave, Start Date and End Date must be the same.']]
+                ]);
+            }
+        }
+
+        $leavel = Leave::where('employee_id', $user->empID)
+            ->where(function ($query) use ($request) {
+                $query->whereBetween('start_date', [$request->date_from, $request->date_to])
+                      ->orWhereBetween('end_date', [$request->date_from, $request->date_to])
+                      ->orWhere(function ($query) use ($request) {
+                          $query->where('start_date', '<=', $request->date_from)
+                                ->where('end_date', '>=', $request->date_to);
+                      });
+            })
+            ->where('status', '!=', LeaveStatusEnum::DISAPPROVED->name)
+            ->first();
+
+        if ($leavel) {
+            return response()->json([
+                'status' => 201,
+                'error' => ['date_from' => ['You already have a leave application that overlaps with the selected dates.']]
+            ]);
+        }
+
+        $halfday = isset($request->halfday) ? (int) $request->halfday : 0;
+        $durationHours = $this->computeDurationHours($request->date_from, $request->date_to, $halfday);
+
+        // Determine if this is a paid leave that needs validation
+        $autoDisapproveReason = null;
+
+        if ($request->leavekind == 0) {
+            $leaveType = leavetype::where('id', $request->leavetype)->first();
+            $empDetail = $user->empDetail;
+
+            // Gender check for maternity/paternity leave
+            $leaveTypeName = strtolower($leaveType->type_leave ?? '');
+            $empGender = $user->employeeInformation->gender ?? null; // 1 = Male, 2 = Female
+            if ((str_contains($leaveTypeName, 'maternity') || str_contains($leaveTypeName, 'maternal')) && $empGender != 2) {
+                $autoDisapproveReason = 'This leave type is only applicable for female employees.';
+            } elseif ((str_contains($leaveTypeName, 'paternity') || str_contains($leaveTypeName, 'paternal')) && $empGender != 1) {
+                $autoDisapproveReason = 'This leave type is only applicable for male employees.';
             }
 
-            if ($request->leavekind == 0) {
+            $leaveValidation = leavevalidationModel::where('leave_type', $leaveType->id)
+                ->where('compID', $empDetail->empCompID)
+                ->first();
 
-                $leave = leavetype::where('id', $request->leavetype)
-                    ->first();
+            if (!$autoDisapproveReason && !$leaveValidation) {
+                $autoDisapproveReason = 'No leave validation found for this leave type. Contact supervisor.';
+            } elseif (!$autoDisapproveReason) {
+                $today = Carbon::now()->startOfDay();
+                $targetDate = Carbon::parse($request->date_from);
+                $diff = $today->diffInDays($targetDate, false);
+                $daysAfter = $diff < 0 ? abs($diff) : 0;
+                $daysBefore = $diff > 0 ? $diff : 0;
 
-                $empDetail = $user->empDetail;
-
-                $leaveValidation = leavevalidationModel::where('leave_type', $leave->id)
-                    ->where('compID', $empDetail->empCompID)
-                    ->first();
-
-                if ($leaveValidation) {
-                    $today = Carbon::now()->startOfDay();
-
-                    $targetDate = Carbon::parse($request->date_from);
-
-                    $diff = $today->diffInDays($targetDate, false); // negative = past, positive = future
-
-                    $daysAfter = $diff < 0 ? abs($diff) : 0; // days already passed
-                    $daysBefore  = $diff > 0 ? $diff : 0;  
-                    if ($leaveValidation->file_before == 1 && $leaveValidation->no_before_file > 0) {
-                        if ($daysBefore > $leaveValidation->no_before_file) {
-                            return response()->json([
-                                'status' => 201,
-                                'error' => ['leavetype' => ['This leave type requires filing at least ' . $leaveValidation->no_before_file . ' days before the leave start date. Contact supervisor.']]
-                            ]);
-                        }
-                    } else if ($leaveValidation->file_before == 0 && $daysBefore > 0) {
-                        return response()->json([
-                            'status' => 201,
-                            'error' => ['leavetype' => ['This leave type cannot be filed before. Contact supervisor.']]
-                        ]);
+                if ($leaveValidation->file_before == 1 && $leaveValidation->no_before_file > 0) {
+                    if ($daysBefore > $leaveValidation->no_before_file) {
+                        $autoDisapproveReason = 'This leave type requires filing at least ' . $leaveValidation->no_before_file . ' day(s) before the leave start date.';
                     }
+                } elseif ($leaveValidation->file_before == 0 && $daysBefore > 0) {
+                    $autoDisapproveReason = 'This leave type cannot be filed in advance.';
+                }
+
+                if (!$autoDisapproveReason) {
                     if ($leaveValidation->file_after == 1 && $leaveValidation->no_after_file > 0) {
                         if ($daysAfter > $leaveValidation->no_after_file) {
-                            return response()->json([
-                                'status' => 201,
-                                'error' => ['leavetype' => ['This leave type requires filing within ' . $leaveValidation->no_after_file . ' days after. Contact supervisor.']]
-                            ]);
+                            $autoDisapproveReason = 'This leave type requires filing within ' . $leaveValidation->no_after_file . ' day(s) after the leave date.';
                         }
-                    } else if ($leaveValidation->file_after == 0 && $daysAfter > 0) {
-                        return response()->json([
-                            'status' => 201,
-                            'error' => ['leavetype' => ['This leave type cannot be filed after. Contact supervisor.']]
-                        ]);
+                    } elseif ($leaveValidation->file_after == 0 && $daysAfter > 0) {
+                        $autoDisapproveReason = 'This leave type cannot be filed after the leave has occurred.';
                     }
-                    if (!$empDetail->empDateRegular) {
-                        return response()->json([
-                            'status' => 201,
-                            'error' => ['leavetype' => ['Missing Regularization Date. Contact supervisor.']]
-                        ]);
-                    }
+                }
 
+                if (!$autoDisapproveReason && !$empDetail->empDateRegular) {
+                    $autoDisapproveReason = 'Missing regularization date. Contact supervisor.';
+                }
+
+                if (!$autoDisapproveReason) {
                     if ($leaveValidation->pre_allocated == 1) {
                         $preAllocatedLeave = LeaveCreditAllocation::where('employee_id', $user->empID)
-                            ->where('leavetype_id', $leave->id)
+                            ->where('leavetype_id', $leaveType->id)
                             ->where('year', now()->year)
                             ->first();
 
-                        if ($preAllocatedLeave) {
-                            // check balance
+                        if (!$preAllocatedLeave) {
+                            $autoDisapproveReason = 'No leave credits allocated for this leave type. Contact supervisor.';
+                        } else {
+                            $leaveDuration = $halfday ? 0.5 : (Carbon::parse($request->date_to)->diffInDays(Carbon::parse($request->date_from)) + 1);
                             $balance = $preAllocatedLeave->balance;
-                            $leaveDuration = Carbon::parse($request->date_to)->diffInDays(Carbon::parse($request->date_from)) + 1;
-                            if (isset($request->halfday) && $request->halfday == 1) {
-                                $leaveDuration = 0.5; 
-                            }
 
                             if ($balance < $leaveDuration) {
-                                return response()->json([
-                                    'status' => 201,
-                                    'error' => ['leavetype' => ['Insufficient leave balance. Contact supervisor.']]
-                                ]);
+                                $autoDisapproveReason = 'Insufficient leave balance. Requested ' . $leaveDuration . ' day(s) but only ' . $balance . ' credit(s) remaining.';
                             } else {
-
                                 $leaveApplied = Leave::where('employee_id', $user->empID)
                                     ->where('leave_type', $request->leavetype)
                                     ->where('leave_kind', $request->leavekind)
@@ -149,241 +146,91 @@ class LeaveController extends Controller
                                     ->sum('total_hrs');
 
                                 if ($leaveApplied + ($leaveDuration * 8) > $balance * 8) {
-                                    return response()->json([
-                                        'status' => 201,
-                                        'error' => ['leavetype' => ['Applying for this leave will exceed your available balance. Contact supervisor.']]
-                                    ]);
+                                    $autoDisapproveReason = 'Applying for this leave will exceed your available balance including pending applications.';
                                 }
-
-                                $start = $request->date_from;
-                                $end = $request->date_to;
-                                $halfday = isset($request->halfday) ? $request->halfday : 0;
-
-                                $durationHours = 0;
-
-                                if ($halfday) {
-                                    $durationHours = 4;
-                                } else {
-                                    $startDate = \Carbon\Carbon::parse($start);
-                                    $endDate = \Carbon\Carbon::parse($end);
-
-                                    $diffDays = $startDate->diffInDays($endDate) + 1;
-
-                                    if ($diffDays == 1) {
-                                        $durationHours = 8;  
-                                    } else {
-                                        $durationHours = $diffDays * 8; 
-                                    }
-                                }
-
-                                $leave = Leave::create([
-                                    'employee_id' => $user->empID,
-                                    'start_date' => $start,
-                                    'end_date' => $end,
-                                    'leave_type' => $request->leavetype,
-                                    'total_hrs' => $durationHours,
-                                    'reason' => $request->purpose,
-                                    'status' => LeaveStatusEnum::FORAPPROVAL->name,
-                                    'is_half_day' => $halfday,
-                                    'leave_kind' => $request->leavekind,
-                                ]);
-
-                                $dateFrom = Carbon::parse($request->date_from);
-                                $dateTo   = Carbon::parse($request->date_to);
-                                    
-                                while ($dateFrom->lte($dateTo)) {
-                                    $durationHours = 8; 
-
-                                    if ($halfday && $request->date_from == $request->date_to) {
-                                        $durationHours = 4;
-                                    }
-
-                                    LeaveDetail::create([
-                                        'employee_id' => $user->empID,
-                                        'leave_id' => $leave->id,
-                                        'leavetype_id' => $request->leavetype,
-                                        'date' => $dateFrom->format('Y-m-d'),
-                                        'leave_kind' => $request->leavekind,
-                                        'total_hours' => $durationHours,
-                                        'status' => LeaveStatusEnum::FORAPPROVAL->name,
-                                    ]);
-
-                                    $dateFrom->addDay();
-                                }
-
                             }
-
-                        } else {
-                            return response()->json([
-                                'status' => 201,
-                                'error' => ['leavetype' => ['Leave credit missing. Contact supervisor.']]
-                            ]);
                         }
                     } else {
-                        // leave credit is based on validation credits
-                        $yearlyCredit = $leaveValidation->credits; // example: 5
-
-                        $start = Carbon::parse($request->date_from);
-                        $leaveDurationDays = Carbon::parse($request->date_to)->diffInDays($start) + 1;
-
-                        // months earned up to that month
-                        $monthsElapsed = $start->month; // April = 4
-
-                        $monthlyAccrual = $yearlyCredit / 12;
-
-                        $earnedCredits = round($monthlyAccrual * $monthsElapsed, 2);
+                        $yearlyCredit = $leaveValidation->credits;
+                        $startDate = Carbon::parse($request->date_from);
+                        $leaveDurationDays = Carbon::parse($request->date_to)->diffInDays($startDate) + 1;
+                        $monthsElapsed = $startDate->month;
+                        $earnedCredits = round(($yearlyCredit / 12) * $monthsElapsed, 2);
 
                         $usedHours = Leave::where('employee_id', $user->empID)
                             ->where('leave_type', $request->leavetype)
                             ->where('leave_kind', $request->leavekind)
-                            ->where('status', '!=',  LeaveStatusEnum::DISAPPROVED->name)
+                            ->where('status', '!=', LeaveStatusEnum::DISAPPROVED->name)
                             ->sum('total_hrs');
 
-                        $usedDays = $usedHours / 8;
-
-                        $remainingCredits = $earnedCredits - $usedDays;
+                        $remainingCredits = $earnedCredits - ($usedHours / 8);
 
                         if ($remainingCredits <= 0) {
-                            return response()->json([
-                                'status' => 201,
-                                'error' => ['leavetype' => ['Insufficient leave balance. Contact supervisor.']]
-                            ]);
-                        } else if ($remainingCredits < Carbon::parse($request->date_to)->diffInDays(Carbon::parse($request->date_from)) + 1) {
-                            return response()->json([
-                                'status' => 201,
-                                'error' => ['leavetype' => ['Applying for this leave will exceed your available balance. Contact supervisor.']]
-                            ]);
+                            $autoDisapproveReason = 'Insufficient leave balance. No credits remaining for this period.';
+                        } elseif ($leaveDurationDays > $remainingCredits) {
+                            $autoDisapproveReason = 'Insufficient leave balance. Requested ' . $leaveDurationDays . ' day(s) but only ' . $remainingCredits . ' credit(s) earned so far.';
                         }
-
-                        if ($leaveDurationDays > $remainingCredits) {
-                            return response()->json([
-                                'status' => 201,
-                                'error' => ['leavetype' => ['Applying for this leave will exceed your available balance. Contact supervisor.']]
-                            ]);
-                        } 
-
-                        $start = $request->date_from;
-                        $end = $request->date_to;
-                        $halfday = isset($request->halfday) ? $request->halfday : 0;
-
-                        $durationHours = 0;
-
-                        if ($halfday) {
-                            $durationHours = 4;
-                        } else {
-                            $startDate = \Carbon\Carbon::parse($start);
-                            $endDate = \Carbon\Carbon::parse($end);
-
-                            $diffDays = $startDate->diffInDays($endDate) + 1;
-
-                            if ($diffDays == 1) {
-                                $durationHours = 8;  
-                            } else {
-                                $durationHours = $diffDays * 8; 
-                            }
-                        }
-
-                        $leave = Leave::create([
-                            'employee_id' => $user->empID,
-                            'start_date' => $start,
-                            'end_date' => $end,
-                            'leave_type' => $request->leavetype,
-                            'total_hrs' => $durationHours,
-                            'reason' => $request->purpose,
-                            'status' => LeaveStatusEnum::FORAPPROVAL->name,
-                            'is_half_day' => $halfday,
-                            'leave_kind' => $request->leavekind,
-                        ]);
-
-                        $dateFrom = Carbon::parse($request->date_from);
-                        $dateTo   = Carbon::parse($request->date_to);
-                            
-                        while ($dateFrom->lte($dateTo)) {
-                            $durationHours = 8; 
-
-                            if ($halfday && $request->date_from == $request->date_to) {
-                                $durationHours = 4;
-                            }
-
-                            LeaveDetail::create([
-                                'employee_id' => $user->empID,
-                                'leave_id' => $leave->id,
-                                'leavetype_id' => $request->leavetype,
-                                'date' => $dateFrom->format('Y-m-d'),
-                                'leave_kind' => $request->leavekind,
-                                'total_hours' => $durationHours,
-                                'status' => LeaveStatusEnum::FORAPPROVAL->name,
-                            ]);
-
-                            $dateFrom->addDay();
-                        }
-
                     }
-                } else {
-                    return response()->json([
-                        'status' => 201,
-                        'error' => ['leavetype' => ['No Leave Validation yet. Contact supervisor.']]
-                    ]);
-                }
-            } else {
-                $start = $request->date_from;
-                $end = $request->date_to;
-                $halfday = isset($request->halfday) ? $request->halfday : 0;
-
-                $durationHours = 0;
-
-                if ($halfday) {
-                    $durationHours = 4;
-                } else {
-                    $startDate = \Carbon\Carbon::parse($start);
-                    $endDate = \Carbon\Carbon::parse($end);
-
-                    $diffDays = $startDate->diffInDays($endDate) + 1;
-
-                    if ($diffDays == 1) {
-                        $durationHours = 8;  
-                    } else {
-                        $durationHours = $diffDays * 8; 
-                    }
-                }
-
-                $leave = Leave::create([
-                    'employee_id' => $user->empID,
-                    'start_date' => $start,
-                    'end_date' => $end,
-                    'leave_type' => $request->leavetype,
-                    'total_hrs' => $durationHours,
-                    'reason' => $request->purpose,
-                    'status' => LeaveStatusEnum::FORAPPROVAL->name,
-                    'is_half_day' => $halfday,
-                    'leave_kind' => $request->leavekind,
-                ]);
-
-                $dateFrom = Carbon::parse($request->date_from);
-                $dateTo   = Carbon::parse($request->date_to);
-                
-                while ($dateFrom->lte($dateTo)) {
-                    $durationHours = 8; 
-
-                    if ($halfday && $request->date_from == $request->date_to) {
-                        $durationHours = 4;
-                    }
-
-                    LeaveDetail::create([
-                        'employee_id' => $user->empID,
-                        'leave_id' => $leave->id,
-                        'leavetype_id' => $request->leavetype,
-                        'date' => $dateFrom->format('Y-m-d'),
-                        'leave_kind' => $request->leavekind,
-                        'total_hours' => $durationHours,
-                        'status' => LeaveStatusEnum::FORAPPROVAL->name,
-                    ]);
-
-                    $dateFrom->addDay();
                 }
             }
-
         }
+
+        $status = $autoDisapproveReason ? LeaveStatusEnum::DISAPPROVED->name : LeaveStatusEnum::FORAPPROVAL->name;
+
+        $leaveRecord = Leave::create([
+            'employee_id'         => $user->empID,
+            'start_date'          => $request->date_from,
+            'end_date'            => $request->date_to,
+            'leave_type'          => $request->leavetype,
+            'total_hrs'           => $durationHours,
+            'reason'              => $request->purpose,
+            'status'              => $status,
+            'is_half_day'         => $halfday,
+            'leave_kind'          => $request->leavekind,
+            'disapproved_remarks' => $autoDisapproveReason,
+        ]);
+
+        $dateFrom = Carbon::parse($request->date_from);
+        $dateTo   = Carbon::parse($request->date_to);
+
+        while ($dateFrom->lte($dateTo)) {
+            $detailHours = ($halfday && $request->date_from == $request->date_to) ? 4 : 8;
+
+            LeaveDetail::create([
+                'employee_id' => $user->empID,
+                'leave_id'    => $leaveRecord->id,
+                'leavetype_id'=> $request->leavetype,
+                'date'        => $dateFrom->format('Y-m-d'),
+                'leave_kind'  => $request->leavekind,
+                'total_hours' => $detailHours,
+                'status'      => $status,
+            ]);
+
+            $dateFrom->addDay();
+        }
+
+        if ($autoDisapproveReason) {
+            return response()->json([
+                'status'  => 200,
+                'auto_disapproved' => true,
+                'message' => 'Your leave application was automatically disapproved: ' . $autoDisapproveReason,
+            ]);
+        }
+
+        return response()->json([
+            'status'  => 200,
+            'message' => 'Leave application submitted successfully.',
+        ]);
+    }
+
+    private function computeDurationHours(string $dateFrom, string $dateTo, int $halfday): int
+    {
+        if ($halfday) {
+            return 4;
+        }
+
+        $diffDays = Carbon::parse($dateFrom)->diffInDays(Carbon::parse($dateTo)) + 1;
+        return $diffDays * 8;
     }
 
     public function checkLeaveCredit(Request $request)

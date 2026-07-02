@@ -110,15 +110,84 @@ class registerCtrl extends Controller
         return json_encode(array('status'=>200,'data'=>$data));
     }
 
+    /**
+     * Candidate login handles in priority order (ASCII, lowercase, punctuation
+     * stripped so multi-word names collapse to one token):
+     *   1. first initial + surname        ("Juan Dela Cruz" -> "jdelacruz")
+     *   2. surname initial + first name    (collision swap: "Realyn Cuenca"
+     *      -> "crealyn", "Roselyn Cuenca" -> "croselyn")
+     * Falls back to the employee ID. Mirrors the one-time backfill migration.
+     */
+    private function usernameCandidates(?string $fname, ?string $lname, string $empID): array
+    {
+        $first = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', Str::ascii((string) $fname)));
+        $last  = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', Str::ascii((string) $lname)));
+
+        $candidates = [];
+        if ($first !== '' && $last !== '') {
+            $candidates[] = substr($first, 0, 1) . $last;  // jdelacruz
+            $candidates[] = substr($last, 0, 1) . $first;  // crealyn (interchanged)
+        } elseif ($last !== '') {
+            $candidates[] = $last;
+        } elseif ($first !== '') {
+            $candidates[] = $first;
+        }
+
+        $emp = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $empID));
+        if ($emp !== '') {
+            $candidates[] = $emp;
+        }
+
+        $out = [];
+        foreach ($candidates as $c) {
+            $c = substr($c, 0, 50);
+            if ($c !== '' && ! in_array($c, $out, true)) {
+                $out[] = $c;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Build a unique login username: try each candidate format as-is, and only
+     * if all are taken fall back to a numeric suffix on the primary format.
+     */
+    private function generateUsername(?string $fname, ?string $lname, string $empID): ?string
+    {
+        $candidates = $this->usernameCandidates($fname, $lname, $empID);
+        if (! $candidates) {
+            return null; // nothing usable — leave NULL, employee logs in by email
+        }
+
+        foreach ($candidates as $c) {
+            if (! DB::table('users')->where('username', $c)->exists()) {
+                return $c;
+            }
+        }
+
+        // Every preferred format is taken — number the primary one.
+        $base = $candidates[0];
+        $i = 1;
+        do {
+            $suffix   = (string) $i++;
+            $username = substr($base, 0, 50 - strlen($suffix)) . $suffix;
+        } while (DB::table('users')->where('username', $username)->exists());
+
+        return $username;
+    }
+
     public function create(Request $request)
     {
-       
+
         $defaultpass = "123456";
         $current_date_time = now();
         // dd($request->path->getClientOriginalName()); sdsd
 
         $validator = Validator::make($request->all(), [
             'email' => 'required|unique:users',
+            // Optional short login handle; letters/numbers/dash/underscore only.
+            'username' => ['nullable', 'string', 'max:50', 'alpha_dash', Rule::unique('users', 'username')],
             'firstname' => [
                 'required',
                  'string',
@@ -226,6 +295,9 @@ class registerCtrl extends Controller
              */
             $valuesUser = [
                 'email' => $request->email,
+                // Use the admin-typed username, otherwise auto-generate "first
+                // initial + surname" (e.g. Juan Dela Cruz -> jdelacruz).
+                'username' => $request->username ?: $this->generateUsername($request->firstname, $request->lastname, $empID),
                 'empID' => $empID,
                 'status' => '1',
                 'suffix' => $request->suffix,
@@ -368,6 +440,14 @@ class registerCtrl extends Controller
                 'email',
                 Rule::unique('users', 'email')->ignore($request->empID, 'empID'),
             ],
+            // Optional short login handle; unique across users, ignoring this row.
+            'username' => [
+                'nullable',
+                'string',
+                'max:50',
+                'alpha_dash',
+                Rule::unique('users', 'username')->ignore($request->empID, 'empID'),
+            ],
             'firstname' => [
                 'required',
                 'string',
@@ -438,6 +518,7 @@ class registerCtrl extends Controller
              */
             $valuesUser = [
                 'email' => $request->email,
+                'username' => $request->username ?: null,
                 'status' => '1',
                 'suffix' => $request->suffix,
                 'lname' => $request->lastname,

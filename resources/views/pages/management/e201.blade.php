@@ -88,7 +88,8 @@
     .employee-list-panel,
     nav[aria-label="breadcrumb"],
     .container-fluid > .d-flex.mb-4,
-    button[onclick="window.print()"], 
+    button[onclick="window.print()"],
+    #resetPasswordBtn,
     #editEmployee {
         display: none !important;
     }
@@ -96,7 +97,8 @@
     .employee-list-panel,
     nav[aria-label="breadcrumb"],
     .container-fluid > .d-flex.mb-4, /* Hides the top header and back button */
-    button[onclick="window.print()"], 
+    button[onclick="window.print()"],
+    #resetPasswordBtn,
     #editEmployee {
         display: none !important;
     }
@@ -168,7 +170,7 @@
 
     /* Dossier Styling */
     .dossier-header { background: linear-gradient(135deg, #008080 0%, #005a5a 100%); color: white; border-radius: 15px; padding: 30px; }
-    .profile-pic-large { width: 120px; height: 120px; border: 5px solid rgba(255,255,255,0.3); border-radius: 15px; object-fit: cover; background: white; }
+    .profile-pic-large { width: 120px; height: 120px; border: 5px solid rgba(255,255,255,0.3); border-radius: 50%; object-fit: cover; background: white; }
     .info-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: none; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
     
     .label-caps { font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
@@ -227,7 +229,7 @@
                         <span>{{ strtoupper(substr($user->fname, 0, 1) . substr($user->lname, 0, 1)) }}</span>
                     </div>
                     <div class="flex-grow-1">
-                        <div class="fw-bold text-dark mb-0 small">{{ strtoupper($user->lname) }}, {{ $user->fname }}</div>
+                        <div class="fw-bold text-dark mb-0 small">{{ strtoupper($user->lname) }}, {{ strtoupper($user->fname) }}</div>
                         <div class="text-muted" style="font-size: 0.65rem;">
                              {{ $user->empDetail->department->dep_name ?? 'No Dept' }} | {{ $user->empDetail->position->pos_desc ?? 'No Position' }}
                         </div>
@@ -242,16 +244,27 @@
                 <div class="dossier-header mb-4">
                     <div class="row align-items-center">
                         <div class="col-auto">
-                            <img id="view_img" src="" class="profile-pic-large" alt="Profile">
+                            <img id="view_img" src="" class="profile-pic-large" alt="Profile" style="display:none;">
+                            <div id="view_img_placeholder" class="profile-pic-large align-items-center justify-content-center" style="background:#f1f5f9;display:none;"></div>
                         </div>
                         <div class="col">
                             <span class="badge bg-secondary text-white mb-2" id="view_status">STATUS</span>
+                            <span class="badge bg-dark text-white mb-2 ms-1 d-none" id="view_flag">FLAG</span>
                             <h1 class="fw-bold mb-1 text-capitalize" id="view_name">---</h1>
                             <p class="mb-0 opacity-75 fs-5" id="view_job_title">Position | Department</p>
                         </div>
                         <div class="col-auto text-end d-flex gap-2">
                             <button class="btn btn-light rounded-pill px-4 fw-bold shadow-sm" onclick="window.print()">
                                 <i class="fa-solid fa-print me-2"></i>Print
+                            </button>
+                            @can('manageemployeestatus')
+                            <button type="button" class="btn btn-light rounded-pill px-4 fw-bold shadow-sm text-teal" id="updateStatusBtn" data-id="" data-name=""
+                                data-emp-status="" data-hired="" data-sep-date="" data-sep-reason="" data-flag-status="" data-flag-reason="">
+                                <i class="fa-solid fa-user-gear me-2"></i>Update Status
+                            </button>
+                            @endcan
+                            <button type="button" class="btn btn-light rounded-pill px-4 fw-bold shadow-sm text-danger" id="resetPasswordBtn" data-id="" data-name="">
+                                <i class="fa-solid fa-key me-2"></i>Reset Password
                             </button>
                             <a target="_blank" class="btn btn-light rounded-pill px-4 fw-bold shadow-sm" id="editEmployee">
                                 <i class="fa-solid fa-pencil me-2"></i>Edit
@@ -293,7 +306,30 @@
                                     <div class="label-caps">Card / Account No.</div>
                                     <div class="value-text" id="view_card_no">---</div>
                                 </div>
+                                <div class="col-6 col-md-4">
+                                    <div class="label-caps">Years Rendered</div>
+                                    <div class="value-text" id="view_years_rendered">---</div>
+                                </div>
+                                <div class="col-6 col-md-4" id="view_sep_date_wrap" style="display:none;">
+                                    <div class="label-caps">Separation Date</div>
+                                    <div class="value-text text-danger" id="view_separation_date">---</div>
+                                </div>
+                                <div class="col-12" id="view_sep_reason_wrap" style="display:none;">
+                                    <div class="label-caps">Separation Reason</div>
+                                    <div class="value-text" id="view_separation_reason">---</div>
+                                </div>
+                                <div class="col-12" id="view_flag_reason_wrap" style="display:none;">
+                                    <div class="label-caps">Flag Reason</div>
+                                    <div class="value-text text-danger" id="view_flag_reason">---</div>
+                                </div>
                             </div>
+                        </div>
+
+                        {{-- Offboarding clearance — shown only for separated employees --}}
+                        <div class="info-card" id="view_clearance_card" style="display:none;">
+                            <h6 class="fw-bold mb-3"><i class="fa-solid fa-clipboard-check me-2 text-teal"></i>Offboarding Clearance</h6>
+                            <div id="view_clearance_list"></div>
+                            <div class="text-muted" style="font-size:.72rem;" id="view_clearance_meta"></div>
                         </div>
 
                         <div class="info-card">
@@ -362,6 +398,10 @@
                                 <div class="label-caps">Employee ID</div>
                                 <div class="value-text" id="view_empid_val">---</div>
                             </div>
+                            <div class="mb-4">
+                                <div class="label-caps">Login Username</div>
+                                <div class="value-text text-break" id="view_username">---</div>
+                            </div>
                             <div class="mb-1">
                                 <div class="label-caps">Current Company</div>
                                 <div class="value-text" id="view_company">---</div>
@@ -374,6 +414,98 @@
     </div>
 </div>
 
+@can('manageemployeestatus')
+<!-- Update Status / Separation & Flag modal -->
+<div class="modal fade" id="updateStatusModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="fa-solid fa-user-gear me-2 text-teal"></i>Update Employee Status</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Updating status for <strong id="us_emp_name">this employee</strong>.</p>
+
+                <h6 class="fw-bold small text-uppercase text-muted mb-2">Employment</h6>
+                <div class="mb-3">
+                    <label for="us_emp_status" class="form-label small fw-semibold">Employment Status</label>
+                    <select class="form-select" id="us_emp_status">
+                        <option value="1">Employed (Active)</option>
+                        <option value="0">Resigned</option>
+                        <option value="2">End Of Contract</option>
+                    </select>
+                </div>
+                <div id="us_separation_fields" class="d-none">
+                    <div class="mb-3">
+                        <label for="us_separation_date" class="form-label small fw-semibold">Separation Date</label>
+                        <input type="date" class="form-control" id="us_separation_date">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Years Rendered <span class="text-muted">(auto-computed)</span></label>
+                        <div class="form-control bg-light" id="us_years_preview">—</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="us_separation_reason" class="form-label small fw-semibold">Separation Reason</label>
+                        <textarea class="form-control" id="us_separation_reason" rows="2" placeholder="Reason for resignation / end of contract"></textarea>
+                    </div>
+
+                    {{-- Offboarding clearance checklist — HR-attested, no uploads.
+                         Each row carries data-applies so the JS shows only the items
+                         relevant to the chosen exit type (0=Resigned, 2=End of Contract). --}}
+                    <label class="form-label small fw-semibold">Offboarding Clearance</label>
+                    <p class="text-muted" style="font-size:.72rem;margin:-2px 0 8px;">Tick each completed requirement. A reference note is optional (e.g. clearance ref #, "laptop received by IT").</p>
+                    <div id="us_clearance" class="border rounded-3 p-2 mb-2" style="background:#f8fafc;">
+                        @php
+                            $clItems = [
+                                ['key' => 'resignation_letter', 'label' => 'Resignation Letter',             'applies' => '0'],
+                                ['key' => 'office_notice',      'label' => 'Signed Notice from Office',      'applies' => '2'],
+                                ['key' => 'clearance_form',     'label' => 'Clearance Form',                 'applies' => '0,2'],
+                                ['key' => 'company_items',      'label' => 'Return of Company-Issued Items', 'applies' => '0,2'],
+                                ['key' => 'quitclaim',          'label' => 'Signed/Received Quitclaim',      'applies' => '0,2'],
+                            ];
+                        @endphp
+                        @foreach ($clItems as $it)
+                            <div class="cl-row mb-2" data-applies="{{ $it['applies'] }}" data-key="{{ $it['key'] }}">
+                                <div class="form-check">
+                                    <input class="form-check-input us-cl-check" type="checkbox" id="us_cl_{{ $it['key'] }}" value="{{ $it['key'] }}">
+                                    <label class="form-check-label small fw-semibold" for="us_cl_{{ $it['key'] }}">{{ $it['label'] }}</label>
+                                </div>
+                                <input type="text" class="form-control form-control-sm us-cl-ref mt-1" id="us_clref_{{ $it['key'] }}" placeholder="Reference (optional)">
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+
+                <hr>
+                <h6 class="fw-bold small text-uppercase text-muted mb-2">Flag <span class="text-muted text-lowercase fw-normal">(independent of employment)</span></h6>
+                <div class="mb-3">
+                    <label for="us_flag_status" class="form-label small fw-semibold">Flag</label>
+                    <select class="form-select" id="us_flag_status">
+                        <option value="">None</option>
+                        <option value="redflag">Red Flag</option>
+                        <option value="blacklist">Blacklisted</option>
+                    </select>
+                </div>
+                <div id="us_flag_fields" class="d-none">
+                    <div class="mb-2">
+                        <label for="us_flag_reason" class="form-label small fw-semibold">Flag Reason</label>
+                        <textarea class="form-control" id="us_flag_reason" rows="2" placeholder="Reason for flagging this employee"></textarea>
+                    </div>
+                </div>
+
+                <div class="text-danger small mt-2 d-none" id="us_error"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-teal rounded-pill px-4 fw-bold text-white" id="us_save" style="background-color:#008080;">
+                    <i class="fa-solid fa-floppy-disk me-2"></i>Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+@endcan
+
 <script src="{{ asset('js/modules/e201_admin.js') }}?v={{ @filemtime(public_path('js/modules/e201_admin.js')) ?: time() }}" defer></script>
- 
+
 @endsection

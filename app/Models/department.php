@@ -15,5 +15,19 @@ class department extends Model
 
     protected $fillable = [
         'dep_name',
+        'dep_address',
+        'dep_contact_phone',
+        'dep_email',
+        'dep_tin',
+        'dep_sss_employer_no',
+        'dep_philhealth_employer_no',
+        'dep_pagibig_employer_no',
+        'dep_logo_path',
+        'dep_description',
     ];
+
+    public function documents()
+    {
+        return $this->hasMany(\App\Models\DepartmentDocument::class, 'department_id', 'id');
+    }
 }

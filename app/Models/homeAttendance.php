@@ -65,8 +65,13 @@ class homeAttendance extends Model
     {
         $nightDiffMinutes = 0;
 
-        // We start checking from the day of the Clock-In
-        $currentDay = $actualIn->copy()->startOfDay();
+        // Start ONE day before the clock-in day. Each iteration's night window is
+        // [D 22:00 → D+1 06:00]; the 00:00–06:00 slice of the clock-in day belongs to
+        // the PREVIOUS day's window, so a punch that works purely after midnight
+        // (e.g. 00:00–06:00) would be missed if we started at the clock-in day itself.
+        // Windows are disjoint (06:00–22:00 gap between them), so the extra day can't
+        // double-count.
+        $currentDay = $actualIn->copy()->startOfDay()->subDay();
         // We check until the day of the Clock-Out
         $lastDay = $actualOut->copy()->startOfDay();
 
@@ -136,54 +141,85 @@ class homeAttendance extends Model
         $summary->total_hours = round($logs->sum('duration_hours'), 2);
         $summary->mins_night_diff = (int) $logs->sum(fn($log) => $log->night_diff_hours * 60);
 
-        // 4️⃣ Fetch schedule valid for this attendance date
-        $schedule = EmployeeSchedule::where('employee_id', $this->employee_id)
-            ->whereDate('sched_start_date', '<=', $attendanceDate)
-            ->whereDate('sched_end_date', '>=', $attendanceDate)
-            ->orderBy('sched_start_date', 'desc')
-            ->first();
+        // 4️⃣ Resolve the schedule this day's punches were clamped against. Prefer the punch's
+        // OWN schedule_id (matches logTimeOut) so late/undertime/over-break agree with how
+        // duration was computed; fall back to a date-range lookup only when it's missing.
+        $schedule = ($this->schedule_id ? EmployeeSchedule::find($this->schedule_id) : null)
+            ?: EmployeeSchedule::where('employee_id', $this->employee_id)
+                ->whereDate('sched_start_date', '<=', $attendanceDate)
+                ->whereDate('sched_end_date', '>=', $attendanceDate)
+                ->orderBy('sched_start_date', 'desc')
+                ->first();
 
-        if ($schedule && $logs->count()) {
-            $firstIn = Carbon::parse($logs->sortBy('time_in')->first()->time_in);
-            $lastOut = Carbon::parse($logs->sortByDesc('time_out')->first()->time_out);
+        // Shift + break windows, anchored to THIS attendance date (the work day) — which equals
+        // sched_start_date for normal per-day and overnight shifts, and stays correct even for a
+        // multi-day range schedule. Built ONCE and reused for late/undertime AND over-break/outpass
+        // so both agree (day-shift and overnight).
+        $schedIn = $schedOut = $breakStart = $breakEnd = null;
+        if ($schedule && $schedule->sched_in && $schedule->sched_out) {
+            $schedIn  = Carbon::parse($attendanceDate . ' ' . $schedule->sched_in);
+            $schedOut = Carbon::parse($attendanceDate . ' ' . $schedule->sched_out);
+            if ($schedOut->lessThanOrEqualTo($schedIn)) { $schedOut->addDay(); } // overnight shift
 
-            $schedIn = Carbon::parse($schedule->sched_start_date . ' ' . $schedule->sched_in);
-            $schedOut = Carbon::parse($schedule->sched_end_date . ' ' . $schedule->sched_out);
-
-            // Overnight adjustment: only if schedule crosses days
-            if ($schedOut->lessThanOrEqualTo($schedIn)) {
-                $schedOut->addDay();
+            if ($schedule->break_start && $schedule->break_end) {
+                $breakStart = Carbon::parse($attendanceDate . ' ' . $schedule->break_start);
+                $breakEnd   = Carbon::parse($attendanceDate . ' ' . $schedule->break_end);
+                if ($breakStart->lt($schedIn)) { $breakStart->addDay(); $breakEnd->addDay(); } // post-midnight break
+                if ($breakEnd->lt($breakStart)) { $breakEnd->addDay(); }                        // break crosses midnight
             }
+        }
 
-            // Calculate late minutes
+        // Overlap (minutes) between an arbitrary window and the break window. Break time is
+        // unpaid (not work), so it must never be charged as a late/undertime deduction.
+        $breakOverlap = function (Carbon $winStart, Carbon $winEnd) use ($breakStart, $breakEnd): int {
+            if (!$breakStart || !$breakEnd) { return 0; }
+            $start = $winStart->gt($breakStart) ? $winStart : $breakStart;
+            $end   = $winEnd->lt($breakEnd) ? $winEnd : $breakEnd;
+            return $end->gt($start) ? $end->diffInMinutes($start) : 0;
+        };
+
+        // 5️⃣ Late / Undertime
+        if ($schedIn && $logs->count()) {
+            $firstIn = Carbon::parse($logs->sortBy('time_in')->first()->time_in);
+
+            // Late = gap from schedule start to first punch-in, minus any break in that gap.
             $summary->mins_late = $firstIn->gt($schedIn)
-                ? $schedIn->diffInMinutes($firstIn)
+                ? max(0, $schedIn->diffInMinutes($firstIn) - $breakOverlap($schedIn, $firstIn))
                 : 0;
 
-            // Calculate undertime minutes
-            $summary->mins_undertime = $lastOut->lt($schedOut)
-                ? $lastOut->diffInMinutes($schedOut)
+            // Undertime only once the day is FINAL: derive last-out from CLOSED punches, and
+            // skip entirely if any punch is still open (person is still clocked in) so a null
+            // time_out is never parsed as "now".
+            $hasOpenPunch = $logs->contains(fn($l) => is_null($l->time_out));
+            $closedLogs   = $logs->filter(fn($l) => !is_null($l->time_out));
+            $lastOut      = $closedLogs->isNotEmpty()
+                ? Carbon::parse($closedLogs->sortByDesc('time_out')->first()->time_out)
+                : null;
+
+            $summary->mins_undertime = (!$hasOpenPunch && $lastOut && $lastOut->lt($schedOut))
+                ? max(0, $lastOut->diffInMinutes($schedOut) - $breakOverlap($lastOut, $schedOut))
                 : 0;
         } else {
             $summary->mins_late = 0;
             $summary->mins_undertime = 0;
         }
 
-        // 5️⃣ --- Over-break & Outpass detection ---
-        // Company rule: total break of up to 3 hours (180 min) is allowed;
-        // anything beyond that is Over-break. Gaps outside the break period are Outpass.
+        // 6️⃣ --- Over-break & Outpass detection ---
+        // Company rule: total break of up to 3 hours (180 min) is allowed; anything beyond
+        // that is Over-break. Gaps outside the break period are Outpass. Reuses the SAME
+        // break window ($breakStart/$breakEnd) built above, so overnight breaks are matched
+        // on the correct day (this block previously re-derived it without the overnight shift,
+        // misclassifying an overnight break-gap as Outpass).
         $maxBreakMinutes = 180; // 3-hour break cap
         $breakMinutes = 0;
         $outPass = 0;
 
-        if ($schedule && $schedule->break_start && $schedule->break_end) {
-            $breakStart = Carbon::parse($schedule->sched_start_date . ' ' . $schedule->break_start);
-            $breakEnd = Carbon::parse($schedule->sched_start_date . ' ' . $schedule->break_end);
-
-            // Sort logs by time_in
+        if ($breakStart && $breakEnd && $logs->count() > 1) {
             $sortedLogs = $logs->sortBy('time_in')->values();
 
             for ($i = 0; $i < count($sortedLogs) - 1; $i++) {
+                // Skip an open punch — a gap can only be measured between two closed sides.
+                if (is_null($sortedLogs[$i]->time_out) || is_null($sortedLogs[$i + 1]->time_in)) { continue; }
                 $timeOut = Carbon::parse($sortedLogs[$i]->time_out);
                 $nextIn = Carbon::parse($sortedLogs[$i + 1]->time_in);
                 $gap = $timeOut->diffInMinutes($nextIn);
@@ -353,6 +389,25 @@ class homeAttendance extends Model
     // ==============================================================
     public static function logTimeIn($employeeId)
     {
+        // Serialize concurrent time-ins per employee so a rapid double-submit can't slip two
+        // open punches past the (non-atomic) "active punch" check below. File cache is the
+        // project default lock store.
+        $lock = \Illuminate\Support\Facades\Cache::lock('timein:' . $employeeId, 10);
+        try {
+            $lock->block(5);
+        } catch (\Illuminate\Contracts\Cache\LockTimeoutException $e) {
+            throw new \Exception('Time-in is busy processing, please try again in a moment.');
+        }
+        try {
+            return self::logTimeInInner($employeeId);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /** Actual time-in logic; always run under the per-employee lock from logTimeIn(). */
+    protected static function logTimeInInner($employeeId)
+    {
 
         $now = now();
         $today = $now->toDateString();
@@ -399,6 +454,7 @@ class homeAttendance extends Model
             ->get();
 
         $matchedSchedule = null;
+        $matchedSchedIn = null;
 
         foreach ($candidates as $s) {
             // Build datetime for schedule in/out
@@ -414,9 +470,14 @@ class homeAttendance extends Model
             $windowStart = $schedIn->copy()->subMinutes($bufferMinutes);
             $windowEnd = $schedOut->copy();
 
+            // If several shifts' windows contain "now", pick the one that started most
+            // recently (latest schedIn) — the shift the employee is actually starting —
+            // rather than whichever the DB returned first.
             if ($now->between($windowStart, $windowEnd)) {
-                $matchedSchedule = $s;
-                break;
+                if (!$matchedSchedule || $schedIn->gt($matchedSchedIn)) {
+                    $matchedSchedule = $s;
+                    $matchedSchedIn = $schedIn;
+                }
             }
         }
 
