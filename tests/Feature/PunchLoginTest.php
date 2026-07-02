@@ -346,4 +346,59 @@ class PunchLoginTest extends TestCase
 
         $this->assertSame($later->id, $punch->schedule_id, 'should match the 08:00 shift, not the 06:00 one');
     }
+
+    // ── Missed / next-day logout parity (0 paid hours) ──────────────────────
+
+    /**
+     * Missed logout closed via the manual next-day Time-OUT must earn 0 paid hours,
+     * matching the auto-close-on-next-time-in path (autoCloseMissedLogout). Day shift
+     * 08:00–17:00, in Day 1 08:00, out Day 2 09:00 → 0h, remark "Auto-closed (Missed logout)".
+     */
+    public function test_next_day_manual_logout_is_zeroed_like_autoclose(): void
+    {
+        $this->schedule(); // 2026-06-16 08:00–17:00
+
+        Carbon::setTestNow(Carbon::parse('2026-06-16 08:00:00'));
+        $punch = homeAttendance::logTimeIn($this->emp);
+
+        Carbon::setTestNow(Carbon::parse('2026-06-17 09:00:00')); // forgot to log out; next day
+        $punch->logTimeOut();
+        $punch->refresh();
+
+        $this->assertEquals(0.0, (float) $punch->duration_hours, 'missed logout earns no paid hours');
+        $this->assertEquals(0.0, (float) $punch->night_diff_hours);
+        $this->assertSame('Auto-closed (Missed logout)', $punch->remarks);
+        // time_out pinned to the scheduled end (2026-06-16 17:00), exactly like autoClose.
+        $this->assertSame('2026-06-16 17:00:00', Carbon::parse($punch->time_out)->format('Y-m-d H:i:s'));
+
+        $summary = AttendanceSummary::where('employee_id', $this->emp)
+            ->whereDate('attendance_date', '2026-06-16')->first();
+        $this->assertNotNull($summary);
+        $this->assertEquals(0.0, (float) $summary->total_hours);
+    }
+
+    /**
+     * Regression guard: a LEGITIMATE overnight shift (22:00–06:00) whose logout lands on the
+     * same calendar date as the scheduled end must keep its full hours — it must NOT be
+     * mistaken for a missed logout. Out at 06:30 (Day 2) clamps to 06:00 = 8h, not 0.
+     */
+    public function test_overnight_next_day_logout_retains_hours(): void
+    {
+        $this->schedule([
+            'sched_in'       => '22:00:00',
+            'sched_out'      => '06:00:00',
+            'sched_end_date' => '2026-06-17',
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-06-16 22:00:00'));
+        $punch = homeAttendance::logTimeIn($this->emp);
+
+        Carbon::setTestNow(Carbon::parse('2026-06-17 06:30:00')); // slightly late out, same date as sched_out
+        $punch->logTimeOut();
+        $punch->refresh();
+
+        $this->assertEquals(8.0, (float) $punch->duration_hours, 'legitimate overnight shift keeps full hours');
+        $this->assertEquals(8.0, (float) $punch->night_diff_hours);
+        $this->assertStringNotContainsString('Missed logout', (string) $punch->remarks);
+    }
 }

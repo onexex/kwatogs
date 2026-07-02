@@ -366,16 +366,30 @@ class homeAttendance extends Model
             $this->duration_hours = max($totalMinutes / 60, 0);
             $this->night_diff_hours = $evaluated['night_diff_hours'];
             $this->remarks = $evaluated['remarks'];
-            // If actual logout is a different day than the scheduled logout
+            // Missed logout: the employee never clocked out and is closing the punch on a
+            // LATER calendar day than the shift's scheduled end. Mirror autoCloseMissedLogout()
+            // so the manual Time-OUT path and the auto-close-on-next-time-in path agree —
+            // company policy: a missed logout earns no paid hours. (Legitimate overnight shifts
+            // log out on the SAME date as sched_out, so this condition is false for them.)
             if ($actualOut->toDateString() !== $schedOut->toDateString() && $actualOut->gt($schedOut)) {
-                $this->remarks .= ' [Logout Next Day - Capped]';
+                $this->time_out         = $schedOut;   // match autoClose: pin to scheduled end
+                $this->duration_hours   = 0;
+                $this->night_diff_hours = 0;
+                $this->remarks          = 'Auto-closed (Missed logout)';
             }
         } else {
             // No schedule fallback (Actual time)
             $evaluated = $this->evaluatePunch($actualIn, $actualOut);
-            $this->duration_hours = $actualOut->diffInMinutes($actualIn) / 60;
-            $this->night_diff_hours = $evaluated['night_diff_hours'];
-            $this->remarks = $evaluated['remarks'] . ' (No Schedule)';
+            if ($actualOut->toDateString() !== $actualIn->toDateString()) {
+                // Missed logout with no schedule to clamp against — no paid hours.
+                $this->duration_hours   = 0;
+                $this->night_diff_hours = 0;
+                $this->remarks          = 'Auto-closed (Missed logout, No Schedule)';
+            } else {
+                $this->duration_hours = $actualOut->diffInMinutes($actualIn) / 60;
+                $this->night_diff_hours = $evaluated['night_diff_hours'];
+                $this->remarks = $evaluated['remarks'] . ' (No Schedule)';
+            }
         }
 
         $this->save();
