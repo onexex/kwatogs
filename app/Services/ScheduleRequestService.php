@@ -26,10 +26,30 @@ class ScheduleRequestService
      * even before HR is around. HR then reviews (approve = confirm, disapprove
      * = revert).
      */
-    public function store(string $empID, string $date, string $newIn, string $newOut, ?string $reason): array
+    public function store(string $empID, string $date, string $newIn, string $newOut, ?string $newBreakStart, ?string $newBreakEnd, ?string $reason): array
     {
         if ($date < Carbon::today()->toDateString()) {
             return ['ok' => false, 'message' => 'You can only request a change for today or a future date.'];
+        }
+
+        // Safeguard: if the employee has already timed in for that day, block the change.
+        // Applying a new schedule now would re-clamp/diverge the punch that's already
+        // recorded (duration/late/undertime/night-diff were computed against the old shift).
+        // A correction after time-in has to go through HR, not self-service.
+        $hasAttendance = homeAttendance::where('employee_id', $empID)
+            ->whereDate('attendance_date', $date)
+            ->exists();
+        if ($hasAttendance) {
+            return [
+                'ok' => false,
+                'message' => 'You already timed in for this day, so its schedule can no longer be changed here. Please contact HR for any correction.',
+            ];
+        }
+
+        // The requested schedule must satisfy the same company rule as any other schedule:
+        // a break is required and (shift − break) must net exactly 8h (R1 + R2).
+        if ($netError = EmployeeSchedule::netValidationError($newIn, $newOut, $newBreakStart, $newBreakEnd)) {
+            return ['ok' => false, 'message' => $netError];
         }
 
         $req = ScheduleRequest::updateOrCreate(
@@ -37,6 +57,8 @@ class ScheduleRequestService
             [
                 'new_sched_in'        => $newIn,
                 'new_sched_out'       => $newOut,
+                'new_break_start'     => $newBreakStart,
+                'new_break_end'       => $newBreakEnd,
                 'reason'              => $reason,
                 'status'              => 'FORAPPROVAL',
                 'approved_by'         => null,
@@ -101,15 +123,17 @@ class ScheduleRequestService
             ? Carbon::parse($date)->addDay()->toDateString()
             : $date;
 
-        // critical writes — schedule + applied flag
+        // critical writes — schedule + applied flag. Break now comes from the REQUEST
+        // (employee-specified via Kuya Kwatogs); fall back to the existing schedule's break
+        // only for a legacy request that has none.
         EmployeeSchedule::updateOrCreate(
             ['employee_id' => $req->employee_id, 'sched_start_date' => $date],
             [
                 'sched_in'       => $req->new_sched_in,
                 'sched_out'      => $req->new_sched_out,
                 'sched_end_date' => $endDate,
-                'break_start'    => $existing->break_start ?? null,
-                'break_end'      => $existing->break_end ?? null,
+                'break_start'    => $req->new_break_start ?? ($existing->break_start ?? null),
+                'break_end'      => $req->new_break_end ?? ($existing->break_end ?? null),
                 'shift_type'     => $existing->shift_type ?? null,
             ]
         );
@@ -125,6 +149,15 @@ class ScheduleRequestService
     {
         $date = Carbon::parse($req->request_date)->toDateString();
 
+        // Capture the break from the applied schedule before deleting it. applySchedule()
+        // preserved the ORIGINAL break, so this restores it — otherwise the revert would
+        // recreate a break-less schedule that over-credits hours.
+        $applied = EmployeeSchedule::where('employee_id', $req->employee_id)
+            ->whereDate('sched_start_date', $date)->first();
+        $breakStart = $applied->break_start ?? null;
+        $breakEnd   = $applied->break_end ?? null;
+        $shiftType  = $applied->shift_type ?? null;
+
         EmployeeSchedule::where('employee_id', $req->employee_id)
             ->whereDate('sched_start_date', $date)->delete();
 
@@ -138,6 +171,9 @@ class ScheduleRequestService
                 'sched_in'        => $req->old_sched_in,
                 'sched_out'       => $req->old_sched_out,
                 'sched_end_date'  => $endDate,
+                'break_start'     => $breakStart,
+                'break_end'       => $breakEnd,
+                'shift_type'      => $shiftType,
             ]);
         }
 

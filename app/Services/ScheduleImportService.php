@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\EmployeeSchedule;
+use App\Models\homeAttendance;
 use App\Models\User;
 use App\Services\Concerns\CreatesImportBatch;
 use Carbon\Carbon;
@@ -54,6 +55,11 @@ class ScheduleImportService
 
         // Reject expanded days that overlap a schedule already in the DB (single bulk query).
         $this->flagExisting($prepared, $result);
+
+        // Reject days the employee has already clocked attendance for — that schedule is
+        // locked (same rule as the Scheduler UI); overwriting/adding a shift there would
+        // diverge the recorded punch.
+        $this->flagAttended($prepared, $result);
 
         // ── All-or-nothing: a single bad row aborts the whole import so data stays accurate. ──
         if (!empty($result['errors'])) {
@@ -121,8 +127,9 @@ class ScheduleImportService
 
         $breakStart = $this->normTime($this->cell($row, 'break_start'));
         $breakEnd   = $this->normTime($this->cell($row, 'break_end'));
-        if (($breakStart && !$breakEnd) || (!$breakStart && $breakEnd)) {
-            throw new \Exception('Provide both Break Start and Break End, or leave both blank.');
+        // R1 (break required) + R2 (shift − break must net exactly 8h).
+        if ($netError = \App\Models\EmployeeSchedule::netValidationError($schedIn, $schedOut, $breakStart, $breakEnd)) {
+            throw new \Exception($netError);
         }
 
         $shiftType = trim($this->cell($row, 'shift_type')) ?: null;
@@ -210,6 +217,31 @@ class ScheduleImportService
             }
             if ($clash) {
                 $result['errors'][] = "Row {$p['_line']}: Schedule on {$p['sched_start_date']} overlaps an existing schedule for {$p['employee_id']}.";
+            } else {
+                $kept[] = $p;
+            }
+        }
+        $prepared = $kept;
+    }
+
+    /** Bulk-reject days the employee already has attendance for (schedule is locked). */
+    private function flagAttended(array &$prepared, array &$result): void
+    {
+        if (empty($prepared)) { return; }
+        $empIds = array_values(array_unique(array_column($prepared, 'employee_id')));
+        $dates  = array_values(array_unique(array_column($prepared, 'sched_start_date')));
+
+        $attended = [];
+        foreach (homeAttendance::whereIn('employee_id', $empIds)
+                     ->whereIn('attendance_date', $dates)
+                     ->get(['employee_id', 'attendance_date']) as $a) {
+            $attended[$a->employee_id . '|' . Carbon::parse($a->attendance_date)->toDateString()] = true;
+        }
+
+        $kept = [];
+        foreach ($prepared as $p) {
+            if (isset($attended[$p['employee_id'] . '|' . $p['sched_start_date']])) {
+                $result['errors'][] = "Row {$p['_line']}: {$p['employee_id']} already has attendance on {$p['sched_start_date']}; that schedule is locked and can't be imported.";
             } else {
                 $kept[] = $p;
             }

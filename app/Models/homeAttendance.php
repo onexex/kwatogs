@@ -65,8 +65,13 @@ class homeAttendance extends Model
     {
         $nightDiffMinutes = 0;
 
-        // We start checking from the day of the Clock-In
-        $currentDay = $actualIn->copy()->startOfDay();
+        // Start ONE day before the clock-in day. Each iteration's night window is
+        // [D 22:00 → D+1 06:00]; the 00:00–06:00 slice of the clock-in day belongs to
+        // the PREVIOUS day's window, so a punch that works purely after midnight
+        // (e.g. 00:00–06:00) would be missed if we started at the clock-in day itself.
+        // Windows are disjoint (06:00–22:00 gap between them), so the extra day can't
+        // double-count.
+        $currentDay = $actualIn->copy()->startOfDay()->subDay();
         // We check until the day of the Clock-Out
         $lastDay = $actualOut->copy()->startOfDay();
 
@@ -155,14 +160,35 @@ class homeAttendance extends Model
                 $schedOut->addDay();
             }
 
-            // Calculate late minutes
+            // 🍱 Build the break window (anchored to the shift start, same rules as
+            // logTimeOut) so break time can be excluded from late/undertime. A break is
+            // unpaid and is NOT work, so missing it (e.g. clocking out before/at the
+            // break) must not be charged as a late/undertime deduction — otherwise a
+            // wide-window shift (e.g. 6AM–6PM with a 4h break) over-deducts.
+            $breakStart = $breakEnd = null;
+            if ($schedule->break_start && $schedule->break_end) {
+                $breakStart = Carbon::parse($schedule->sched_start_date . ' ' . $schedule->break_start);
+                $breakEnd   = Carbon::parse($schedule->sched_start_date . ' ' . $schedule->break_end);
+                if ($breakStart->lt($schedIn)) { $breakStart->addDay(); $breakEnd->addDay(); } // post-midnight break
+                if ($breakEnd->lt($breakStart)) { $breakEnd->addDay(); }                        // break crosses midnight
+            }
+
+            // Overlap (minutes) between an arbitrary window and the break window.
+            $breakOverlap = function (Carbon $winStart, Carbon $winEnd) use ($breakStart, $breakEnd): int {
+                if (!$breakStart || !$breakEnd) { return 0; }
+                $start = $winStart->gt($breakStart) ? $winStart : $breakStart;
+                $end   = $winEnd->lt($breakEnd) ? $winEnd : $breakEnd;
+                return $end->gt($start) ? $end->diffInMinutes($start) : 0;
+            };
+
+            // Late = gap from schedule start to first punch-in, minus any break in that gap.
             $summary->mins_late = $firstIn->gt($schedIn)
-                ? $schedIn->diffInMinutes($firstIn)
+                ? max(0, $schedIn->diffInMinutes($firstIn) - $breakOverlap($schedIn, $firstIn))
                 : 0;
 
-            // Calculate undertime minutes
+            // Undertime = gap from last punch-out to schedule end, minus any break in that gap.
             $summary->mins_undertime = $lastOut->lt($schedOut)
-                ? $lastOut->diffInMinutes($schedOut)
+                ? max(0, $lastOut->diffInMinutes($schedOut) - $breakOverlap($lastOut, $schedOut))
                 : 0;
         } else {
             $summary->mins_late = 0;

@@ -599,10 +599,12 @@
                         <div class="col-md-3">
                             <label class="field-label" for="break_start">Break Start</label>
                             <input type="time" class="form-control" name="break_start" id="break_start">
+                            <span class="text-danger small error-text break_start_error"></span>
                         </div>
                         <div class="col-md-3">
                             <label class="field-label" for="break_end">Break End</label>
                             <input type="time" class="form-control" name="break_end" id="break_end">
+                            <span class="text-danger small error-text break_end_error"></span>
                         </div>
                     </div>
 
@@ -965,10 +967,35 @@ $(document).ready(function(){
                             $(`#${key}`).addClass('border-danger');
                         });
                     } else {
-                        Swal.fire({ icon: 'error', title: 'Error', text: 'An unexpected error occurred.' });
+                        const msg = (err.response && err.response.data && (err.response.data.message || err.response.data.error)) || 'An unexpected error occurred.';
+                        Swal.fire({ icon: 'error', title: 'Error', text: msg });
                     }
                 });
         }
+
+        // Client-side R1 (break required) + R2 (net must equal 8h) — mirrors the
+        // server rule so the user gets instant feedback without a round-trip.
+        $('.break_start_error, .break_end_error').text('');
+        $('#break_start, #break_end').removeClass('border-danger');
+        const toMin = t => { if (!t) return null; const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+
+        if (!formData.break_start || !formData.break_end) {
+            $('.break_end_error').text('Break Start and Break End are required.');
+            $('#break_end').addClass('border-danger');
+            return;
+        }
+
+        if (formData.sched_in && formData.sched_out) {
+            let span = toMin(formData.sched_out) - toMin(formData.sched_in); if (span <= 0) span += 1440;
+            let brk  = toMin(formData.break_end) - toMin(formData.break_start); if (brk <= 0) brk += 1440;
+            if (span - brk !== 480) {
+                const fmt = m => { const s = m < 0 ? '-' : ''; m = Math.abs(m); const h = Math.floor(m / 60), mm = m % 60; return s + h + 'h' + (mm ? ' ' + mm + 'm' : ''); };
+                $('.break_end_error').text(`Net working hours must equal 8:00. This shift is ${fmt(span)} with a ${fmt(brk)} break = ${fmt(span - brk)}. Adjust the break so (shift − break) = 8 hours.`);
+                $('#break_end').addClass('border-danger');
+                return;
+            }
+        }
+
         submitSchedule(formData);
     });
 
@@ -1010,6 +1037,9 @@ $(document).ready(function(){
                     Swal.fire('Deleted!', res.data.message, 'success');
                     loadSchedules();
                     loadUnscheduled();
+                }).catch(err => {
+                    const msg = (err.response && err.response.data && (err.response.data.message || err.response.data.error)) || 'Unable to delete schedule.';
+                    Swal.fire({ icon: 'error', title: 'Cannot Delete', text: msg });
                 });
             }
         });

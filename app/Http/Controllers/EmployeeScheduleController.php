@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\department;
 use App\Models\EmployeeSchedule;
+use App\Models\homeAttendance;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -265,6 +266,12 @@ class EmployeeScheduleController extends Controller
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
+
+        // R2: a schedule must net exactly 8 working hours ((shift − break) === 8h).
+        if ($netError = EmployeeSchedule::netValidationError($request->sched_in, $request->sched_out, $request->break_start, $request->break_end)) {
+            return response()->json(['errors' => ['break_end' => [$netError]]], 422);
+        }
+
         DB::beginTransaction();
 
         try {
@@ -371,6 +378,17 @@ class EmployeeScheduleController extends Controller
 
     public function update(Request $request, $id)
     {
+        $schedule = EmployeeSchedule::findOrFail($id);
+
+        // Safeguard: once the employee has any attendance tied to this schedule it is
+        // LOCKED — editing it would silently diverge already-recorded attendance (late/
+        // undertime/night-diff were computed against the old shift) or re-clamp an open punch.
+        if ($this->scheduleHasAttendance($schedule)) {
+            return response()->json([
+                'message' => 'This schedule is locked and can no longer be edited — the employee already has attendance recorded for it.'
+            ], 409);
+        }
+
         $validator = Validator::make($request->all(), [
             'employee_id' => 'required|exists:users,empID',
             'sched_start_date' => 'required|date',
@@ -386,7 +404,10 @@ class EmployeeScheduleController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $schedule = EmployeeSchedule::findOrFail($id);
+        // R2: a schedule must net exactly 8 working hours ((shift − break) === 8h).
+        if ($netError = EmployeeSchedule::netValidationError($request->sched_in, $request->sched_out, $request->break_start, $request->break_end)) {
+            return response()->json(['errors' => ['break_end' => [$netError]]], 422);
+        }
 
         $startDateTime = Carbon::parse($request->sched_start_date . ' ' . $request->sched_in);
         $endDateTime = Carbon::parse($request->sched_end_date . ' ' . $request->sched_out);
@@ -433,8 +454,33 @@ class EmployeeScheduleController extends Controller
     public function destroy($id)
     {
         $schedule = EmployeeSchedule::findOrFail($id);
+
+        // Safeguard: a schedule with attendance tied to it can't be deleted — doing so
+        // would orphan the employee's recorded punches (schedule_id has no DB cascade).
+        if ($this->scheduleHasAttendance($schedule)) {
+            return response()->json([
+                'message' => 'This schedule is locked and can no longer be deleted — the employee already has attendance recorded for it.'
+            ], 409);
+        }
+
         $schedule->delete();
         return response()->json(['message' => 'Schedule deleted successfully!']);
+    }
+
+    /**
+     * A schedule is "locked" once the employee has any attendance tied to it — either a
+     * punch that references this schedule row, or any punch on a date the schedule covers.
+     * After that point, editing or deleting the schedule would diverge or orphan the
+     * already-recorded attendance, so both are blocked.
+     */
+    private function scheduleHasAttendance(EmployeeSchedule $schedule): bool
+    {
+        return homeAttendance::where('schedule_id', $schedule->id)
+            ->orWhere(function ($q) use ($schedule) {
+                $q->where('employee_id', $schedule->employee_id)
+                  ->whereBetween('attendance_date', [$schedule->sched_start_date, $schedule->sched_end_date]);
+            })
+            ->exists();
     }
 
      public function edit($id)
