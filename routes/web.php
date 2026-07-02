@@ -64,6 +64,7 @@ use App\Http\Controllers\Profile\ProfileController;
 use App\Http\Controllers\registerCtrl;
 use App\Http\Controllers\relationshipCtrl;
 use App\Http\Controllers\reportAttendanceCtrl;
+use App\Http\Controllers\SummaryLogsController;
 use App\Http\Controllers\Reports\EmployeeInformationReportController;
 use App\Http\Controllers\Reports\OvertimeReportController;
 use App\Http\Controllers\Reports\LeaveReportController;
@@ -547,6 +548,12 @@ Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip
     // Employee-facing: every authenticated employee can see their own notices.
     Route::get('pages/modules/mynotices', [NoticeController::class, 'mine'])->name('notices.mine');
     Route::get('/mynotices/list', [NoticeController::class, 'myList'])->name('notices.mine.list');
+
+    // Summary Logs Management — back-door editor over computed attendance summaries
+    // (Duration/Deductions/Late/Undertime/Night Diff/Passout/Over Break); edits are audit-logged.
+    Route::get('pages/modules/summary-logs', [SummaryLogsController::class, 'index'])->name('summary-logs.index')->middleware('can:summarylogs');
+    Route::post('/summary-logs/fetch', [SummaryLogsController::class, 'fetch'])->name('summary-logs.fetch')->middleware('can:summarylogs');
+    Route::post('/summary-logs/update/{summary}', [SummaryLogsController::class, 'update'])->name('summary-logs.update')->middleware('can:summarylogs');
 
     // Certificate of Employment — HR admin side (gated) + employee "My COE" (auth-only)
     Route::get('pages/modules/coe', [CoeController::class, 'index'])->name('coe.index')->middleware('can:coemanagement');
