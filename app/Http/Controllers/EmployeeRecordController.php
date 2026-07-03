@@ -12,11 +12,26 @@ use App\Models\department;
 use Illuminate\Http\Request;
 use App\Models\classification;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
+use App\Models\EmployeeDocument;
 use Illuminate\Support\Facades\Hash;
 use App\Services\OffboardingClearanceService;
 
 class EmployeeRecordController extends Controller
 {
+    /** Employment documents live under public/docs/employees/<user_id>/. */
+    private const DOC_DIR = 'docs/employees';
+
+    /** Allowed document categories — kept in sync with the E-201 upload dropdown. */
+    public const DOC_TYPES = [
+        'Employment Contract',
+        'Government ID',
+        'Resume/CV',
+        'Certificate',
+        'Clearance',
+        'Other',
+    ];
+
     // Load the initial Admin Search Page
     public function index() {
         // Fetch users with their details, ordered alphabetically by last name
@@ -80,7 +95,8 @@ class EmployeeRecordController extends Controller
             'empDetail.company',
             'empDetail.classification',
             'employeeInformation',
-            'education'
+            'education',
+            'employmentDocuments'
         ])
         ->where('empID', $empID)
         ->first();
@@ -161,6 +177,9 @@ class EmployeeRecordController extends Controller
             'clearance.*'        => 'string',
             'clearance_refs'     => 'nullable|array',
             'clearance_refs.*'   => 'nullable|string|max:255',
+            // Optional proof file per clearance item (keyed by item key) — attached during offboarding.
+            'clearance_files'    => 'nullable|array',
+            'clearance_files.*'  => 'file|mimes:pdf,jpg,jpeg,png|max:10240',
         ]);
 
         $detail = $user->empDetail;
@@ -194,10 +213,25 @@ class EmployeeRecordController extends Controller
                     $detail->{$col} = false;
                 }
                 $cleanRefs = [];
+                $clFiles   = $request->file('clearance_files', []);
                 foreach ($clearance->applicableItems($data['emp_status']) as $key => $item) {
                     $detail->{$item['column']} = in_array($key, $checked, true);
                     if (!empty($refsIn[$key])) {
                         $cleanRefs[$key] = (string) $refsIn[$key];
+                    }
+                    // Attach the uploaded proof file for this clearance item, if any —
+                    // replacing the previous attachment (file + row) for the same key.
+                    if (!empty($clFiles[$key])) {
+                        EmployeeDocument::where('user_id', $user->id)
+                            ->where('clearance_key', $key)
+                            ->get()
+                            ->each(function ($old) {
+                                if ($old->file_path && is_file(public_path($old->file_path))) {
+                                    @unlink(public_path($old->file_path));
+                                }
+                                $old->delete();
+                            });
+                        $this->persistDocument($user, $clFiles[$key], 'Clearance', $item['label'], $key);
                     }
                 }
                 $actor = auth()->user();
@@ -250,5 +284,89 @@ class EmployeeRecordController extends Controller
                 'message' => 'Failed to update status: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Upload one employment document (PDF or image) into an employee's 201 file.
+     * Gated by can:manageemployeedocuments at the route. Size/mime/name are captured
+     * BEFORE move() (the temp file is gone afterwards); create() goes through the
+     * Auditable trait so every upload is recorded on the audit trail.
+     */
+    public function uploadDocument(Request $request, User $user)
+    {
+        $data = $request->validate([
+            'doc_type' => ['required', Rule::in(self::DOC_TYPES)],
+            'label'    => 'nullable|max:191',
+            'document' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240', // 10 MB
+        ]);
+
+        $doc = $this->persistDocument($user, $request->file('document'), $data['doc_type'], $data['label'] ?? null);
+
+        return response()->json(['status' => 200, 'msg' => 'Document uploaded.', 'data' => $doc]);
+    }
+
+    /**
+     * Move an uploaded file into the employee's 201-file folder and record it.
+     * Size/mime/name are read BEFORE move() (temp file is gone afterwards); create()
+     * goes through the Auditable trait. Shared by the Documents panel and the
+     * Update-Status clearance attachments.
+     */
+    private function persistDocument(User $user, \Illuminate\Http\UploadedFile $file, string $docType, ?string $label = null, ?string $clearanceKey = null): EmployeeDocument
+    {
+        $size = $file->getSize();
+        $mime = $file->getClientMimeType();
+        $originalName = $file->getClientOriginalName();
+        $ext = strtolower($file->getClientOriginalExtension() ?: 'dat'); // already whitelisted by the mimes rule
+
+        $dir = public_path(self::DOC_DIR.'/'.$user->id);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0775, true);
+        }
+        $stored = time().'_'.bin2hex(random_bytes(4)).'.'.$ext;
+        $file->move($dir, $stored);
+
+        $actor = auth()->user();
+        return EmployeeDocument::create([
+            'user_id'       => $user->id,
+            'empID'         => $user->empID,
+            'doc_type'      => $docType,
+            'clearance_key' => $clearanceKey,
+            'label'         => $label ?: $originalName,
+            'file_name'     => $stored,
+            'file_path'     => self::DOC_DIR.'/'.$user->id.'/'.$stored,
+            'original_name' => $originalName,
+            'size'          => $size ?: null,
+            'mime'          => $mime,
+            'uploaded_by'   => $actor ? (trim(($actor->fname ?? '').' '.($actor->lname ?? '')) ?: 'Admin') : 'Admin',
+        ]);
+    }
+
+    /**
+     * Stream an employment document back to the browser as a download.
+     * Owner may fetch their own file; managers may fetch anyone's. This closes the
+     * IDOR gap — the route lives in the general auth group, not an admin-only one.
+     */
+    public function downloadDocument(EmployeeDocument $document)
+    {
+        $u = auth()->user();
+        $isOwner   = $u && (int) $u->id === (int) $document->user_id;
+        $canManage = $u && ($u->can('admine201') || $u->can('manageemployeedocuments') || (isset($u->role) && (int) $u->role === 1));
+        abort_unless($isOwner || $canManage, 403);
+
+        $abs = public_path($document->file_path);
+        abort_unless(is_file($abs), 404);
+
+        return response()->download($abs, $document->original_name);
+    }
+
+    /** Delete an employment document (DB row + file on disk). Gated by permission. */
+    public function deleteDocument(EmployeeDocument $document)
+    {
+        if ($document->file_path && is_file(public_path($document->file_path))) {
+            @unlink(public_path($document->file_path));
+        }
+        $document->delete();   // instance delete → Auditable
+
+        return response()->json(['status' => 200, 'msg' => 'Document deleted.']);
     }
 }

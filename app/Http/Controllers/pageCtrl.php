@@ -249,6 +249,7 @@ class pageCtrl extends Controller
     public function e201File()
     {
         $user = Auth::user();
+        $user->load('employmentDocuments');   // for the read-only "My Documents" section (can:viewe201files)
         $empployeeDetails = $user->empDetail;
         return view('pages.modules.201', [
             'emp' => $empployeeDetails,

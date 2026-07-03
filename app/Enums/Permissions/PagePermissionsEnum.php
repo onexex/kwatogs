@@ -68,6 +68,8 @@ enum PagePermissionsEnum: string
     case loanmanagement = 'Loan Management';
     case admine201 = 'Admin E-201';
     case manageemployeestatus = 'Manage Employee Status';
+    case manageemployeedocuments = 'Manage Employee Documents';
+    case viewe201files = 'View E-201 Files';
     case leavecreditallocation = 'Leave Credit Allocations';
     case manual_entry = 'HR Manual Time Adjustment';
     case databasebackup = 'Database Backup';

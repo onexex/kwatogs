@@ -385,6 +385,57 @@
                                 </table>
                             </div>
                         </div>
+
+                        {{-- Employment Documents — the employee's 201 file (contracts, gov IDs, certificates, etc.) --}}
+                        <div class="info-card">
+                            <h6 class="fw-bold mb-3"><i class="fa-solid fa-folder-open me-2 text-teal"></i>Employment Documents</h6>
+
+                            @can('manageemployeedocuments')
+                            <div class="row g-2 align-items-end mb-3">
+                                <div class="col-6 col-md-3">
+                                    <label class="label-caps" for="ed_doc_type">Type</label>
+                                    <select class="form-select form-select-sm" id="ed_doc_type">
+                                        <option value="Employment Contract">Employment Contract</option>
+                                        <option value="Government ID">Government ID</option>
+                                        <option value="Resume/CV">Resume/CV</option>
+                                        <option value="Certificate">Certificate</option>
+                                        <option value="Clearance">Clearance</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <label class="label-caps" for="ed_doc_label">Label <span class="text-muted text-lowercase">(optional)</span></label>
+                                    <input type="text" class="form-control form-control-sm" id="ed_doc_label" maxlength="191" placeholder="e.g. Signed Contract 2024">
+                                </div>
+                                <div class="col-12 col-md-3">
+                                    <label class="label-caps" for="ed_doc_file">File (PDF / JPG / PNG)</label>
+                                    <input type="file" class="form-control form-control-sm" id="ed_doc_file" accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg">
+                                </div>
+                                <div class="col-12 col-md-2">
+                                    <button type="button" class="btn btn-teal btn-sm w-100 fw-bold text-white" id="btnUploadEmpDoc" data-id="" style="background-color:#008080;">
+                                        <i class="fa-solid fa-upload me-1"></i>Upload
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="text-danger small mb-2 d-none" id="ed_doc_error"></div>
+                            @endcan
+
+                            <div class="table-responsive" style="max-height:260px; overflow-y:auto;">
+                                <table class="table table-sm table-hover align-middle mb-0">
+                                    <thead class="text-muted small">
+                                        <tr>
+                                            <th width="22%">TYPE</th>
+                                            <th>LABEL / FILE</th>
+                                            <th width="18%">UPLOADED</th>
+                                            <th width="12%" class="text-end">ACTION</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="view_documents_list">
+                                        <tr><td colspan="4" class="text-center py-3 text-muted small">No documents uploaded.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="col-lg-4">
@@ -465,12 +516,14 @@
                             ];
                         @endphp
                         @foreach ($clItems as $it)
-                            <div class="cl-row mb-2" data-applies="{{ $it['applies'] }}" data-key="{{ $it['key'] }}">
+                            <div class="cl-row mb-2 pb-2 border-bottom" data-applies="{{ $it['applies'] }}" data-key="{{ $it['key'] }}">
                                 <div class="form-check">
                                     <input class="form-check-input us-cl-check" type="checkbox" id="us_cl_{{ $it['key'] }}" value="{{ $it['key'] }}">
                                     <label class="form-check-label small fw-semibold" for="us_cl_{{ $it['key'] }}">{{ $it['label'] }}</label>
                                 </div>
                                 <input type="text" class="form-control form-control-sm us-cl-ref mt-1" id="us_clref_{{ $it['key'] }}" placeholder="Reference (optional)">
+                                <input type="file" class="form-control form-control-sm us-cl-file mt-1" id="us_clfile_{{ $it['key'] }}" accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg">
+                                <div class="us-cl-current small mt-1" id="us_clcur_{{ $it['key'] }}"></div>
                             </div>
                         @endforeach
                     </div>

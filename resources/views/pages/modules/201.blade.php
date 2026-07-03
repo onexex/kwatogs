@@ -249,6 +249,9 @@
         <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#education">Education</button></li>
         <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#employment">Employment</button></li>
         <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#compliance">Compliance</button></li>
+        @can('viewe201files')
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#documents">Documents</button></li>
+        @endcan
     </ul>
 
     <div class="tab-content">
@@ -415,6 +418,59 @@
                 </div>
             </div>
         </div>
+
+        @can('viewe201files')
+        {{-- Documents Tab — read-only view of the employee's own 201-file documents --}}
+        <div class="tab-pane fade" id="documents" role="tabpanel">
+            <div class="sc">
+                <div class="sc-head">
+                    <div class="sc-head-left">
+                        <div class="sc-icon"><i class="fa-solid fa-folder-open"></i></div>
+                        <h5 class="sc-title">My Documents</h5>
+                    </div>
+                </div>
+                <div class="sc-body">
+                    @php $myDocs = $user->employmentDocuments ?? collect(); @endphp
+                    @if($myDocs->count())
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead class="text-muted small">
+                                    <tr>
+                                        <th>TYPE</th>
+                                        <th>LABEL / FILE</th>
+                                        <th>UPLOADED</th>
+                                        <th class="text-end">ACTION</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($myDocs as $doc)
+                                        <tr>
+                                            <td><span class="badge" style="background:var(--teal-light); color:var(--teal-dark);">{{ $doc->doc_type ?: 'Other' }}</span></td>
+                                            <td>
+                                                <div class="field-value">{{ $doc->label ?: $doc->original_name }}</div>
+                                                <div class="text-muted" style="font-size:.72rem;">{{ $doc->original_name }}</div>
+                                            </td>
+                                            <td class="text-muted small">{{ $doc->created_at ? $doc->created_at->format('M d, Y') : '' }}</td>
+                                            <td class="text-end">
+                                                <a href="/admin/e201/document/{{ $doc->id }}/download" class="btn btn-sm btn-light border" title="Download">
+                                                    <i class="fa-solid fa-download" style="color:var(--teal);"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <div class="text-center text-muted py-4">
+                            <i class="fa-solid fa-folder-open fa-2x mb-2 opacity-50"></i>
+                            <p class="mb-0 small">No documents on file yet.</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+        @endcan
     </div>
 </div>
 @endsection

@@ -188,6 +188,13 @@ $(document).ready(function() {
         $.each(cl.flags || {}, function(k, v) { $('#us_cl_' + k).prop('checked', !!v); });
         $.each(cl.refs || {}, function(k, v) { $('#us_clref_' + k).val(v || ''); });
 
+        // Clear file pickers and surface any already-attached clearance document.
+        $('.us-cl-file').val('');
+        $('.us-cl-current').html('');
+        $.each(cl.docs || {}, function(k, v) {
+            $('#us_clcur_' + k).html('<a href="/admin/e201/document/' + v.id + '/download" title="Current attachment"><i class="fa-solid fa-paperclip me-1"></i>' + $('<div>').text(v.name || 'attachment').html() + '</a>');
+        });
+
         toggleUsFields();
         refreshUsYearsPreview();
         $usModal.modal('show');
@@ -229,23 +236,34 @@ $(document).ready(function() {
             });
         }
 
+        // Build multipart so clearance proof files can ride along with the status change.
+        const fd = new FormData();
+        fd.append('emp_status', empStatus);
+        fd.append('separation_date', isExit ? $('#us_separation_date').val() : '');
+        fd.append('separation_reason', isExit ? $('#us_separation_reason').val() : '');
+        fd.append('flag_status', flagStatus || '');
+        fd.append('flag_reason', flagStatus ? $('#us_flag_reason').val() : '');
+        clearance.forEach(function(k) { fd.append('clearance[]', k); });
+        Object.keys(clearance_refs).forEach(function(k) { fd.append('clearance_refs[' + k + ']', clearance_refs[k]); });
+        if (isExit) {
+            $('#us_clearance .cl-row:visible').each(function() {
+                const key = $(this).data('key');
+                const f = $('#us_clfile_' + key)[0];
+                if (f && f.files.length) fd.append('clearance_files[' + key + ']', f.files[0]);
+            });
+        }
+
         const originalHtml = $btn.html();
         $btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin me-2"></i>Saving...');
 
         $.ajax({
             url: `/admin/e201/update-status/${id}`,
             type: 'POST',
+            data: fd,
+            processData: false,
+            contentType: false,
             dataType: 'json',
             headers: { 'X-CSRF-TOKEN': csrfToken },
-            data: {
-                emp_status: empStatus,
-                separation_date: isExit ? $('#us_separation_date').val() : '',
-                separation_reason: isExit ? $('#us_separation_reason').val() : '',
-                flag_status: flagStatus,
-                flag_reason: flagStatus ? $('#us_flag_reason').val() : '',
-                clearance: clearance,
-                clearance_refs: clearance_refs,
-            },
             success: function(response) {
                 $usModal.modal('hide');
                 alert(response.message || 'Status updated.');
@@ -264,8 +282,113 @@ $(document).ready(function() {
         });
     });
 
+    // 6. Employment Documents — upload + delete (201 file).
+    //    Same jQuery + X-CSRF-TOKEN idiom as the rest of this file (no axios/SweetAlert).
+    //    After a change we re-trigger the active row so the dossier re-fetches, exactly
+    //    like Update Status does.
+    $('#btnUploadEmpDoc').on('click', function() {
+        const $btn = $(this);
+        const id = $btn.data('id');
+        const $err = $('#ed_doc_error');
+        $err.addClass('d-none').text('');
+
+        if (!id) { $err.removeClass('d-none').text('Please select an employee first.'); return; }
+        const fileInput = $('#ed_doc_file')[0];
+        if (!fileInput || !fileInput.files.length) {
+            $err.removeClass('d-none').text('Please choose a file to upload.');
+            return;
+        }
+
+        const fd = new FormData();
+        fd.append('doc_type', $('#ed_doc_type').val());
+        fd.append('label', $('#ed_doc_label').val());
+        fd.append('document', fileInput.files[0]);
+
+        const originalHtml = $btn.html();
+        $btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin me-1"></i>Uploading...');
+
+        $.ajax({
+            url: `/admin/e201/documents/${id}`,
+            type: 'POST',
+            data: fd,
+            processData: false,
+            contentType: false,
+            dataType: 'json',
+            headers: { 'X-CSRF-TOKEN': csrfToken },
+            success: function() {
+                $('#ed_doc_label').val('');
+                $('#ed_doc_file').val('');
+                $('.emp-row.active-selection').trigger('click');
+            },
+            error: function(xhr) {
+                const msg = (xhr.responseJSON && (xhr.responseJSON.message
+                    || (xhr.responseJSON.errors && Object.values(xhr.responseJSON.errors)[0][0])))
+                    || 'Failed to upload document. Please try again.';
+                $err.removeClass('d-none').text(msg);
+            },
+            complete: function() {
+                $btn.prop('disabled', false).html(originalHtml);
+            }
+        });
+    });
+
+    $(document).on('click', '.btnDeleteEmpDoc', function() {
+        const docId = $(this).data('id');
+        if (!docId) return;
+        if (!confirm('Delete this document? This permanently removes the file.')) return;
+
+        $.ajax({
+            url: `/admin/e201/document/${docId}`,
+            type: 'POST',                 // POST + _method spoof so proxies that block DELETE still work
+            dataType: 'json',
+            headers: { 'X-CSRF-TOKEN': csrfToken },
+            data: { _method: 'DELETE' },
+            success: function() {
+                $('.emp-row.active-selection').trigger('click');
+            },
+            error: function(xhr) {
+                const msg = (xhr.responseJSON && xhr.responseJSON.message) || 'Failed to delete document.';
+                alert(msg);
+            }
+        });
+    });
+
     function renderDossier(user) {
         const detail = user.emp_detail;
+
+        // Employment documents (201 file). Delete is only offered when the current user
+        // can manage documents — detected by the presence of the (@can-gated) upload button.
+        const canManageDocs = $('#btnUploadEmpDoc').length > 0;
+        $('#btnUploadEmpDoc').attr('data-id', user.id).data('id', user.id);
+        const escHtml = s => $('<div>').text(s == null ? '' : String(s)).html();
+        const docs = user.employment_documents || [];
+        // Map clearance-tagged docs by their clearance_key (for the checklist + dossier links).
+        const clDocs = {};
+        docs.forEach(function(d) { if (d.clearance_key) clDocs[d.clearance_key] = { id: d.id, name: d.original_name }; });
+        if (docs.length) {
+            const docRows = docs.map(function(d) {
+                const uploaded = d.created_at
+                    ? new Date(d.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
+                    : '';
+                const by = d.uploaded_by ? '<div style="font-size:.7rem;">' + escHtml(d.uploaded_by) + '</div>' : '';
+                const del = canManageDocs
+                    ? ' <button type="button" class="btn btn-sm btn-light border btnDeleteEmpDoc" data-id="' + d.id + '" title="Delete"><i class="fa-solid fa-trash text-danger"></i></button>'
+                    : '';
+                return '<tr>'
+                    + '<td><span class="badge text-white" style="background-color:#008080;">' + escHtml(d.doc_type || 'Other') + '</span></td>'
+                    + '<td><div class="value-text">' + escHtml(d.label || d.original_name) + '</div>'
+                    +     '<div class="text-muted" style="font-size:.72rem;">' + escHtml(d.original_name) + '</div></td>'
+                    + '<td class="text-muted small">' + escHtml(uploaded) + by + '</td>'
+                    + '<td class="text-end">'
+                    +   '<a href="/admin/e201/document/' + d.id + '/download" class="btn btn-sm btn-light border" title="Download"><i class="fa-solid fa-download text-teal"></i></a>'
+                    +   del
+                    + '</td>'
+                    + '</tr>';
+            }).join('');
+            $('#view_documents_list').html(docRows);
+        } else {
+            $('#view_documents_list').html('<tr><td colspan="4" class="text-center py-3 text-muted small">No documents uploaded.</td></tr>');
+        }
 
         // The badge above the name reflects EMPLOYMENT status:
         // ACTIVE only when currently Employed (empStatus 1). Resigned (0) and
@@ -318,6 +441,7 @@ $(document).ready(function() {
                     quitclaim:          !!detail.cl_quitclaim,
                 },
                 refs: detail.clearance_refs || {},
+                docs: clDocs,
             }) : '{}');
 
         if (detail) {
@@ -387,7 +511,10 @@ $(document).ready(function() {
                         const ref = refs[i.key]
                             ? ' <span class="text-muted" style="font-size:.72rem;">— ' + $('<div>').text(refs[i.key]).html() + '</span>'
                             : '';
-                        return '<div class="value-text mb-1">' + icon + i.label + ref + '</div>';
+                        const att = clDocs[i.key]
+                            ? ' <a href="/admin/e201/document/' + clDocs[i.key].id + '/download" class="ms-1" title="Download attached document"><i class="fa-solid fa-paperclip text-teal"></i></a>'
+                            : '';
+                        return '<div class="value-text mb-1">' + icon + i.label + ref + att + '</div>';
                     }).join('');
                 $('#view_clearance_list').html(rows);
                 const meta = detail.cleared_by
