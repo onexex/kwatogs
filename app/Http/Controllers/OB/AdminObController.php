@@ -19,6 +19,7 @@ class AdminObController extends Controller
 
         $employees = User::whereHas('empDetail', fn($q) => $q->where('empStatus', '1'))
             ->orderBy('lname')
+            ->orderBy('fname')
             ->get();
 
         $obs = obs::select('obs.*', 'users.fname', 'users.lname', 'departments.dep_name', 'positions.pos_desc')

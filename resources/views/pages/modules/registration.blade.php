@@ -878,7 +878,7 @@
                                             <option value="">— Select Superior —</option>
                                             @if(count($immediateData) > 0)
                                                 @foreach($immediateData as $im)
-                                                    <option value="{{ $im->empID }}">{{ strtoupper($im->fname . ' ' . $im->lname) }}</option>
+                                                    <option value="{{ $im->empID }}">{{ strtoupper($im->lname . ', ' . $im->fname) }}</option>
                                                 @endforeach
                                             @endif
                                         </select>

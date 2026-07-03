@@ -67,7 +67,7 @@ class pageCtrl extends Controller
 
     public function e201()
     {
-        $resultUser = User::orderBy('lname')
+        $resultUser = User::orderBy('lname')->orderBy('fname')
         ->where('status','1')
         ->get();
 
@@ -80,7 +80,7 @@ class pageCtrl extends Controller
         // $getClassification=classification::get();
         $getDepartment=department::get();
         $getPosition=position::get();
-        $getImmediateList=User::get();
+        $getImmediateList=User::orderBy('lname')->orderBy('fname')->get();
         $getJoblevel=joblevel::get();
         $getAgency=agencies::get();
         $getHMO=HMOModel::get();
@@ -179,7 +179,7 @@ class pageCtrl extends Controller
 
     public function parental()
     {
-        $resultEmp = User::orderBy('lname')
+        $resultEmp = User::orderBy('lname')->orderBy('fname')
         ->get();
         return view('pages.management.parentalSetting')->with('resultEmp',$resultEmp);
     }
@@ -214,7 +214,7 @@ class pageCtrl extends Controller
     public function attendanceView()
     {
 
-        $resultEmp = User::orderBy('lname')
+        $resultEmp = User::orderBy('lname')->orderBy('fname')
         ->where('status','1')
         ->get();
 
