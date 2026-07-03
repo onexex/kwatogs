@@ -150,6 +150,7 @@ $(document).ready(function() {
         const status = $('#us_emp_status').val();
         const isExit = status !== '1';
         $('#us_separation_fields').toggleClass('d-none', !isExit);
+        $('#us_clearance_section').toggleClass('d-none', !isExit);
         // Show only the clearance items applicable to the chosen exit type.
         $('#us_clearance .cl-row').each(function() {
             const applies = String($(this).data('applies')).split(',');
@@ -180,19 +181,29 @@ $(document).ready(function() {
         $('#us_flag_status').val(String($btn.data('flag-status') || ''));
         $('#us_flag_reason').val($btn.data('flag-reason') || '');
 
-        // Prefill clearance checkboxes + reference notes from the stashed state.
+        // Reset clearance UI, then prefill from the stashed state.
         $('.us-cl-check').prop('checked', false);
         $('.us-cl-ref').val('');
+        $('.us-cl-file').val('');
+        $('.us-cl-current').html('');
+        $('#us_clearance .cl-row').removeClass('is-checked');
+        $('#us_clearance .cl-pill').removeClass('attached').addClass('pending').text('Pending');
+
         let cl = {};
         try { cl = JSON.parse($btn.attr('data-clearance') || '{}'); } catch (e) { cl = {}; }
         $.each(cl.flags || {}, function(k, v) { $('#us_cl_' + k).prop('checked', !!v); });
         $.each(cl.refs || {}, function(k, v) { $('#us_clref_' + k).val(v || ''); });
 
-        // Clear file pickers and surface any already-attached clearance document.
-        $('.us-cl-file').val('');
-        $('.us-cl-current').html('');
+        // A document already on file → surface it, AUTO-TICK the item, mark it "Attached".
         $.each(cl.docs || {}, function(k, v) {
             $('#us_clcur_' + k).html('<a href="/admin/e201/document/' + v.id + '/download" title="Current attachment"><i class="fa-solid fa-paperclip me-1"></i>' + $('<div>').text(v.name || 'attachment').html() + '</a>');
+            $('#us_cl_' + k).prop('checked', true);
+            $('#us_clpill_' + k).removeClass('pending').addClass('attached').text('Attached');
+        });
+
+        // Sync each row's highlight to its checkbox state.
+        $('#us_clearance .us-cl-check').each(function() {
+            $(this).closest('.cl-row').toggleClass('is-checked', this.checked);
         });
 
         toggleUsFields();
@@ -202,6 +213,20 @@ $(document).ready(function() {
 
     $('#us_emp_status, #us_flag_status').on('change', toggleUsFields);
     $('#us_separation_date').on('change input', refreshUsYearsPreview);
+
+    // Clearance row UX: highlight follows the tick; choosing a proof file auto-ticks the item.
+    $(document).on('change', '.us-cl-check', function() {
+        $(this).closest('.cl-row').toggleClass('is-checked', this.checked);
+    });
+    $(document).on('change', '.us-cl-file', function() {
+        const $row = $(this).closest('.cl-row');
+        const key = $row.data('key');
+        if (this.files && this.files.length) {
+            $('#us_cl_' + key).prop('checked', true);
+            $row.addClass('is-checked');
+            $('#us_clpill_' + key).removeClass('pending').addClass('attached').text('New file');
+        }
+    });
 
     $('#us_save').on('click', function() {
         const $btn = $(this);

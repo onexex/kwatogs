@@ -481,45 +481,86 @@
 
 @can('manageemployeestatus')
 <!-- Update Status / Separation & Flag modal -->
+<style>
+    #updateStatusModal .modal-content { border:none; border-radius:18px; overflow:hidden; box-shadow:0 24px 60px rgba(2,44,44,.28); }
+    #updateStatusModal .us-head { background:linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%); color:#fff; padding:20px 24px; display:flex; align-items:center; gap:14px; }
+    #updateStatusModal .us-avatar { width:46px; height:46px; border-radius:12px; background:rgba(255,255,255,.18); display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0; }
+    #updateStatusModal .us-head h5 { margin:0; font-weight:700; font-size:1.05rem; letter-spacing:-.2px; }
+    #updateStatusModal .us-head p { margin:2px 0 0; font-size:.8rem; opacity:.85; }
+    #updateStatusModal .btn-close-white { filter:brightness(0) invert(1); opacity:.85; }
+    #updateStatusModal .modal-body { padding:20px 22px; background:var(--bg); max-height:72vh; overflow-y:auto; }
+    #updateStatusModal .modal-footer { border:none; padding:14px 22px 20px; background:var(--bg); }
+    #updateStatusModal .us-section { background:#fff; border:1px solid var(--border); border-radius:14px; padding:16px 18px; margin-bottom:14px; box-shadow:var(--shadow-card); }
+    #updateStatusModal .us-section-title { display:flex; align-items:center; gap:9px; font-size:.72rem; font-weight:800; letter-spacing:.5px; text-transform:uppercase; color:var(--slate); margin-bottom:14px; }
+    #updateStatusModal .us-section-title .us-dot { width:28px; height:28px; border-radius:9px; background:var(--teal-light); color:var(--teal); display:inline-flex; align-items:center; justify-content:center; font-size:.82rem; }
+    #updateStatusModal .us-section-title small { font-weight:600; text-transform:none; letter-spacing:0; color:var(--muted); font-size:.7rem; }
+    #updateStatusModal .form-label { font-size:.68rem; font-weight:700; color:var(--slate-light); text-transform:uppercase; letter-spacing:.3px; margin-bottom:5px; }
+    #updateStatusModal .form-select, #updateStatusModal .form-control { border-radius:10px; border:1.5px solid var(--border); font-size:.9rem; }
+    #updateStatusModal .form-select:focus, #updateStatusModal .form-control:focus { border-color:var(--teal); box-shadow:0 0 0 3px rgba(0,128,128,.12); }
+    #updateStatusModal .us-years-tile { background:var(--teal-light); border:1px solid #cdeae7; border-radius:10px; padding:8px 14px; display:flex; align-items:center; justify-content:space-between; height:calc(100% - 21px); }
+    #updateStatusModal .us-years-tile .lbl { font-size:.64rem; font-weight:800; text-transform:uppercase; letter-spacing:.3px; color:var(--teal-dark); }
+    #updateStatusModal .us-years-tile .val { font-size:1.1rem; font-weight:800; color:var(--teal-dark); }
+    #us_clearance .cl-row { background:#fff; border:1.5px solid var(--border); border-radius:12px; padding:12px 14px; margin-bottom:10px; transition:border-color .15s, box-shadow .15s, background .15s; }
+    #us_clearance .cl-row.is-checked { border-color:var(--teal-mid); background:#f5fbfa; box-shadow:0 0 0 3px rgba(77,182,172,.12); }
+    #us_clearance .cl-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    #us_clearance .cl-head .form-check { margin:0; }
+    #us_clearance .form-check-input { cursor:pointer; }
+    #us_clearance .form-check-input:checked { background-color:var(--teal); border-color:var(--teal); }
+    #us_clearance .cl-pill { font-size:.58rem; font-weight:800; text-transform:uppercase; letter-spacing:.4px; padding:3px 10px; border-radius:999px; white-space:nowrap; }
+    #us_clearance .cl-pill.pending { background:#fff4e5; color:#b26a00; }
+    #us_clearance .cl-pill.attached { background:var(--teal-light); color:var(--teal-dark); }
+    .us-cl-current a { color:var(--teal-dark); font-weight:600; text-decoration:none; font-size:.74rem; }
+    .us-cl-current a:hover { text-decoration:underline; }
+    #updateStatusModal #us_save { background:linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%); border:none; box-shadow:0 8px 20px rgba(0,128,128,.3); }
+    #updateStatusModal #us_save:hover { filter:brightness(1.05); }
+    #updateStatusModal .us-cancel { background:#fff; border:1.5px solid var(--border); color:var(--slate); }
+</style>
 <div class="modal fade" id="updateStatusModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content rounded-4 border-0 shadow">
-            <div class="modal-header">
-                <h5 class="modal-title fw-bold"><i class="fa-solid fa-user-gear me-2 text-teal"></i>Update Employee Status</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="us-head">
+                <div class="us-avatar"><i class="fa-solid fa-user-gear"></i></div>
+                <div class="flex-grow-1">
+                    <h5>Update Employee Status</h5>
+                    <p><i class="fa-solid fa-user me-1"></i><span id="us_emp_name">this employee</span></p>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p class="text-muted small mb-3">Updating status for <strong id="us_emp_name">this employee</strong>.</p>
 
-                <h6 class="fw-bold small text-uppercase text-muted mb-2">Employment</h6>
-                <div class="mb-3">
-                    <label for="us_emp_status" class="form-label small fw-semibold">Employment Status</label>
+                {{-- Employment --}}
+                <div class="us-section">
+                    <div class="us-section-title"><span class="us-dot"><i class="fa-solid fa-briefcase"></i></span>Employment</div>
+                    <label for="us_emp_status" class="form-label">Employment Status</label>
                     <select class="form-select" id="us_emp_status">
                         <option value="1">Employed (Active)</option>
                         <option value="0">Resigned</option>
                         <option value="2">End Of Contract</option>
                     </select>
+                    <div id="us_separation_fields" class="d-none">
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-6">
+                                <label for="us_separation_date" class="form-label">Separation Date</label>
+                                <input type="date" class="form-control" id="us_separation_date">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Years Rendered <span class="text-muted text-lowercase">(auto)</span></label>
+                                <div class="us-years-tile"><span class="lbl">Tenure</span><span class="val" id="us_years_preview">—</span></div>
+                            </div>
+                            <div class="col-12">
+                                <label for="us_separation_reason" class="form-label">Separation Reason</label>
+                                <textarea class="form-control" id="us_separation_reason" rows="2" placeholder="Reason for resignation / end of contract"></textarea>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div id="us_separation_fields" class="d-none">
-                    <div class="mb-3">
-                        <label for="us_separation_date" class="form-label small fw-semibold">Separation Date</label>
-                        <input type="date" class="form-control" id="us_separation_date">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label small fw-semibold">Years Rendered <span class="text-muted">(auto-computed)</span></label>
-                        <div class="form-control bg-light" id="us_years_preview">—</div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="us_separation_reason" class="form-label small fw-semibold">Separation Reason</label>
-                        <textarea class="form-control" id="us_separation_reason" rows="2" placeholder="Reason for resignation / end of contract"></textarea>
-                    </div>
 
-                    {{-- Offboarding clearance checklist — HR-attested, no uploads.
-                         Each row carries data-applies so the JS shows only the items
-                         relevant to the chosen exit type (0=Resigned, 2=End of Contract). --}}
-                    <label class="form-label small fw-semibold">Offboarding Clearance</label>
-                    <p class="text-muted" style="font-size:.72rem;margin:-2px 0 8px;">Tick each completed requirement. A reference note is optional (e.g. clearance ref #, "laptop received by IT").</p>
-                    <div id="us_clearance" class="border rounded-3 p-2 mb-2" style="background:#f8fafc;">
+                {{-- Offboarding clearance — shown for exits; JS shows only items relevant to the exit
+                     type (0=Resigned, 2=End of Contract). A row auto-ticks + reads "Attached" when a
+                     document already exists for the item. --}}
+                <div class="us-section d-none" id="us_clearance_section">
+                    <div class="us-section-title"><span class="us-dot"><i class="fa-solid fa-clipboard-check"></i></span>Offboarding Clearance <small>tick when done · attach proof (optional)</small></div>
+                    <div id="us_clearance">
                         @php
                             $clItems = [
                                 ['key' => 'resignation_letter', 'label' => 'Resignation Letter',             'applies' => '0'],
@@ -530,42 +571,49 @@
                             ];
                         @endphp
                         @foreach ($clItems as $it)
-                            <div class="cl-row mb-2 pb-2 border-bottom" data-applies="{{ $it['applies'] }}" data-key="{{ $it['key'] }}">
-                                <div class="form-check">
-                                    <input class="form-check-input us-cl-check" type="checkbox" id="us_cl_{{ $it['key'] }}" value="{{ $it['key'] }}">
-                                    <label class="form-check-label small fw-semibold" for="us_cl_{{ $it['key'] }}">{{ $it['label'] }}</label>
+                            <div class="cl-row" data-applies="{{ $it['applies'] }}" data-key="{{ $it['key'] }}">
+                                <div class="cl-head">
+                                    <div class="form-check">
+                                        <input class="form-check-input us-cl-check" type="checkbox" id="us_cl_{{ $it['key'] }}" value="{{ $it['key'] }}">
+                                        <label class="form-check-label small fw-semibold" for="us_cl_{{ $it['key'] }}">{{ $it['label'] }}</label>
+                                    </div>
+                                    <span class="cl-pill pending" id="us_clpill_{{ $it['key'] }}">Pending</span>
                                 </div>
-                                <input type="text" class="form-control form-control-sm us-cl-ref mt-1" id="us_clref_{{ $it['key'] }}" placeholder="Reference (optional)">
-                                <input type="file" class="form-control form-control-sm us-cl-file mt-1" id="us_clfile_{{ $it['key'] }}" accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg">
-                                <div class="us-cl-current small mt-1" id="us_clcur_{{ $it['key'] }}"></div>
+                                <div class="row g-2 mt-2">
+                                    <div class="col-md-6">
+                                        <input type="text" class="form-control form-control-sm us-cl-ref" id="us_clref_{{ $it['key'] }}" placeholder="Reference note (optional)">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <input type="file" class="form-control form-control-sm us-cl-file" id="us_clfile_{{ $it['key'] }}" accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg">
+                                    </div>
+                                </div>
+                                <div class="us-cl-current small mt-2" id="us_clcur_{{ $it['key'] }}"></div>
                             </div>
                         @endforeach
                     </div>
                 </div>
 
-                <hr>
-                <h6 class="fw-bold small text-uppercase text-muted mb-2">Flag <span class="text-muted text-lowercase fw-normal">(independent of employment)</span></h6>
-                <div class="mb-3">
-                    <label for="us_flag_status" class="form-label small fw-semibold">Flag</label>
+                {{-- Flag --}}
+                <div class="us-section">
+                    <div class="us-section-title"><span class="us-dot"><i class="fa-solid fa-flag"></i></span>Flag <small>independent of employment</small></div>
+                    <label for="us_flag_status" class="form-label">Flag Status</label>
                     <select class="form-select" id="us_flag_status">
                         <option value="">None</option>
                         <option value="redflag">Red Flag</option>
                         <option value="blacklist">Blacklisted</option>
                     </select>
-                </div>
-                <div id="us_flag_fields" class="d-none">
-                    <div class="mb-2">
-                        <label for="us_flag_reason" class="form-label small fw-semibold">Flag Reason</label>
+                    <div id="us_flag_fields" class="d-none mt-3">
+                        <label for="us_flag_reason" class="form-label">Flag Reason</label>
                         <textarea class="form-control" id="us_flag_reason" rows="2" placeholder="Reason for flagging this employee"></textarea>
                     </div>
                 </div>
 
-                <div class="text-danger small mt-2 d-none" id="us_error"></div>
+                <div class="text-danger small mt-1 d-none" id="us_error"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-teal rounded-pill px-4 fw-bold text-white" id="us_save" style="background-color:#008080;">
-                    <i class="fa-solid fa-floppy-disk me-2"></i>Save
+                <button type="button" class="btn us-cancel rounded-pill px-4 fw-semibold" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn rounded-pill px-4 fw-bold text-white" id="us_save">
+                    <i class="fa-solid fa-floppy-disk me-2"></i>Save Changes
                 </button>
             </div>
         </div>
