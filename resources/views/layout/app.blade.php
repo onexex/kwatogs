@@ -103,17 +103,71 @@
             display: flex !important;
             align-items: center;
             color: #4a4a4a !important;
-            transition: all 0.2s;
+            transition: transform 0.18s cubic-bezier(.4, 0, .2, 1),
+                        background-color 0.18s ease,
+                        color 0.18s ease;
         }
 
         .collapse-item:hover {
             background-color: #f1f8f8 !important;
             color: #008080 !important;
             font-weight: 600;
-            padding-left: 1.25rem !important;
+            transform: translateX(4px);
         }
 
         .collapse-item i { width: 22px; color: #008080; opacity: 0.7; }
+
+        /* Sub-group labels inside the Workforce/Settings dropdowns */
+        .collapse-subheading {
+            font-size: 0.6rem;
+            font-weight: 800;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: #94a3b8;
+            padding: 0.35rem 0.75rem 0.2rem;
+            margin-top: 0.5rem;
+        }
+        .collapse-inner > .collapse-subheading:first-child { margin-top: 0; }
+
+        /* Rotating chevron indicator on the group headers. The SB Admin 2 base CSS
+           targets the old Bootstrap-4 [data-toggle] attribute, but the markup uses
+           Bootstrap 5's [data-bs-toggle], so no chevron shows without this. */
+        .nav-item .nav-link[data-bs-toggle="collapse"] {
+            justify-content: flex-start;
+        }
+        .nav-item .nav-link[data-bs-toggle="collapse"]::after {
+            content: "\f107"; /* fa-angle-down */
+            font-family: "Font Awesome 6 Free";
+            font-weight: 900;
+            font-size: 0.8rem;
+            margin-left: auto;
+            opacity: 0.65;
+            transition: transform 0.3s ease;
+        }
+        .nav-item .nav-link[data-bs-toggle="collapse"][aria-expanded="true"]::after {
+            transform: rotate(-180deg);
+            opacity: 1;
+        }
+        /* When a count badge is present (e.g. pending leave), keep it and the chevron
+           together on the right: the badge takes the auto margin, the chevron trails it. */
+        .nav-item .nav-link[data-bs-toggle="collapse"] .badge { margin-left: auto; }
+        .nav-item .nav-link[data-bs-toggle="collapse"]:has(.badge)::after { margin-left: 0.4rem; }
+        /* In icon-only (collapsed) mode the chevron is meaningless — hide it. */
+        .sidebar.toggled .nav-item .nav-link[data-bs-toggle="collapse"]::after { display: none; }
+
+        /* Smoother accordion open/close on desktop (base theme uses 0.15s ease). */
+        @media (min-width: 768px) {
+            .sidebar .nav-item .collapsing { transition: height 0.28s cubic-bezier(.4, 0, .2, 1); }
+        }
+
+        /* Respect users who prefer reduced motion. */
+        @media (prefers-reduced-motion: reduce) {
+            .collapse-item,
+            .nav-item .nav-link,
+            .nav-item .nav-link[data-bs-toggle="collapse"]::after,
+            .sidebar .nav-item .collapsing { transition: none !important; }
+            .collapse-item:hover { transform: none; }
+        }
 
         /* Active state highlighting so the user knows where they are */
         .nav-item .nav-link.active-page,
@@ -255,35 +309,42 @@
             @endcan
 
             @php
+                // Each item carries a 'group' label so the flat list can be clustered into
+                // labeled sub-sections inside the Workforce dropdown (see $workforceGroups
+                // for the render order). Groups render in that defined order; items stay
+                // alphabetical within a group (the sortBy below).
                 $modulePages = [
-                    'hrdashboard'      => ['name' => 'HR Dashboard', 'url' => '/pages/management/hr-dashboard', 'icon' => 'fa-gauge-high'],
-                    'e201'             => ['name' => 'E-201', 'url' => '/pages/modules/E201', 'icon' => 'fa-id-badge'],
-                    'earlyout'         => ['name' => 'Earlyout', 'url' => '/pages/modules/earlyout', 'icon' => 'fa-door-open'],
-                    'enrollemployee'   => ['name' => 'Enroll Employee', 'url' => '/pages/modules/registration', 'icon' => 'fa-user-gear'],
-                    'loanmanagement'   => ['name' => 'Loans & Charges', 'url' => '/pages/modules/loanManagement', 'icon' => 'fa-hand-holding-dollar'],
-                    'payadjustments'   => ['name' => 'Pay Adjustments', 'url' => '/pages/modules/payadjustments', 'icon' => 'fa-sliders'],
-                    'noticemanagement' => ['name' => 'Notices & Memos', 'url' => '/pages/modules/notices', 'icon' => 'fa-file-circle-exclamation'],
-                    'coemanagement'    => ['name' => 'Certificate of Employment', 'url' => '/pages/modules/coe', 'icon' => 'fa-file-signature'],
-                    'programs'         => ['name' => 'Programs', 'url' => '/pages/modules/programs', 'icon' => 'fa-award'],
-                    'attendanceimport' => ['name' => 'Attendance Import', 'url' => '/attendance-import', 'icon' => 'fa-file-import'],
-                    'overtimeimport'   => ['name' => 'Overtime Import', 'url' => '/overtime-import', 'icon' => 'fa-clock'],
-                    'leaveimport'      => ['name' => 'Leave Import', 'url' => '/leave-import', 'icon' => 'fa-calendar-check'],
-                    'scheduleimport'   => ['name' => 'Schedule Import', 'url' => '/schedule-import', 'icon' => 'fa-calendar-plus'],
-                    'approveschedulechange' => ['name' => 'Pending Schedule Requests', 'url' => '/pages/modules/schedulerequests', 'icon' => 'fa-calendar-check'],
-                    'leaveapplication' => ['name' => 'Leave Application', 'url' => '/pages/modules/leaveApplication', 'icon' => 'fa-calendar-day'],
-                    'pendingleaverequests' => ['name' => 'Pending Leave Requests', 'url' => '/pages/modules/leaverequests', 'icon' => 'fa-calendar-day'],
-                    'obttracker'       => ['name' => 'OB Tracker', 'url' => '/pages/modules/obtTracker', 'icon' => 'fa-map-location-dot'],
-                    'overtime'         => ['name' => 'Overtime', 'url' => '/pages/modules/overtime', 'icon' => 'fa-user-clock'],
-                    'adminovertime'    => ['name' => 'Apply Employee Overtime', 'url' => '/pages/modules/admin-overtime', 'icon' => 'fa-stopwatch'],
-                    'adminob'          => ['name' => 'Apply Employee OB', 'url' => '/pages/modules/admin-ob', 'icon' => 'fa-briefcase'],
-                    'pendingovertimerequests' => ['name' => 'Pending Overtime Requests', 'url' => '/pages/modules/overtimerequests', 'icon' => 'fa-calendar-day'],
-                    'payroll'          => ['name' => 'Payroll System', 'url' => '/pages/modules/payroll', 'icon' => 'fa-file-invoice-dollar'],
-                    'payrolllogs'      => ['name' => 'Payroll Logs', 'url' => '/payroll-logs', 'icon' => 'fa-clipboard-list'],
-                    'debitadvise'      => ['name' => 'Debit Advise', 'url' => '/pages/modules/debitAdvise', 'icon' => 'fa-receipt'],
-                    'sendobt'          => ['name' => 'Send to OBT', 'url' => '/pages/modules/sendOBT', 'icon' => 'fa-paper-plane'],
-                    'manual_entry'          => ['name' => 'Adjustment Time', 'url' => '/pages/modules/adjustmentTime', 'icon' => 'fa-paper-plane'],
-                    'summarylogs'      => ['name' => 'Summary Logs Management', 'url' => '/pages/modules/summary-logs', 'icon' => 'fa-pen-to-square'],
+                    'hrdashboard'      => ['name' => 'HR Dashboard', 'url' => '/pages/management/hr-dashboard', 'icon' => 'fa-gauge-high', 'group' => 'People & HR'],
+                    'e201'             => ['name' => 'E-201', 'url' => '/pages/modules/E201', 'icon' => 'fa-id-badge', 'group' => 'People & HR'],
+                    'earlyout'         => ['name' => 'Earlyout', 'url' => '/pages/modules/earlyout', 'icon' => 'fa-door-open', 'group' => 'Attendance & Time'],
+                    'enrollemployee'   => ['name' => 'Enroll Employee', 'url' => '/pages/modules/registration', 'icon' => 'fa-user-gear', 'group' => 'People & HR'],
+                    'loanmanagement'   => ['name' => 'Loans & Charges', 'url' => '/pages/modules/loanManagement', 'icon' => 'fa-hand-holding-dollar', 'group' => 'Payroll'],
+                    'payadjustments'   => ['name' => 'Pay Adjustments', 'url' => '/pages/modules/payadjustments', 'icon' => 'fa-sliders', 'group' => 'Payroll'],
+                    'noticemanagement' => ['name' => 'Notices & Memos', 'url' => '/pages/modules/notices', 'icon' => 'fa-file-circle-exclamation', 'group' => 'People & HR'],
+                    'coemanagement'    => ['name' => 'Certificate of Employment', 'url' => '/pages/modules/coe', 'icon' => 'fa-file-signature', 'group' => 'People & HR'],
+                    'programs'         => ['name' => 'Programs', 'url' => '/pages/modules/programs', 'icon' => 'fa-award', 'group' => 'People & HR'],
+                    'attendanceimport' => ['name' => 'Attendance Import', 'url' => '/attendance-import', 'icon' => 'fa-file-import', 'group' => 'Attendance & Time'],
+                    'overtimeimport'   => ['name' => 'Overtime Import', 'url' => '/overtime-import', 'icon' => 'fa-clock', 'group' => 'Overtime & OB'],
+                    'leaveimport'      => ['name' => 'Leave Import', 'url' => '/leave-import', 'icon' => 'fa-calendar-check', 'group' => 'Leave'],
+                    'scheduleimport'   => ['name' => 'Schedule Import', 'url' => '/schedule-import', 'icon' => 'fa-calendar-plus', 'group' => 'Scheduling'],
+                    'approveschedulechange' => ['name' => 'Pending Schedule Requests', 'url' => '/pages/modules/schedulerequests', 'icon' => 'fa-calendar-check', 'group' => 'Scheduling'],
+                    'leaveapplication' => ['name' => 'Leave Application', 'url' => '/pages/modules/leaveApplication', 'icon' => 'fa-calendar-day', 'group' => 'Leave'],
+                    'pendingleaverequests' => ['name' => 'Pending Leave Requests', 'url' => '/pages/modules/leaverequests', 'icon' => 'fa-calendar-day', 'group' => 'Leave'],
+                    'obttracker'       => ['name' => 'OB Tracker', 'url' => '/pages/modules/obtTracker', 'icon' => 'fa-map-location-dot', 'group' => 'Overtime & OB'],
+                    'overtime'         => ['name' => 'Overtime', 'url' => '/pages/modules/overtime', 'icon' => 'fa-user-clock', 'group' => 'Overtime & OB'],
+                    'adminovertime'    => ['name' => 'Apply Employee Overtime', 'url' => '/pages/modules/admin-overtime', 'icon' => 'fa-stopwatch', 'group' => 'Overtime & OB'],
+                    'adminob'          => ['name' => 'Apply Employee OB', 'url' => '/pages/modules/admin-ob', 'icon' => 'fa-briefcase', 'group' => 'Overtime & OB'],
+                    'pendingovertimerequests' => ['name' => 'Pending Overtime Requests', 'url' => '/pages/modules/overtimerequests', 'icon' => 'fa-calendar-day', 'group' => 'Overtime & OB'],
+                    'payroll'          => ['name' => 'Payroll System', 'url' => '/pages/modules/payroll', 'icon' => 'fa-file-invoice-dollar', 'group' => 'Payroll'],
+                    'payrolllogs'      => ['name' => 'Payroll Logs', 'url' => '/payroll-logs', 'icon' => 'fa-clipboard-list', 'group' => 'Payroll'],
+                    'debitadvise'      => ['name' => 'Debit Advise', 'url' => '/pages/modules/debitAdvise', 'icon' => 'fa-receipt', 'group' => 'Payroll'],
+                    'sendobt'          => ['name' => 'Send to OBT', 'url' => '/pages/modules/sendOBT', 'icon' => 'fa-paper-plane', 'group' => 'Attendance & Time'],
+                    'manual_entry'          => ['name' => 'Adjustment Time', 'url' => '/pages/modules/adjustmentTime', 'icon' => 'fa-paper-plane', 'group' => 'Attendance & Time'],
+                    'summarylogs'      => ['name' => 'Summary Logs Management', 'url' => '/pages/modules/summary-logs', 'icon' => 'fa-pen-to-square', 'group' => 'Attendance & Time'],
                 ];
+
+                // Sub-group render order for the Workforce dropdown.
+                $workforceGroups = ['People & HR', 'Attendance & Time', 'Leave', 'Overtime & OB', 'Scheduling', 'Payroll'];
                 
                 // 1. Sort the main array alphabetically (A→Z) by display name
                 $modulePages = collect($modulePages)->sortBy(fn($p) => strtolower($p['name']))->toArray();
@@ -337,15 +398,23 @@
                     </a>
                     <div id="collapseModules" class="collapse {{ $modulePagesGroupActive ? 'show' : '' }}" data-bs-parent="#accordionSidebar">
                         <div class="bg-white py-2 collapse-inner">
-                            @foreach ($modulePages as $key => $page)
-                                @can($key)
-                                    <a class="collapse-item {{ $key === $modulePagesActiveKey ? 'active' : '' }}" href="{{ $page['url'] }}">
-                                        <i class="fa-solid {{ $page['icon'] }} me-1"></i> {{ $page['name'] }}
-                                        @if ($key === 'pendingleaverequests' && $pendingLeaveCount > 0)
-                                            <span class="badge rounded-pill bg-danger ms-auto">{{ $pendingLeaveCount }}</span>
-                                        @endif
-                                    </a>
-                                @endcan
+                            @foreach ($workforceGroups as $groupLabel)
+                                @php
+                                    // Items in this sub-group the current user is allowed to see.
+                                    // $modulePages is already alphabetical, so order is preserved.
+                                    $groupItems = collect($modulePages)->filter(fn($p, $k) => ($p['group'] ?? null) === $groupLabel && auth()->user()?->can($k));
+                                @endphp
+                                @if ($groupItems->isNotEmpty())
+                                    <div class="collapse-subheading">{{ $groupLabel }}</div>
+                                    @foreach ($groupItems as $key => $page)
+                                        <a class="collapse-item {{ $key === $modulePagesActiveKey ? 'active' : '' }}" href="{{ $page['url'] }}">
+                                            <i class="fa-solid {{ $page['icon'] }} me-1"></i> {{ $page['name'] }}
+                                            @if ($key === 'pendingleaverequests' && $pendingLeaveCount > 0)
+                                                <span class="badge rounded-pill bg-danger ms-auto">{{ $pendingLeaveCount }}</span>
+                                            @endif
+                                        </a>
+                                    @endforeach
+                                @endif
                             @endforeach
                         </div>
                     </div>
@@ -353,35 +422,45 @@
             @endif
 
             @php
+                // 'group' clusters these into labeled sub-sections inside the Settings
+                // dropdown (order in $settingsGroups). Items stay alphabetical within a group.
                 $managementModules = [
-                    'accessrights'        => ['name' => 'Employee Role', 'url' => '/pages/management/accessrights', 'icon' => 'fa-users-gear'],
-                    'auditlog'            => ['name' => 'Audit Trail', 'url' => '/pages/management/audit-trail', 'icon' => 'fa-clipboard-list'],
-                    'errorlogs'           => ['name' => 'Error Logs', 'url' => '/pages/management/error-logs', 'icon' => 'fa-bug'],
-                    'classification'      => ['name' => 'Classification', 'url' => '/pages/management/classification', 'icon' => 'fa-tags'],
-                    'companies'           => ['name' => 'Companies', 'url' => '/pages/management/companies', 'icon' => 'fa-building'],
-                    'databasebackup'      => ['name' => 'Database Backup', 'url' => '/pages/management/databasebackup', 'icon' => 'fa-database', 'permissions' => ['databasebackup', 'databasebackupcreate', 'databasebackuprestore', 'databasebackupdelete']],
-                    'departments'         => ['name' => 'Departments', 'url' => '/pages/management/departments', 'icon' => 'fa-sitemap'],
-                    'employeestatus'      => ['name' => 'Emp Status', 'url' => '/pages/management/employeestatus', 'icon' => 'fa-user-tag'],
-                    'govdues'             => ['name' => 'Government Dues', 'url' => '/pages/management/govdues', 'icon' => 'fa-landmark'],
-                    'holidaylogger'       => ['name' => 'Holidays', 'url' => '/pages/management/holidaylogger', 'icon' => 'fa-calendar'],
-                    'leavevalidations'    => ['name' => 'Leave Validation', 'url' => '/pages/management/leavevalidations', 'icon' => 'fa-calendar-check'],
-                    'lilovalidations'     => ['name' => 'Lilo Validation', 'url' => '/pages/management/lilovalidations', 'icon' => 'fa-clock-rotate-left'],
-                    'mailintegration'     => ['name' => 'Mail Integration', 'url' => '/pages/management/mailintegration', 'icon' => 'fa-paper-plane'],
-                    'maintenancemode'     => ['name' => 'Maintenance Mode', 'url' => '/pages/management/maintenancemode', 'icon' => 'fa-screwdriver-wrench'],
-                    'obvalidations'       => ['name' => 'OB Validation', 'url' => '/pages/management/obvalidations', 'icon' => 'fa-briefcase', 'description' => 'Official Business Trip'],
-                    'otfiling'            => ['name' => 'OT Maintenance', 'url' => '/pages/management/otfiling', 'icon' => 'fa-wrench'],
-                    'pagibigcontribution' => ['name' => 'Pagibig Contri.', 'url' => '/pages/management/pagibigcontribution', 'icon' => 'fa-piggy-bank'],
-                    'philhealth'          => ['name' => 'Philhealth', 'url' => '/pages/management/philhealth', 'icon' => 'fa-kit-medical'],
-                    'positions'           => ['name' => 'Positions', 'url' => '/pages/management/positions', 'icon' => 'fa-briefcase'],
-                    'relationship'        => ['name' => 'Relationship', 'url' => '/pages/management/relationship', 'icon' => 'fa-people-arrows'],
-                    'employeeschedules'   => ['name' => 'Scheduler', 'url' => '/employee-schedules', 'icon' => 'fa-calendar-days'],
-                    'ssscontribution'     => ['name' => 'SSS Contri.', 'url' => '/pages/management/ssscontribution', 'icon' => 'fa-hand-holding-medical'],
-                    'leavetypes'          => ['name' => 'Leave Types', 'url' => '/pages/management/leavetypes', 'icon' => 'fa-list-check'],
-                    'userroles'           => ['name' => 'User Roles', 'url' => '/user-roles', 'icon' => 'fa-shield-halved'],
-                    'admine201'           => ['name' => 'Admin E-201', 'url' => '/pages/management/e201', 'icon' => 'fa-id-card-alt'],
-                    'leavecreditallocation'          => ['name' => 'Leave Credit Allocation', 'url' => '/pages/management/leavecreditallocations', 'icon' => 'fa-list-check'],
-                    'allowedips'          => ['name' => 'IP Restriction', 'url' => '/pages/management/allowed-ips', 'icon' => 'fa-network-wired', 'permissions' => ['allowedips', 'allowedipslogs']],
+                    'accessrights'        => ['name' => 'Employee Role', 'url' => '/pages/management/accessrights', 'icon' => 'fa-users-gear', 'group' => 'Access & Security'],
+                    'auditlog'            => ['name' => 'Audit Trail', 'url' => '/pages/management/audit-trail', 'icon' => 'fa-clipboard-list', 'group' => 'System'],
+                    'errorlogs'           => ['name' => 'Error Logs', 'url' => '/pages/management/error-logs', 'icon' => 'fa-bug', 'group' => 'System'],
+                    'classification'      => ['name' => 'Classification', 'url' => '/pages/management/classification', 'icon' => 'fa-tags', 'group' => 'Organization'],
+                    'companies'           => ['name' => 'Companies', 'url' => '/pages/management/companies', 'icon' => 'fa-building', 'group' => 'Organization'],
+                    'databasebackup'      => ['name' => 'Database Backup', 'url' => '/pages/management/databasebackup', 'icon' => 'fa-database', 'group' => 'System', 'permissions' => ['databasebackup', 'databasebackupcreate', 'databasebackuprestore', 'databasebackupdelete']],
+                    'departments'         => ['name' => 'Departments', 'url' => '/pages/management/departments', 'icon' => 'fa-sitemap', 'group' => 'Organization'],
+                    'employeestatus'      => ['name' => 'Emp Status', 'url' => '/pages/management/employeestatus', 'icon' => 'fa-user-tag', 'group' => 'Organization'],
+                    'govdues'             => ['name' => 'Government Dues', 'url' => '/pages/management/govdues', 'icon' => 'fa-landmark', 'group' => 'Payroll & Government'],
+                    'holidaylogger'       => ['name' => 'Holidays', 'url' => '/pages/management/holidaylogger', 'icon' => 'fa-calendar', 'group' => 'Time & Leave Config'],
+                    'leavevalidations'    => ['name' => 'Leave Validation', 'url' => '/pages/management/leavevalidations', 'icon' => 'fa-calendar-check', 'group' => 'Time & Leave Config'],
+                    'lilovalidations'     => ['name' => 'Lilo Validation', 'url' => '/pages/management/lilovalidations', 'icon' => 'fa-clock-rotate-left', 'group' => 'Time & Leave Config'],
+                    'mailintegration'     => ['name' => 'Mail Integration', 'url' => '/pages/management/mailintegration', 'icon' => 'fa-paper-plane', 'group' => 'System'],
+                    'maintenancemode'     => ['name' => 'Maintenance Mode', 'url' => '/pages/management/maintenancemode', 'icon' => 'fa-screwdriver-wrench', 'group' => 'System'],
+                    'obvalidations'       => ['name' => 'OB Validation', 'url' => '/pages/management/obvalidations', 'icon' => 'fa-briefcase', 'description' => 'Official Business Trip', 'group' => 'Time & Leave Config'],
+                    'otfiling'            => ['name' => 'OT Maintenance', 'url' => '/pages/management/otfiling', 'icon' => 'fa-wrench', 'group' => 'Time & Leave Config'],
+                    'pagibigcontribution' => ['name' => 'Pagibig Contri.', 'url' => '/pages/management/pagibigcontribution', 'icon' => 'fa-piggy-bank', 'group' => 'Payroll & Government'],
+                    'philhealth'          => ['name' => 'Philhealth', 'url' => '/pages/management/philhealth', 'icon' => 'fa-kit-medical', 'group' => 'Payroll & Government'],
+                    'positions'           => ['name' => 'Positions', 'url' => '/pages/management/positions', 'icon' => 'fa-briefcase', 'group' => 'Organization'],
+                    'relationship'        => ['name' => 'Relationship', 'url' => '/pages/management/relationship', 'icon' => 'fa-people-arrows', 'group' => 'Organization'],
+                    'employeeschedules'   => ['name' => 'Scheduler', 'url' => '/employee-schedules', 'icon' => 'fa-calendar-days', 'group' => 'Time & Leave Config'],
+                    'ssscontribution'     => ['name' => 'SSS Contri.', 'url' => '/pages/management/ssscontribution', 'icon' => 'fa-hand-holding-medical', 'group' => 'Payroll & Government'],
+                    'leavetypes'          => ['name' => 'Leave Types', 'url' => '/pages/management/leavetypes', 'icon' => 'fa-list-check', 'group' => 'Time & Leave Config'],
+                    'userroles'           => ['name' => 'User Roles', 'url' => '/user-roles', 'icon' => 'fa-shield-halved', 'group' => 'Access & Security'],
+                    'admine201'           => ['name' => 'Admin E-201', 'url' => '/pages/management/e201', 'icon' => 'fa-id-card-alt', 'group' => 'Access & Security'],
+                    'leavecreditallocation'          => ['name' => 'Leave Credit Allocation', 'url' => '/pages/management/leavecreditallocations', 'icon' => 'fa-list-check', 'group' => 'Time & Leave Config'],
+                    'allowedips'          => ['name' => 'IP Restriction', 'url' => '/pages/management/allowed-ips', 'icon' => 'fa-network-wired', 'group' => 'Access & Security', 'permissions' => ['allowedips', 'allowedipslogs']],
                 ];
+
+                // Sub-group render order for the Settings dropdown. 'System' always renders
+                // last because the always-available Documentation link is pinned under it.
+                $settingsGroups = ['Organization', 'Payroll & Government', 'Time & Leave Config', 'Access & Security', 'System'];
+
+                // Access test for a management item, honoring an optional multi-permission list.
+                $canSeeModule = fn($key, $module) => collect($module['permissions'] ?? [$key])
+                    ->some(fn($permission) => auth()->user()?->can($permission));
                 // 1. Sort the modules alphabetically (A→Z) by display name
                 $managementModules = collect($managementModules)->sortBy(fn($m) => strtolower($m['name']))->toArray();
 
@@ -409,21 +488,29 @@
                     </a>
                     <div id="collapseSettings" class="collapse {{ $managementGroupActive ? 'show' : '' }}" data-bs-parent="#accordionSidebar">
                         <div class="bg-white py-2 collapse-inner">
-                            @foreach ($managementModules as $key => $module)
+                            @foreach ($settingsGroups as $groupLabel)
                                 @php
-                                    $modulePermissions = $module['permissions'] ?? [$key];
-                                    $hasModuleAccess = collect($modulePermissions)->some(fn($permission) => auth()->user()?->can($permission));
+                                    // Items in this sub-group the user can access (honors multi-permission).
+                                    $groupItems = collect($managementModules)->filter(fn($m, $k) => ($m['group'] ?? null) === $groupLabel && $canSeeModule($k, $m));
+                                    // Documentation is always shown and lives under System, so the
+                                    // System heading appears even if its other items are all hidden.
+                                    $isSystemGroup = $groupLabel === 'System';
                                 @endphp
-                                @if ($hasModuleAccess)
-                                    <a class="collapse-item {{ $key === $managementActiveKey ? 'active' : '' }}" href="{{ $module['url'] }}">
-                                        <i class="fa-solid {{ $module['icon'] }} me-1"></i> {{ $module['name'] }}
-                                    </a>
+                                @if ($groupItems->isNotEmpty() || $isSystemGroup)
+                                    <div class="collapse-subheading">{{ $groupLabel }}</div>
+                                    @foreach ($groupItems as $key => $module)
+                                        <a class="collapse-item {{ $key === $managementActiveKey ? 'active' : '' }}" href="{{ $module['url'] }}">
+                                            <i class="fa-solid {{ $module['icon'] }} me-1"></i> {{ $module['name'] }}
+                                        </a>
+                                    @endforeach
+                                    @if ($isSystemGroup)
+                                        {{-- Documentation: always available to anyone who can see Settings --}}
+                                        <a class="collapse-item {{ request()->is('pages/management/documentation*') ? 'active' : '' }}" href="/pages/management/documentation">
+                                            <i class="fa-solid fa-book me-1"></i> Documentation
+                                        </a>
+                                    @endif
                                 @endif
                             @endforeach
-                            {{-- Documentation: always available to anyone who can see Settings --}}
-                            <a class="collapse-item {{ request()->is('pages/management/documentation*') ? 'active' : '' }}" href="/pages/management/documentation">
-                                <i class="fa-solid fa-book me-1"></i> Documentation
-                            </a>
                         </div>
                     </div>
                 </li>
@@ -435,7 +522,21 @@
                     'employeeinformation' => ['name' => 'Employee Information', 'url' => '/reports/employee-information', 'icon' => 'fa-chart-column'],
                     'overtimereport' => ['name' => 'Overtime Report', 'url' => '/reports/overtime', 'icon' => 'fa-user-clock'],
                     'leavereport' => ['name' => 'Leave Report', 'url' => '/reports/leave', 'icon' => 'fa-calendar-day'],
-                    'thirteenthmonth' => ['name' => '13th Month Pay', 'url' => '/reports/thirteenth-month', 'icon' => 'fa-gift']
+                    'thirteenthmonth' => ['name' => '13th Month Pay', 'url' => '/reports/thirteenth-month', 'icon' => 'fa-gift'],
+                    'birreport' => ['name' => 'BIR Withholding (1601-C / Alphalist)', 'url' => '/reports/bir', 'icon' => 'fa-receipt'],
+                    'sssreport' => ['name' => 'SSS Contribution (R-3)', 'url' => '/reports/sss', 'icon' => 'fa-building-columns'],
+                    'philhealthreport' => ['name' => 'PhilHealth (RF-1)', 'url' => '/reports/philhealth', 'icon' => 'fa-heart-pulse'],
+                    'pagibigreport' => ['name' => 'Pag-IBIG (MCRF)', 'url' => '/reports/pagibig', 'icon' => 'fa-house-chimney'],
+                    'payrollregister' => ['name' => 'Payroll Register', 'url' => '/reports/payroll-register', 'icon' => 'fa-table-list'],
+                    'payrolljournal' => ['name' => 'Payroll Journal (GL)', 'url' => '/reports/payroll-journal', 'icon' => 'fa-book'],
+                    'loanledger' => ['name' => 'Loan Ledger', 'url' => '/reports/loan-ledger', 'icon' => 'fa-hand-holding-dollar'],
+                    'dtrreport' => ['name' => 'Daily Time Record (DTR)', 'url' => '/reports/dtr', 'icon' => 'fa-clock'],
+                    'tardinessreport' => ['name' => 'Tardiness & Absences', 'url' => '/reports/tardiness', 'icon' => 'fa-user-xmark'],
+                    'headcountreport' => ['name' => 'Headcount & Turnover', 'url' => '/reports/headcount', 'icon' => 'fa-users'],
+                    'leaveledger' => ['name' => 'Leave Ledger', 'url' => '/reports/leave-ledger', 'icon' => 'fa-calendar-check'],
+                    'noticesreport' => ['name' => 'Disciplinary Notices', 'url' => '/reports/notices', 'icon' => 'fa-triangle-exclamation'],
+                    'coereport' => ['name' => 'COE Issuance Log', 'url' => '/reports/coe-log', 'icon' => 'fa-file-contract'],
+                    'finalpayreport' => ['name' => 'Final Pay Computation', 'url' => '/reports/final-pay', 'icon' => 'fa-money-check-dollar']
                 ];
                 // Sort the reports alphabetically (A→Z) by display name
                 $moduleReports = collect($moduleReports)->sortBy(fn($r) => strtolower($r['name']))->toArray();
