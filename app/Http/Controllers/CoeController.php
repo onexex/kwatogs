@@ -133,14 +133,15 @@ class CoeController extends Controller
                 $blockers = $service->separatedIssueBlockers($d, $clearance);
                 return [
                     'empid'     => $d->empID,
-                    'name'      => $u ? trim(($u->lname ?? '') . ', ' . ($u->fname ?? '')) : $d->empID,
+                    // ALL CAPS "LASTNAME, FIRSTNAME" for the picker.
+                    'name'      => strtoupper($u ? trim(($u->lname ?? '') . ', ' . ($u->fname ?? '')) : (string) $d->empID),
                     'status'    => (string) $d->empStatus === '0' ? 'Resigned' : 'End of Contract',
                     'clearance' => $clearance->statusFor($d),
                     'complete'  => count($blockers) === 0,
                     'missing'   => $blockers,
                 ];
             })
-            ->sortBy('name')->values();
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->values();
 
         return response()->json(['status' => 200, 'data' => $rows]);
     }
