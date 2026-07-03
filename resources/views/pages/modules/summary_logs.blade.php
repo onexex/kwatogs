@@ -307,6 +307,11 @@
                 <div class="alert alert-danger d-none mb-3" id="slModalErr" style="font-size:.8rem;"></div>
                 <input type="hidden" id="slEditId">
 
+                {{-- Read-only punch context: actual time-in/out + system remarks for the day,
+                     so the editor can judge the computed numbers (e.g. a "Missed logout" that
+                     zeroed a session) without leaving the modal. --}}
+                <div id="slPunches" class="mb-3"></div>
+
                 <div class="row g-3">
                     <div class="col-md-4 col-6">
                         <label class="field-label">Duration Gross (hrs)</label>
