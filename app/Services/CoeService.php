@@ -70,6 +70,42 @@ class CoeService
     }
 
     /**
+     * Certificate-fact fields that must be present to print a valid COE (name,
+     * position, department, hire date). HR-facing labels — mirrors the profile
+     * checks in requirements(), which are employee-facing.
+     */
+    public function profileFactsMissing(empDetail $detail): array
+    {
+        $missing = [];
+        $u = $detail->user;
+        if (!$u || trim(($u->fname ?? '') . ($u->lname ?? '')) === '') {
+            $missing[] = 'Employee name is missing.';
+        }
+        if (empty($detail->empPos))       { $missing[] = 'Position is not set on the 201 record.'; }
+        if (empty($detail->empDepID))     { $missing[] = 'Department is not set on the 201 record.'; }
+        if (empty($detail->empDateHired)) { $missing[] = 'Hire date is not set on the 201 record.'; }
+        return $missing;
+    }
+
+    /**
+     * Everything blocking HR from issuing a COE to a SEPARATED employee: incomplete
+     * certificate facts, a blacklist flag, and any outstanding offboarding-clearance
+     * item. Empty array = ready to issue. Used by both the picker (separatedEmployees)
+     * and the server gate (issue), so they never drift.
+     */
+    public function separatedIssueBlockers(empDetail $detail, OffboardingClearanceService $clearance): array
+    {
+        $blockers = $this->profileFactsMissing($detail);
+        if ($detail->flag_status === 'blacklist') {
+            $blockers[] = 'Employee is blacklisted.';
+        }
+        foreach ($clearance->missingItems($detail) as $label) {
+            $blockers[] = 'Clearance: ' . $label;
+        }
+        return $blockers;
+    }
+
+    /**
      * Freeze the facts the certificate states, resolved from live records at
      * approval time. `$includeSalary` controls whether compensation is captured.
      */

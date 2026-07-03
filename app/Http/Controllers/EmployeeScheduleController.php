@@ -15,7 +15,7 @@ class EmployeeScheduleController extends Controller
 {
     public function index()
     {
-        $employees = User::orderBy('lname')->get();
+        $employees = User::orderBy('lname')->orderBy('fname')->get();
         $departments = department::orderBy('dep_name')->get(['id', 'dep_name']);
 
         return view('pages.management.empscheduler', compact('employees', 'departments'));

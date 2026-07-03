@@ -24,6 +24,7 @@ class AdminOvertimeController extends Controller
 
         $employees = User::whereHas('empDetail', fn($q) => $q->where('empStatus', '1'))
             ->orderBy('lname')
+            ->orderBy('fname')
             ->get();
 
         $overtimes = Overtime::select('overtimes.*')

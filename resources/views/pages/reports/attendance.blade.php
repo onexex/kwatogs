@@ -214,7 +214,7 @@
                             @if(count($resultEmp) > 0)
                                 @foreach($resultEmp as $emp)
                                 @php
-                                    $fullName = ucwords(strtolower($emp->lname . ", " . $emp->fname));
+                                    $fullName = strtoupper($emp->lname . ', ' . $emp->fname);
                                 @endphp
                                     <option value="{{ $emp->empID }}">{{ $fullName }}</option>
                                 @endforeach

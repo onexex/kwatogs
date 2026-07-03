@@ -123,24 +123,25 @@ class CoeController extends Controller
      * clearance status, for the "Issue COE" picker. Separated staff can't log in to
      * self-serve, so HR issues on their behalf.
      */
-    public function separatedEmployees(OffboardingClearanceService $clearance)
+    public function separatedEmployees(OffboardingClearanceService $clearance, CoeService $service)
     {
         $rows = empDetail::with('user')
             ->whereIn('empStatus', ['0', '2'])
             ->get()
-            ->map(function ($d) use ($clearance) {
+            ->map(function ($d) use ($clearance, $service) {
                 $u = $d->user;
-                $missing = $clearance->missingItems($d);
+                $blockers = $service->separatedIssueBlockers($d, $clearance);
                 return [
                     'empid'     => $d->empID,
-                    'name'      => $u ? trim(($u->lname ?? '') . ', ' . ($u->fname ?? '')) : $d->empID,
+                    // ALL CAPS "LASTNAME, FIRSTNAME" for the picker.
+                    'name'      => strtoupper($u ? trim(($u->lname ?? '') . ', ' . ($u->fname ?? '')) : (string) $d->empID),
                     'status'    => (string) $d->empStatus === '0' ? 'Resigned' : 'End of Contract',
                     'clearance' => $clearance->statusFor($d),
-                    'complete'  => count($missing) === 0,
-                    'missing'   => $missing,
+                    'complete'  => count($blockers) === 0,
+                    'missing'   => $blockers,
                 ];
             })
-            ->sortBy('name')->values();
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->values();
 
         return response()->json(['status' => 200, 'data' => $rows]);
     }
@@ -170,10 +171,10 @@ class CoeController extends Controller
         if ((string) $detail->empStatus === '1') {
             return response()->json(['status' => 202, 'msg' => 'This employee is active; active employees request their own COE.']);
         }
-        // Gate: offboarding clearance must be complete.
-        $missing = $clearance->missingItems($detail);
-        if (count($missing) > 0) {
-            return response()->json(['status' => 202, 'msg' => 'Offboarding clearance is incomplete.', 'missing' => $missing]);
+        // Gate: complete certificate facts + not blacklisted + offboarding clearance complete.
+        $blockers = $service->separatedIssueBlockers($detail, $clearance);
+        if (count($blockers) > 0) {
+            return response()->json(['status' => 202, 'msg' => 'Cannot issue COE — outstanding requirements.', 'missing' => $blockers]);
         }
 
         $signatory = CoeSignatory::findOrFail($request->signatory_id);

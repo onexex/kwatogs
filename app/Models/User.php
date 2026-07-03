@@ -72,6 +72,11 @@ class User extends Authenticatable
         return $this->hasMany(emp_education::class, 'empID', 'empID');
     }
 
+    public function employmentDocuments()
+    {
+        return $this->hasMany(EmployeeDocument::class, 'user_id', 'id')->latest();
+    }
+
     public function employeeInformation()
     {
         return $this->belongsTo(emp_info::class, 'empID', 'empID');

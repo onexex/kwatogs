@@ -20,7 +20,7 @@ class LeaveCreditAllocationController extends Controller
         }
         $employees = User::whereHas('empDetail', function ($q) {
                 $q->where('empClassification', 'RGLR');
-            })->orderBy('lname')->get();
+            })->orderBy('lname')->orderBy('fname')->get();
         $leavetypes = leavetype::all();
         $leaveCreditAllocations = LeaveCreditAllocation::where('year', date('Y'))->get();
         return view('pages.management.leavecreditallocation', compact('employees', 'leavetypes', 'leaveCreditAllocations'));

@@ -38,7 +38,7 @@ class SummaryLogsController extends Controller
     {
         // No status filter: the back door must also reach past records of
         // separated employees (mirrors reportAttendanceCtrl@index).
-        $resultEmp = User::select('empID', 'fname', 'lname')->orderBy('lname')->get();
+        $resultEmp = User::select('empID', 'fname', 'lname')->orderBy('lname')->orderBy('fname')->get();
 
         return view('pages.modules.summary_logs', compact('resultEmp'));
     }
