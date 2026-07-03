@@ -84,9 +84,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 const grossHours = parseFloat(item.total_hours ?? 0);
                 const netHours   = grossHours - (ded / 60);
 
-                let logRows = "-";
+                let logRows = '<span class="text-muted">-</span>';
                 if (item.logs && item.logs.length > 0) {
-                    logRows = item.logs.map(log => `${formatTime(log.time_in)} - ${formatTime(log.time_out)}`).join("<br>");
+                    logRows = item.logs.map(log => {
+                        const range = `${formatTime(log.time_in)} - ${formatTime(log.time_out)}`;
+                        return `<div class="mb-1">${range}${remarkLabel(log)}</div>`;
+                    }).join("");
                 }
 
                 let schedCell = '<span class="text-muted">—</span>';
@@ -206,6 +209,33 @@ document.addEventListener('DOMContentLoaded', function () {
         fGross.val(Math.max(0, num(fNet) + num(fDed) / 60).toFixed(2));
     });
 
+    // Read-only punch panel inside the edit modal: each actual time-in/out for the day plus
+    // its system remark (reusing remarkLabel), so the editor sees WHY a session read the way
+    // it did (e.g. an auto-closed missed logout that zeroed it) while adjusting the numbers.
+    function renderPunchContext(item) {
+        const box = $("#slPunches");
+        const logs = item.logs || [];
+        if (!logs.length) {
+            box.html(`<div class="p-2 px-3 rounded" style="background:#f1f5f9;font-size:.72rem;color:#64748b;">
+                          <i class="fa-solid fa-circle-info me-1"></i>No raw punches on record for this day.
+                      </div>`);
+            return;
+        }
+        const lines = logs.map(log => {
+            const range = `${formatTime(log.time_in)} - ${formatTime(log.time_out)}`;
+            return `<div class="d-flex align-items-center flex-wrap gap-2 py-1" style="font-size:.78rem;">
+                        <span class="fw-semibold" style="color:#334155;"><i class="fa-regular fa-clock me-1 text-muted"></i>${range}</span>
+                        ${remarkLabel(log)}
+                    </div>`;
+        }).join("");
+        box.html(`
+            <div class="p-2 px-3 rounded" style="background:#f8fafc;border:1px solid var(--border);">
+                <div style="font-size:.62rem;font-weight:700;letter-spacing:.4px;color:#94a3b8;text-transform:uppercase;margin-bottom:2px;">Punches (read-only)</div>
+                ${lines}
+            </div>
+        `);
+    }
+
     tableBody.on("click", ".sl-edit", function () {
         const item = rows[$(this).data("i")];
         if (!item || item.payroll_locked) return; // locked rows never render this button — belt & braces
@@ -213,6 +243,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const name = item.employee ? `${item.employee.lname}, ${item.employee.fname}` : 'N/A';
         $("#slEditWho").text(`${name.toUpperCase()} — ${item.formatted_date}`);
         $("#slEditId").val(item.id);
+
+        renderPunchContext(item);
 
         const ded = dedTotal(item);
         fGross.val(parseFloat(item.total_hours ?? 0).toFixed(2));
@@ -298,6 +330,54 @@ document.addEventListener('DOMContentLoaded', function () {
             minute: "2-digit",
             hour12: true,
         });
+    }
+
+    // Surface a punch's remark under its time range — but only when it's noteworthy.
+    // "Regular Shift" (the on-time normal case) is suppressed as noise; exception remarks
+    // like "Auto-closed (Missed logout)" explain why a session earned 0 paid hours. Errors
+    // (invalid / missed-logout) show red, cap/no-schedule notes show amber.
+    //
+    // Takes the whole punch (not just the string) so an auto-closed missed logout can expose
+    // WHEN it was closed: the shown time-out is the back-dated scheduled end, but the real
+    // close happened on the employee's next punch-in — recorded as the punch's updated_at.
+    // That timestamp is surfaced as a hover tooltip so it's visible without querying the DB.
+    function remarkLabel(log) {
+        const r = String((log && log.remarks) || "").trim();
+        if (!r || /^regular shift$/i.test(r)) return "";
+        const isError = /invalid|missed logout|auto-closed/i.test(r);
+        const color = isError ? "#b91c1c" : "#b45309";
+        const bg    = isError ? "#fee2e2" : "#fef3c7";
+
+        let title = r, cursor = "default";
+        if (/auto-closed|missed logout/i.test(r) && log && log.updated_at) {
+            const when = formatDateTime(log.updated_at);
+            if (when) {
+                title = `Auto-closed ${when}, on the employee's next punch-in. The shown time-out is the scheduled end, not the close time.`;
+                cursor = "help";
+            }
+        }
+
+        return `<div class="mt-1" style="font-size:.62rem;font-weight:600;color:${color};background:${bg};display:inline-block;padding:1px 7px;border-radius:6px;line-height:1.4;cursor:${cursor};" title="${escapeHtml(title)}">
+                    <i class="fa-solid fa-circle-info me-1"></i>${escapeHtml(r)}
+                </div>`;
+    }
+
+    // "2026-06-27T09:40:11..." → "Jun 27, 2026, 9:40 AM". Uses new Date() like formatTime so
+    // timezone handling matches the punch times already rendered on this page.
+    function formatDateTime(s) {
+        if (!s) return "";
+        const d = new Date(s);
+        if (isNaN(d.getTime())) return "";
+        return d.toLocaleString("en-US", {
+            month: "short", day: "2-digit", year: "numeric",
+            hour: "2-digit", minute: "2-digit", hour12: true,
+        });
+    }
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        }[c]));
     }
 
     // Format a plain "HH:MM" / "HH:MM:SS" schedule time into 12-hour clock.

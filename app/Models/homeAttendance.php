@@ -179,7 +179,10 @@ class homeAttendance extends Model
         };
 
         // 5️⃣ Late / Undertime
-        if ($schedIn && $logs->count()) {
+        // A day that produced ZERO paid hours (e.g. the only punches fell entirely outside
+        // the shift window) is a full absence — the absence deduction already covers the whole
+        // day, so late/undertime must stay 0 or they'd double-charge against the same day.
+        if ($schedIn && $logs->count() && $summary->total_hours > 0) {
             $firstIn = Carbon::parse($logs->sortBy('time_in')->first()->time_in);
 
             // Late = gap from schedule start to first punch-in, minus any break in that gap.
@@ -426,25 +429,17 @@ class homeAttendance extends Model
         $now = now();
         $today = $now->toDateString();
         $yesterday = $now->copy()->subDay()->toDateString();
-    
 
-        // 1️⃣ Auto-close any previous open logs from older days (missed logouts).
-        $previousOpenLogs = self::where('employee_id', $employeeId)
-            ->whereNull('time_out')
-            ->whereDate('attendance_date', '<', $today)
-            ->get();
 
-        foreach ($previousOpenLogs as $log) {
-            $log->autoCloseMissedLogout($now);
-        }
-
-        // 2️⃣ Prevent duplicate open punches.
-        // After older-day logs are closed above, any punch still open is from TODAY.
-        // A recent one (< 16h) means the employee simply forgot to log out before
-        // re-punching → block. A stale one (≥ 16h) is a dangling record → close it so
-        // it can't orphan (logTimeOut only ever closes the latest open punch).
+        // 1️⃣ Prevent duplicate open punches — TODAY only.
+        // Scoped to today's punches so this guard stands on its own (it no longer relies on
+        // older-day logs having been closed first — that cleanup now runs LAST, only once the
+        // punch-in is committed, see step 5️⃣). A recent one (< 16h) means the employee simply
+        // forgot to log out before re-punching → block. A stale one (≥ 16h) is a dangling
+        // record → close it so it can't orphan (logTimeOut only ever closes the latest open punch).
         $openPunch = self::where('employee_id', $employeeId)
             ->whereNull('time_out')
+            ->whereDate('attendance_date', $today)
             ->latest('time_in')
             ->first();
 
@@ -456,7 +451,7 @@ class homeAttendance extends Model
             $openPunch->autoCloseMissedLogout($now);
         }
 
-        // 3️⃣ Match an active schedule (supports overnight)
+        // 2️⃣ Match an active schedule (supports overnight)
         $bufferMinutes = 60; // Allow 1 hour early login before shift
 
         $candidates = EmployeeSchedule::where('employee_id', $employeeId)
@@ -519,7 +514,7 @@ class homeAttendance extends Model
             throw new \Exception('No active schedule found for your time-in window.');
         }
 
-        // 4️⃣ Check break restriction.
+        // 3️⃣ Check break restriction.
         // Anchor the break window to the matched shift (NOT "today"). For a night shift a
         // break whose clock time is before the shift start (e.g. 02:00 lunch on a 22:00→06:00
         // shift) actually falls on the NEXT day, so shift it forward; then handle a break that
@@ -541,8 +536,23 @@ class homeAttendance extends Model
             }
         }
 
-        // 5️⃣ Use schedule start as the "work day"
+        // 4️⃣ Use schedule start as the "work day"
         $attendanceDate = Carbon::parse($matchedSchedule->sched_start_date)->toDateString();
+
+        // 5️⃣ Auto-close any previous open logs from OLDER days (missed logouts).
+        // Deliberately runs HERE — after the schedule (step 2️⃣) and break (step 3️⃣) checks
+        // have passed — so a REJECTED punch-in never closes a prior day's dangling record as a
+        // side effect. The cleanup happens only when this punch-in is actually about to commit;
+        // a rejected attempt leaves those records open to be closed on the next SUCCESSFUL one.
+        // The loop closes ALL older open punches so none can orphan.
+        $previousOpenLogs = self::where('employee_id', $employeeId)
+            ->whereNull('time_out')
+            ->whereDate('attendance_date', '<', $today)
+            ->get();
+
+        foreach ($previousOpenLogs as $log) {
+            $log->autoCloseMissedLogout($now);
+        }
 
         // 6️⃣ Save new punch (multiple punches allowed)
         return self::create([

@@ -858,6 +858,46 @@ $(document).ready(function () {
 
             $("#btnGenerate").prop("disabled", true).text("Generating...");
 
+            // Unique id for this run so the progress poller reads THIS run's percentage.
+            const runId = "pr_" + Date.now() + "_" + Math.floor(Math.random() * 1e6);
+
+            // Progress modal — a teal bar the poller animates while payroll computes.
+            Swal.fire({
+                title: "Generating Payroll",
+                html:
+                    `<div style="margin-top:6px;">` +
+                    `  <div style="height:14px;background:#e2e8f0;border-radius:8px;overflow:hidden;">` +
+                    `    <div id="payrollProgressBar" style="height:100%;width:0%;background:#008080;transition:width .3s ease;border-radius:8px;"></div>` +
+                    `  </div>` +
+                    `  <div id="payrollProgressLabel" style="margin-top:10px;font-size:13px;color:#334155;">Preparing…</div>` +
+                    `</div>`,
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                didOpen: () => Swal.showLoading(),
+            });
+
+            const updateProgressUI = (data) => {
+                data = data || {};
+                const percent = Math.max(0, Math.min(100, parseInt(data.percent, 10) || 0));
+                const bar = document.getElementById("payrollProgressBar");
+                const label = document.getElementById("payrollProgressLabel");
+                if (bar) bar.style.width = percent + "%";
+                if (label) {
+                    label.textContent = (data.total > 0)
+                        ? `${data.done || 0} of ${data.total} employees • ${percent}%`
+                        : "Preparing…";
+                }
+            };
+
+            // Poll the run's progress ~every second; ignore poll errors (best-effort).
+            const poll = setInterval(function () {
+                axios
+                    .get("/payroll/compute/progress", { params: { run_id: runId } })
+                    .then((r) => updateProgressUI(r.data))
+                    .catch(() => {});
+            }, 1000);
+
             axios
                 .get("/payroll/compute", {
                     params: {
@@ -866,6 +906,7 @@ $(document).ready(function () {
                         pay_date: payDate,
                         department_id: departmentId, // ✨ pass selected department (or "all") ✨
                         company_id: companyId,       // pay schedule / scope by company
+                        run_id: runId,               // live-progress key for the poller
                     },
                 })
                 .then(function (response) {
@@ -913,6 +954,13 @@ $(document).ready(function () {
                     }
                 })
                 .finally(function () {
+                    // Stop polling. The success/error Swal above already replaced the
+                    // progress modal, so we must NOT Swal.close() here (that would close
+                    // the result dialog). If neither fired (shouldn't happen), close it.
+                    clearInterval(poll);
+                    if (Swal.isVisible() && document.getElementById("payrollProgressBar")) {
+                        Swal.close();
+                    }
                     $("#btnGenerate").prop("disabled", false).text("Generate");
                 });
         });

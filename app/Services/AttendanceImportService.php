@@ -227,6 +227,14 @@ class AttendanceImportService
         $late = max(0, $aIn - $sIn);
         $undertime = max(0, $sOut - $aOut);
 
+        // A day that nets ZERO worked hours (punches fell outside the shift window) is a full
+        // absence — the absence deduction covers the whole day, so late/undertime must stay 0
+        // to avoid stacking on top of it. Mirrors homeAttendance::updateDailySummary.
+        if ($worked <= 0) {
+            $late = 0;
+            $undertime = 0;
+        }
+
         // A break isn't work, so a break falling inside the late gap ([sIn, aIn]) or the
         // undertime gap ([aOut, sOut]) must not be charged as a deduction — mirrors
         // homeAttendance::updateDailySummary so punch and import agree.

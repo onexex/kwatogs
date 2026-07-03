@@ -172,7 +172,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 let logRows = "-";
                 if (item.logs && item.logs.length > 0) {
-                    logRows = item.logs.map(log => `${formatTime(log.time_in)} - ${formatTime(log.time_out)}`).join("<br>");
+                    logRows = item.logs.map(log => {
+                        const range = `${formatTime(log.time_in)} - ${formatTime(log.time_out)}`;
+                        return `<div class="mb-1">${range}${remarkLabel(log.remarks)}</div>`;
+                    }).join("");
                 }
 
                 // Assigned shift for this day (actual schedule)
@@ -274,6 +277,27 @@ document.addEventListener('DOMContentLoaded', function () {
             minute: "2-digit",
             hour12: true,
         });
+    }
+
+    // Surface a punch's remark under its time range — but only when it's noteworthy.
+    // "Regular Shift" (the on-time normal case) is suppressed as noise; exception remarks
+    // like "Auto-closed (Missed logout)" explain why a session earned 0 paid hours. Errors
+    // (invalid / missed-logout) show red, cap/no-schedule notes show amber.
+    function remarkLabel(remark) {
+        const r = String(remark || "").trim();
+        if (!r || /^regular shift$/i.test(r)) return "";
+        const isError = /invalid|missed logout|auto-closed/i.test(r);
+        const color = isError ? "#b91c1c" : "#b45309";
+        const bg    = isError ? "#fee2e2" : "#fef3c7";
+        return `<div class="mt-1" style="font-size:.62rem;font-weight:600;color:${color};background:${bg};display:inline-block;padding:1px 7px;border-radius:6px;line-height:1.4;">
+                    <i class="fa-solid fa-circle-info me-1"></i>${escapeHtml(r)}
+                </div>`;
+    }
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        }[c]));
     }
 
     // Format a plain "HH:MM" / "HH:MM:SS" schedule time into 12-hour clock.

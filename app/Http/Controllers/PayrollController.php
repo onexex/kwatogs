@@ -20,6 +20,7 @@ use App\Models\SssContribution;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
  
@@ -137,6 +138,11 @@ class PayrollController extends Controller
             $endDate = $validated['date_to'];
             $payDate = $validated['pay_date'];
 
+            // Live-progress run id (optional). When the front-end passes one, we write
+            // per-employee progress to the cache so a companion poll endpoint can drive
+            // a progress bar. Absent = skip all progress writes (nothing else changes).
+            $runId = $request->query('run_id');
+
             // Holiday-pay eligibility (see business rule in CLAUDE.md) needs to look back
             // to an employee's last SCHEDULED workday before a holiday, which can fall
             // before this cut-off's start (e.g. a holiday on day 1, last workday was the
@@ -208,6 +214,12 @@ class PayrollController extends Controller
             // IDs being processed in this run. Used to scope cleanup so computing a
             // single department never deletes payroll belonging to other departments.
             $employeeIds = $employees->pluck('empID');
+
+            // Seed the progress store now that the total headcount is known, so the
+            // poller shows a real "0 of N" immediately instead of a bare "starting".
+            $progressTotal = $employees->count();
+            $progressDone  = 0;
+            $this->putPayrollProgress($runId, $progressDone, $progressTotal, 'computing');
 
             // ==============================
             //  PRE-GENERATION VALIDATION (runs first; no records written on failure)
@@ -1070,11 +1082,16 @@ class PayrollController extends Controller
 
                 // PayrollDetail rows are already linked to $payroll->id at insert
                 // time (see the bulk insert above) — no separate link UPDATE needed.
+
+                // This employee is fully computed — advance the progress bar.
+                $progressDone++;
+                $this->putPayrollProgress($runId, $progressDone, $progressTotal, 'computing');
             }
 
             // ==============================
             //  COMMIT TRANSACTION
             // ==============================
+            $this->putPayrollProgress($runId, $progressTotal, $progressTotal, 'done');
             DB::commit();
             Log::channel('payroll')->info('=== Payroll run DONE ===', ['pay_date' => $payDate, 'employees' => $employeeIds->count()]);
             $scope = $departmentId === 'all' ? 'all departments' : "department #$departmentId";
@@ -1083,6 +1100,7 @@ class PayrollController extends Controller
         } catch (\Throwable $e) {
             //  HANDLE ERRORS
             DB::rollBack();
+            $this->putPayrollProgress($runId ?? null, 0, 0, 'error');
             Log::error('Payroll computation failed', [
                 'message' => $e->getMessage(),
                 'line' => $e->getLine(),
@@ -1097,7 +1115,52 @@ class PayrollController extends Controller
         }
     }
 
-    
+    // ==============================================================
+    //  PAYROLL GENERATION PROGRESS (live percentage for the UI)
+    // ==============================================================
+
+    /** Cache key for a payroll-generation run's progress, or null if no run id. */
+    private function payrollProgressKey(?string $runId): ?string
+    {
+        return $runId ? "payroll_progress:{$runId}" : null;
+    }
+
+    /**
+     * Best-effort write of the current progress for a run. No-op when no run id
+     * was supplied (e.g. legacy callers), so it never affects payroll generation.
+     */
+    private function putPayrollProgress(?string $runId, int $done, int $total, string $phase): void
+    {
+        $key = $this->payrollProgressKey($runId);
+        if (!$key) return;
+
+        Cache::put($key, [
+            'done'    => $done,
+            'total'   => $total,
+            'percent' => $total > 0 ? (int) round($done / $total * 100) : ($phase === 'done' ? 100 : 0),
+            'phase'   => $phase,
+        ], now()->addMinutes(10));
+    }
+
+    /**
+     * Poll endpoint: returns the live progress for a payroll-generation run so the
+     * front-end can animate a progress bar. Returns a neutral "starting" payload
+     * when nothing has been written yet (or no run id).
+     */
+    public function progress(Request $request)
+    {
+        $key  = $this->payrollProgressKey($request->query('run_id'));
+        $data = $key ? Cache::get($key) : null;
+
+        return response()->json($data ?: [
+            'done'    => 0,
+            'total'   => 0,
+            'percent' => 0,
+            'phase'   => 'starting',
+        ]);
+    }
+
+
     public function getDetailsByPayroll(Request $request)
 {
     try {

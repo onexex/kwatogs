@@ -463,6 +463,7 @@ Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip
     Route::get('/attendance/viewer', [reportAttendanceCtrl::class, 'index'])->name('attendance.viewer');
     Route::post('/attendance/fetch', [reportAttendanceCtrl::class, 'fetchAttendance'])->name('attendance.fetch');
     Route::get('/payroll/compute', [PayrollController::class, 'computePayroll']);
+    Route::get('/payroll/compute/progress', [PayrollController::class, 'progress']);
 
     // Attendance import (schedule + home attendance + summaries)
     Route::get('/attendance-import', [AttendanceImportController::class, 'index'])->name('attendance-import.index')->middleware('can:attendanceimport');
