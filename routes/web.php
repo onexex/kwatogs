@@ -69,6 +69,20 @@ use App\Http\Controllers\Reports\EmployeeInformationReportController;
 use App\Http\Controllers\Reports\OvertimeReportController;
 use App\Http\Controllers\Reports\LeaveReportController;
 use App\Http\Controllers\Reports\ThirteenthMonthController;
+use App\Http\Controllers\Reports\BirWithholdingReportController;
+use App\Http\Controllers\Reports\SssRemittanceReportController;
+use App\Http\Controllers\Reports\PhilhealthRemittanceReportController;
+use App\Http\Controllers\Reports\PagibigRemittanceReportController;
+use App\Http\Controllers\Reports\PayrollRegisterReportController;
+use App\Http\Controllers\Reports\PayrollJournalReportController;
+use App\Http\Controllers\Reports\LoanLedgerReportController;
+use App\Http\Controllers\Reports\DailyTimeRecordReportController;
+use App\Http\Controllers\Reports\TardinessAbsenceReportController;
+use App\Http\Controllers\Reports\HeadcountTurnoverReportController;
+use App\Http\Controllers\Reports\LeaveLedgerReportController;
+use App\Http\Controllers\Reports\NoticesReportController;
+use App\Http\Controllers\Reports\CoeIssuanceReportController;
+use App\Http\Controllers\Reports\FinalPayReportController;
 use App\Http\Controllers\roleCtrl;
 use App\Http\Controllers\Roles\EmployeeRoleController;
 use App\Http\Controllers\Roles\RolesController;
@@ -449,6 +463,80 @@ Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip
     Route::get('/reports/thirteenth-month/fetch', [ThirteenthMonthController::class, 'fetch'])->name('reports.thirteenth.fetch')->middleware('can:thirteenthmonth');
     Route::get('/reports/thirteenth-month/export', [ThirteenthMonthController::class, 'export'])->name('reports.thirteenth.export')->middleware('can:thirteenthmonth');
     Route::get('/reports/thirteenth-month/print', [ThirteenthMonthController::class, 'print'])->name('reports.thirteenth.print')->middleware('can:thirteenthmonth');
+
+    // ── Statutory / government compliance reports (filing-ready worksheets) ──
+    Route::get('/reports/bir', [BirWithholdingReportController::class, 'index'])->name('reports.bir.index')->middleware('can:birreport');
+    Route::get('/reports/bir/fetch', [BirWithholdingReportController::class, 'fetch'])->name('reports.bir.fetch')->middleware('can:birreport');
+    Route::get('/reports/bir/export', [BirWithholdingReportController::class, 'export'])->name('reports.bir.export')->middleware('can:birreport');
+    Route::get('/reports/bir/print', [BirWithholdingReportController::class, 'print'])->name('reports.bir.print')->middleware('can:birreport');
+
+    Route::get('/reports/sss', [SssRemittanceReportController::class, 'index'])->name('reports.sss.index')->middleware('can:sssreport');
+    Route::get('/reports/sss/fetch', [SssRemittanceReportController::class, 'fetch'])->name('reports.sss.fetch')->middleware('can:sssreport');
+    Route::get('/reports/sss/export', [SssRemittanceReportController::class, 'export'])->name('reports.sss.export')->middleware('can:sssreport');
+    Route::get('/reports/sss/print', [SssRemittanceReportController::class, 'print'])->name('reports.sss.print')->middleware('can:sssreport');
+
+    Route::get('/reports/philhealth', [PhilhealthRemittanceReportController::class, 'index'])->name('reports.philhealth.index')->middleware('can:philhealthreport');
+    Route::get('/reports/philhealth/fetch', [PhilhealthRemittanceReportController::class, 'fetch'])->name('reports.philhealth.fetch')->middleware('can:philhealthreport');
+    Route::get('/reports/philhealth/export', [PhilhealthRemittanceReportController::class, 'export'])->name('reports.philhealth.export')->middleware('can:philhealthreport');
+    Route::get('/reports/philhealth/print', [PhilhealthRemittanceReportController::class, 'print'])->name('reports.philhealth.print')->middleware('can:philhealthreport');
+
+    Route::get('/reports/pagibig', [PagibigRemittanceReportController::class, 'index'])->name('reports.pagibig.index')->middleware('can:pagibigreport');
+    Route::get('/reports/pagibig/fetch', [PagibigRemittanceReportController::class, 'fetch'])->name('reports.pagibig.fetch')->middleware('can:pagibigreport');
+    Route::get('/reports/pagibig/export', [PagibigRemittanceReportController::class, 'export'])->name('reports.pagibig.export')->middleware('can:pagibigreport');
+    Route::get('/reports/pagibig/print', [PagibigRemittanceReportController::class, 'print'])->name('reports.pagibig.print')->middleware('can:pagibigreport');
+
+    // ── Core payroll / finance reports ──────────────────────────────────────
+    Route::get('/reports/payroll-register', [PayrollRegisterReportController::class, 'index'])->name('reports.payroll-register.index')->middleware('can:payrollregister');
+    Route::get('/reports/payroll-register/fetch', [PayrollRegisterReportController::class, 'fetch'])->name('reports.payroll-register.fetch')->middleware('can:payrollregister');
+    Route::get('/reports/payroll-register/export', [PayrollRegisterReportController::class, 'export'])->name('reports.payroll-register.export')->middleware('can:payrollregister');
+    Route::get('/reports/payroll-register/print', [PayrollRegisterReportController::class, 'print'])->name('reports.payroll-register.print')->middleware('can:payrollregister');
+
+    Route::get('/reports/payroll-journal', [PayrollJournalReportController::class, 'index'])->name('reports.payroll-journal.index')->middleware('can:payrolljournal');
+    Route::get('/reports/payroll-journal/fetch', [PayrollJournalReportController::class, 'fetch'])->name('reports.payroll-journal.fetch')->middleware('can:payrolljournal');
+    Route::get('/reports/payroll-journal/export', [PayrollJournalReportController::class, 'export'])->name('reports.payroll-journal.export')->middleware('can:payrolljournal');
+    Route::get('/reports/payroll-journal/print', [PayrollJournalReportController::class, 'print'])->name('reports.payroll-journal.print')->middleware('can:payrolljournal');
+
+    Route::get('/reports/loan-ledger', [LoanLedgerReportController::class, 'index'])->name('reports.loan-ledger.index')->middleware('can:loanledger');
+    Route::get('/reports/loan-ledger/fetch', [LoanLedgerReportController::class, 'fetch'])->name('reports.loan-ledger.fetch')->middleware('can:loanledger');
+    Route::get('/reports/loan-ledger/export', [LoanLedgerReportController::class, 'export'])->name('reports.loan-ledger.export')->middleware('can:loanledger');
+    Route::get('/reports/loan-ledger/print', [LoanLedgerReportController::class, 'print'])->name('reports.loan-ledger.print')->middleware('can:loanledger');
+
+    // ── Attendance / HR operations reports ──────────────────────────────────
+    Route::get('/reports/dtr', [DailyTimeRecordReportController::class, 'index'])->name('reports.dtr.index')->middleware('can:dtrreport');
+    Route::get('/reports/dtr/fetch', [DailyTimeRecordReportController::class, 'fetch'])->name('reports.dtr.fetch')->middleware('can:dtrreport');
+    Route::get('/reports/dtr/export', [DailyTimeRecordReportController::class, 'export'])->name('reports.dtr.export')->middleware('can:dtrreport');
+    Route::get('/reports/dtr/print', [DailyTimeRecordReportController::class, 'print'])->name('reports.dtr.print')->middleware('can:dtrreport');
+
+    Route::get('/reports/tardiness', [TardinessAbsenceReportController::class, 'index'])->name('reports.tardiness.index')->middleware('can:tardinessreport');
+    Route::get('/reports/tardiness/fetch', [TardinessAbsenceReportController::class, 'fetch'])->name('reports.tardiness.fetch')->middleware('can:tardinessreport');
+    Route::get('/reports/tardiness/export', [TardinessAbsenceReportController::class, 'export'])->name('reports.tardiness.export')->middleware('can:tardinessreport');
+    Route::get('/reports/tardiness/print', [TardinessAbsenceReportController::class, 'print'])->name('reports.tardiness.print')->middleware('can:tardinessreport');
+
+    Route::get('/reports/headcount', [HeadcountTurnoverReportController::class, 'index'])->name('reports.headcount.index')->middleware('can:headcountreport');
+    Route::get('/reports/headcount/fetch', [HeadcountTurnoverReportController::class, 'fetch'])->name('reports.headcount.fetch')->middleware('can:headcountreport');
+    Route::get('/reports/headcount/export', [HeadcountTurnoverReportController::class, 'export'])->name('reports.headcount.export')->middleware('can:headcountreport');
+    Route::get('/reports/headcount/print', [HeadcountTurnoverReportController::class, 'print'])->name('reports.headcount.print')->middleware('can:headcountreport');
+
+    Route::get('/reports/leave-ledger', [LeaveLedgerReportController::class, 'index'])->name('reports.leave-ledger.index')->middleware('can:leaveledger');
+    Route::get('/reports/leave-ledger/fetch', [LeaveLedgerReportController::class, 'fetch'])->name('reports.leave-ledger.fetch')->middleware('can:leaveledger');
+    Route::get('/reports/leave-ledger/export', [LeaveLedgerReportController::class, 'export'])->name('reports.leave-ledger.export')->middleware('can:leaveledger');
+    Route::get('/reports/leave-ledger/print', [LeaveLedgerReportController::class, 'print'])->name('reports.leave-ledger.print')->middleware('can:leaveledger');
+
+    // ── Workforce / admin reports ───────────────────────────────────────────
+    Route::get('/reports/notices', [NoticesReportController::class, 'index'])->name('reports.notices.index')->middleware('can:noticesreport');
+    Route::get('/reports/notices/fetch', [NoticesReportController::class, 'fetch'])->name('reports.notices.fetch')->middleware('can:noticesreport');
+    Route::get('/reports/notices/export', [NoticesReportController::class, 'export'])->name('reports.notices.export')->middleware('can:noticesreport');
+    Route::get('/reports/notices/print', [NoticesReportController::class, 'print'])->name('reports.notices.print')->middleware('can:noticesreport');
+
+    Route::get('/reports/coe-log', [CoeIssuanceReportController::class, 'index'])->name('reports.coe-log.index')->middleware('can:coereport');
+    Route::get('/reports/coe-log/fetch', [CoeIssuanceReportController::class, 'fetch'])->name('reports.coe-log.fetch')->middleware('can:coereport');
+    Route::get('/reports/coe-log/export', [CoeIssuanceReportController::class, 'export'])->name('reports.coe-log.export')->middleware('can:coereport');
+    Route::get('/reports/coe-log/print', [CoeIssuanceReportController::class, 'print'])->name('reports.coe-log.print')->middleware('can:coereport');
+
+    Route::get('/reports/final-pay', [FinalPayReportController::class, 'index'])->name('reports.final-pay.index')->middleware('can:finalpayreport');
+    Route::get('/reports/final-pay/fetch', [FinalPayReportController::class, 'fetch'])->name('reports.final-pay.fetch')->middleware('can:finalpayreport');
+    Route::get('/reports/final-pay/export', [FinalPayReportController::class, 'export'])->name('reports.final-pay.export')->middleware('can:finalpayreport');
+    Route::get('/reports/final-pay/print', [FinalPayReportController::class, 'print'])->name('reports.final-pay.print')->middleware('can:finalpayreport');
 
     //v2 scheduler
     Route::prefix('employee-schedules')->group(function() {
