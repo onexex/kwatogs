@@ -312,13 +312,6 @@ $(document).ready(function() {
     //    After a change we re-trigger the active row so the dossier re-fetches, exactly
     //    like Update Status does.
 
-    // Reveal the offboarding-clearance item picker only for Clearance-type documents.
-    $('#ed_doc_type').on('change', function() {
-        const isClearance = $(this).val() === 'Clearance';
-        $('#ed_clearance_wrap').toggle(isClearance);
-        if (!isClearance) $('#ed_doc_clearance').val('');
-    }).trigger('change');
-
     $('#btnUploadEmpDoc').on('click', function() {
         const $btn = $(this);
         const id = $btn.data('id');
@@ -333,11 +326,14 @@ $(document).ready(function() {
         }
 
         const fd = new FormData();
-        const docType = $('#ed_doc_type').val();
+        // Offboarding-requirement types carry a "cl:<item>" value → store as a Clearance
+        // doc tagged to that requirement (which ticks it on the exit clearance).
+        let docType = $('#ed_doc_type').val();
+        let clearanceKey = '';
+        if (docType.indexOf('cl:') === 0) { clearanceKey = docType.slice(3); docType = 'Clearance'; }
         fd.append('doc_type', docType);
         fd.append('label', $('#ed_doc_label').val());
-        // Clearance docs may be tagged to a specific offboarding item (links to Update Status).
-        if (docType === 'Clearance') fd.append('clearance_key', $('#ed_doc_clearance').val() || '');
+        if (clearanceKey) fd.append('clearance_key', clearanceKey);
         fd.append('document', fileInput.files[0]);
 
         const originalHtml = $btn.html();
@@ -354,7 +350,6 @@ $(document).ready(function() {
             success: function() {
                 $('#ed_doc_label').val('');
                 $('#ed_doc_file').val('');
-                $('#ed_doc_clearance').val('');
                 $('.emp-row.active-selection').trigger('click');
             },
             error: function(xhr) {

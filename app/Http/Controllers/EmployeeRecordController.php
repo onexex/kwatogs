@@ -298,7 +298,27 @@ class EmployeeRecordController extends Controller
 
         $doc = $this->persistDocument($user, $request->file('document'), $data['doc_type'], $data['label'] ?? null, $clearanceKey);
 
+        // Document-driven clearance: uploading a tagged clearance requirement ticks that
+        // offboarding item on the employee record (deleting the doc un-ticks it).
+        if ($clearanceKey) {
+            $this->setClearanceFlag($user, $clearanceKey, true);
+        }
+
         return response()->json(['status' => 200, 'msg' => 'Document uploaded.', 'data' => $doc]);
+    }
+
+    /** Set/clear an offboarding-clearance boolean on the employee (instance save → Auditable). */
+    private function setClearanceFlag(User $user, string $clearanceKey, bool $value): void
+    {
+        $items = OffboardingClearanceService::ITEMS;
+        if (!isset($items[$clearanceKey])) {
+            return;
+        }
+        $detail = $user->empDetail;
+        if ($detail) {
+            $detail->{$items[$clearanceKey]['column']} = $value;
+            $detail->save();
+        }
     }
 
     /**
@@ -371,10 +391,20 @@ class EmployeeRecordController extends Controller
     /** Delete an employment document (DB row + file on disk). Gated by permission. */
     public function deleteDocument(EmployeeDocument $document)
     {
+        $clearanceKey = $document->clearance_key;
+        $userId       = $document->user_id;
+
         if ($document->file_path && is_file(public_path($document->file_path))) {
             @unlink(public_path($document->file_path));
         }
         $document->delete();   // instance delete → Auditable
+
+        // If that removed the last document for a clearance requirement, un-tick it.
+        if ($clearanceKey
+            && !EmployeeDocument::where('user_id', $userId)->where('clearance_key', $clearanceKey)->exists()
+            && ($u = User::find($userId))) {
+            $this->setClearanceFlag($u, $clearanceKey, false);
+        }
 
         return response()->json(['status' => 200, 'msg' => 'Document deleted.']);
     }

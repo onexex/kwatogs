@@ -395,12 +395,20 @@
                                 <div class="col-6 col-md-3">
                                     <label class="label-caps" for="ed_doc_type">Type</label>
                                     <select class="form-select form-select-sm" id="ed_doc_type">
-                                        <option value="Employment Contract">Employment Contract</option>
-                                        <option value="Government ID">Government ID</option>
-                                        <option value="Resume/CV">Resume/CV</option>
-                                        <option value="Certificate">Certificate</option>
-                                        <option value="Clearance">Clearance</option>
-                                        <option value="Other">Other</option>
+                                        <optgroup label="General">
+                                            <option value="Employment Contract">Employment Contract</option>
+                                            <option value="Government ID">Government ID</option>
+                                            <option value="Resume/CV">Resume/CV</option>
+                                            <option value="Certificate">Certificate</option>
+                                            <option value="Other">Other</option>
+                                        </optgroup>
+                                        <optgroup label="Offboarding Clearance requirement">
+                                            <option value="cl:resignation_letter">Resignation Letter</option>
+                                            <option value="cl:office_notice">Signed Notice from Office</option>
+                                            <option value="cl:clearance_form">Clearance Form</option>
+                                            <option value="cl:company_items">Return of Company-Issued Items</option>
+                                            <option value="cl:quitclaim">Signed/Received Quitclaim</option>
+                                        </optgroup>
                                     </select>
                                 </div>
                                 <div class="col-6 col-md-4">
@@ -417,20 +425,7 @@
                                     </button>
                                 </div>
                             </div>
-                            {{-- Only for Clearance-type docs: link the file to a specific offboarding requirement (wires it to Update Status). --}}
-                            <div class="row g-2 align-items-end mb-3" id="ed_clearance_wrap" style="display:none;">
-                                <div class="col-12 col-md-6">
-                                    <label class="label-caps" for="ed_doc_clearance">Offboarding Clearance Item <span class="text-muted text-lowercase">(optional — links to Update Status)</span></label>
-                                    <select class="form-select form-select-sm" id="ed_doc_clearance">
-                                        <option value="">General clearance (counts as Clearance Form)</option>
-                                        <option value="resignation_letter">Resignation Letter</option>
-                                        <option value="office_notice">Signed Notice from Office</option>
-                                        <option value="clearance_form">Clearance Form</option>
-                                        <option value="company_items">Return of Company-Issued Items</option>
-                                        <option value="quitclaim">Signed/Received Quitclaim</option>
-                                    </select>
-                                </div>
-                            </div>
+                            <p class="text-muted mb-2" style="font-size:.72rem;">Uploading an <strong>Offboarding Clearance requirement</strong> ticks that item automatically on the employee's exit clearance; deleting it un-ticks it.</p>
                             <div class="text-danger small mb-2 d-none" id="ed_doc_error"></div>
                             @endcan
 
