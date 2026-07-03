@@ -148,7 +148,7 @@ $(document).ready(function () {
             separatedCache = res.data.data || [];
             var opts = '<option value="">Select separated employee…</option>';
             separatedCache.forEach(function (e) {
-                opts += '<option value="' + esc(e.empid) + '">' + esc(e.name) + ' — ' + esc(e.status) + (e.complete ? '' : ' (clearance pending)') + '</option>';
+                opts += '<option value="' + esc(e.empid) + '">' + esc(e.name) + ' — ' + esc(e.status) + (e.complete ? '' : ' (not ready)') + '</option>';
             });
             $('#isEmployee').html(opts);
         }).catch(function () { $('#isEmployee').html('<option value="">Could not load employees</option>'); });
@@ -165,7 +165,9 @@ $(document).ready(function () {
             return '<div>' + icon + esc(c.label) + ref + '</div>';
         }).join('');
         if (!emp.complete) {
-            html += '<div class="text-danger mt-1" style="font-size:.78rem;"><b>Cannot issue:</b> complete the clearance in E-201 → Update Status first.</div>';
+            var reasons = (emp.missing || []).map(function (m) { return '<div>&bull; ' + esc(m) + '</div>'; }).join('');
+            html += '<div class="text-danger mt-2" style="font-size:.78rem;"><b>Cannot issue — outstanding requirements:</b>' + reasons
+                 + '<div class="text-muted mt-1">Complete these in E-201 (clearance via Update Status; profile via Edit Employee) first.</div></div>';
         }
         $('#isClearanceList').html(html);
         $('#isClearancePanel').show();
