@@ -219,18 +219,9 @@ class EmployeeRecordController extends Controller
                     if (!empty($refsIn[$key])) {
                         $cleanRefs[$key] = (string) $refsIn[$key];
                     }
-                    // Attach the uploaded proof file for this clearance item, if any —
-                    // replacing the previous attachment (file + row) for the same key.
+                    // Attach the uploaded proof file for this clearance item, if any
+                    // (persistDocument replaces any prior attachment for the same key).
                     if (!empty($clFiles[$key])) {
-                        EmployeeDocument::where('user_id', $user->id)
-                            ->where('clearance_key', $key)
-                            ->get()
-                            ->each(function ($old) {
-                                if ($old->file_path && is_file(public_path($old->file_path))) {
-                                    @unlink(public_path($old->file_path));
-                                }
-                                $old->delete();
-                            });
                         $this->persistDocument($user, $clFiles[$key], 'Clearance', $item['label'], $key);
                     }
                 }
@@ -295,12 +286,17 @@ class EmployeeRecordController extends Controller
     public function uploadDocument(Request $request, User $user)
     {
         $data = $request->validate([
-            'doc_type' => ['required', Rule::in(self::DOC_TYPES)],
-            'label'    => 'nullable|max:191',
-            'document' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240', // 10 MB
+            'doc_type'      => ['required', Rule::in(self::DOC_TYPES)],
+            'clearance_key' => ['nullable', Rule::in(array_keys(OffboardingClearanceService::ITEMS))],
+            'label'         => 'nullable|max:191',
+            'document'      => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240', // 10 MB
         ]);
 
-        $doc = $this->persistDocument($user, $request->file('document'), $data['doc_type'], $data['label'] ?? null);
+        // A clearance_key only makes sense on a Clearance-type document (links it to the
+        // offboarding checklist item — shown in Update Status + the dossier clearance card).
+        $clearanceKey = ($data['doc_type'] === 'Clearance') ? ($data['clearance_key'] ?? null) : null;
+
+        $doc = $this->persistDocument($user, $request->file('document'), $data['doc_type'], $data['label'] ?? null, $clearanceKey);
 
         return response()->json(['status' => 200, 'msg' => 'Document uploaded.', 'data' => $doc]);
     }
@@ -309,10 +305,23 @@ class EmployeeRecordController extends Controller
      * Move an uploaded file into the employee's 201-file folder and record it.
      * Size/mime/name are read BEFORE move() (temp file is gone afterwards); create()
      * goes through the Auditable trait. Shared by the Documents panel and the
-     * Update-Status clearance attachments.
+     * Update-Status clearance attachments. When a clearance_key is given, any prior
+     * attachment for that item is replaced (one current file per clearance requirement).
      */
     private function persistDocument(User $user, \Illuminate\Http\UploadedFile $file, string $docType, ?string $label = null, ?string $clearanceKey = null): EmployeeDocument
     {
+        if ($clearanceKey) {
+            EmployeeDocument::where('user_id', $user->id)
+                ->where('clearance_key', $clearanceKey)
+                ->get()
+                ->each(function ($old) {
+                    if ($old->file_path && is_file(public_path($old->file_path))) {
+                        @unlink(public_path($old->file_path));
+                    }
+                    $old->delete();
+                });
+        }
+
         $size = $file->getSize();
         $mime = $file->getClientMimeType();
         $originalName = $file->getClientOriginalName();

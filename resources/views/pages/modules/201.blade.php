@@ -430,7 +430,10 @@
                     </div>
                 </div>
                 <div class="sc-body">
-                    @php $myDocs = $user->employmentDocuments ?? collect(); @endphp
+                    @php
+                        $myDocs = $user->employmentDocuments ?? collect();
+                        $clMap  = collect(\App\Services\OffboardingClearanceService::ITEMS)->mapWithKeys(fn ($v, $k) => [$k => $v['label']]);
+                    @endphp
                     @if($myDocs->count())
                         <div class="table-responsive">
                             <table class="table table-sm align-middle mb-0">
@@ -445,7 +448,12 @@
                                 <tbody>
                                     @foreach($myDocs as $doc)
                                         <tr>
-                                            <td><span class="badge" style="background:var(--teal-light); color:var(--teal-dark);">{{ $doc->doc_type ?: 'Other' }}</span></td>
+                                            <td>
+                                                <span class="badge" style="background:var(--teal-light); color:var(--teal-dark);">{{ $doc->doc_type ?: 'Other' }}</span>
+                                                @if($doc->clearance_key && $clMap->has($doc->clearance_key))
+                                                    <div class="text-muted" style="font-size:.68rem;">{{ $clMap[$doc->clearance_key] }}</div>
+                                                @endif
+                                            </td>
                                             <td>
                                                 <div class="field-value">{{ $doc->label ?: $doc->original_name }}</div>
                                                 <div class="text-muted" style="font-size:.72rem;">{{ $doc->original_name }}</div>

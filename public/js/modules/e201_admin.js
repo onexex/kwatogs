@@ -286,6 +286,14 @@ $(document).ready(function() {
     //    Same jQuery + X-CSRF-TOKEN idiom as the rest of this file (no axios/SweetAlert).
     //    After a change we re-trigger the active row so the dossier re-fetches, exactly
     //    like Update Status does.
+
+    // Reveal the offboarding-clearance item picker only for Clearance-type documents.
+    $('#ed_doc_type').on('change', function() {
+        const isClearance = $(this).val() === 'Clearance';
+        $('#ed_clearance_wrap').toggle(isClearance);
+        if (!isClearance) $('#ed_doc_clearance').val('');
+    }).trigger('change');
+
     $('#btnUploadEmpDoc').on('click', function() {
         const $btn = $(this);
         const id = $btn.data('id');
@@ -300,8 +308,11 @@ $(document).ready(function() {
         }
 
         const fd = new FormData();
-        fd.append('doc_type', $('#ed_doc_type').val());
+        const docType = $('#ed_doc_type').val();
+        fd.append('doc_type', docType);
         fd.append('label', $('#ed_doc_label').val());
+        // Clearance docs may be tagged to a specific offboarding item (links to Update Status).
+        if (docType === 'Clearance') fd.append('clearance_key', $('#ed_doc_clearance').val() || '');
         fd.append('document', fileInput.files[0]);
 
         const originalHtml = $btn.html();
@@ -318,6 +329,7 @@ $(document).ready(function() {
             success: function() {
                 $('#ed_doc_label').val('');
                 $('#ed_doc_file').val('');
+                $('#ed_doc_clearance').val('');
                 $('.emp-row.active-selection').trigger('click');
             },
             error: function(xhr) {
@@ -374,8 +386,10 @@ $(document).ready(function() {
                 const del = canManageDocs
                     ? ' <button type="button" class="btn btn-sm btn-light border btnDeleteEmpDoc" data-id="' + d.id + '" title="Delete"><i class="fa-solid fa-trash text-danger"></i></button>'
                     : '';
+                const clItem = d.clearance_key ? (CL_ITEMS.find(function(i) { return i.key === d.clearance_key; }) || {}).label : '';
+                const clTag = clItem ? '<div class="text-muted" style="font-size:.68rem;">' + escHtml(clItem) + '</div>' : '';
                 return '<tr>'
-                    + '<td><span class="badge text-white" style="background-color:#008080;">' + escHtml(d.doc_type || 'Other') + '</span></td>'
+                    + '<td><span class="badge text-white" style="background-color:#008080;">' + escHtml(d.doc_type || 'Other') + '</span>' + clTag + '</td>'
                     + '<td><div class="value-text">' + escHtml(d.label || d.original_name) + '</div>'
                     +     '<div class="text-muted" style="font-size:.72rem;">' + escHtml(d.original_name) + '</div></td>'
                     + '<td class="text-muted small">' + escHtml(uploaded) + by + '</td>'

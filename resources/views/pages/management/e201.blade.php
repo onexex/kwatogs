@@ -417,6 +417,20 @@
                                     </button>
                                 </div>
                             </div>
+                            {{-- Only for Clearance-type docs: link the file to a specific offboarding requirement (wires it to Update Status). --}}
+                            <div class="row g-2 align-items-end mb-3" id="ed_clearance_wrap" style="display:none;">
+                                <div class="col-12 col-md-6">
+                                    <label class="label-caps" for="ed_doc_clearance">Offboarding Clearance Item <span class="text-muted text-lowercase">(optional — links to Update Status)</span></label>
+                                    <select class="form-select form-select-sm" id="ed_doc_clearance">
+                                        <option value="">General clearance (not a specific item)</option>
+                                        <option value="resignation_letter">Resignation Letter</option>
+                                        <option value="office_notice">Signed Notice from Office</option>
+                                        <option value="clearance_form">Clearance Form</option>
+                                        <option value="company_items">Return of Company-Issued Items</option>
+                                        <option value="quitclaim">Signed/Received Quitclaim</option>
+                                    </select>
+                                </div>
+                            </div>
                             <div class="text-danger small mb-2 d-none" id="ed_doc_error"></div>
                             @endcan
 
