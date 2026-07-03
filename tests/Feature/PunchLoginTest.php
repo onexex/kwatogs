@@ -158,6 +158,56 @@ class PunchLoginTest extends TestCase
         $this->assertNull($newPunch->time_out);
     }
 
+    /**
+     * A REJECTED punch-in must NOT close a prior day's dangling missed logout. The older-day
+     * auto-close now runs only once the punch-in is about to commit (after the schedule + break
+     * checks pass). So a time-in that fails for "no active schedule" leaves the old record open;
+     * the next SUCCESSFUL time-in is what closes it. (Guards the deferred-cleanup reorder.)
+     */
+    public function test_rejected_timein_does_not_close_prior_missed_logout(): void
+    {
+        // Dangling open punch from an older day (employee forgot to log out).
+        $oldSched = $this->schedule([
+            'sched_start_date' => '2026-06-14',
+            'sched_end_date'   => '2026-06-14',
+        ]); // 08:00–17:00
+        $stale = homeAttendance::create([
+            'employee_id'     => $this->emp,
+            'schedule_id'     => $oldSched->id,
+            'attendance_date' => '2026-06-14',
+            'time_in'         => '2026-06-14 08:00:00',
+            'status'          => 'present',
+        ]);
+
+        // No schedule exists for today (06-16) or yesterday (06-15) yet → time-in is rejected.
+        Carbon::setTestNow(Carbon::parse('2026-06-16 09:00:00'));
+
+        try {
+            homeAttendance::logTimeIn($this->emp);
+            $this->fail('Expected time-in to be rejected (no active schedule).');
+        } catch (\Exception $e) {
+            $this->assertStringContainsString('No active schedule', $e->getMessage());
+        }
+
+        // The rejected attempt must not have touched the prior day's dangling punch.
+        $stale->refresh();
+        $this->assertNull($stale->time_out, 'a rejected punch-in must not close a prior missed logout');
+        $this->assertStringNotContainsString('Missed logout', (string) $stale->remarks);
+
+        // Assign today's schedule → the punch-in now SUCCEEDS and only then closes the old one.
+        $todaySched = $this->schedule([
+            'sched_start_date' => '2026-06-16',
+            'sched_end_date'   => '2026-06-16',
+        ]);
+        $newPunch = homeAttendance::logTimeIn($this->emp);
+
+        $stale->refresh();
+        $this->assertNotNull($stale->time_out, 'a successful punch-in closes the prior missed logout');
+        $this->assertSame('Auto-closed (Missed logout)', $stale->remarks);
+        $this->assertSame($todaySched->id, $newPunch->schedule_id, 'a fresh punch was created for today');
+        $this->assertNull($newPunch->time_out);
+    }
+
     // ── Full night-shift login → logout, with ND (ties everything together) ──
 
     public function test_overnight_login_then_logout_computes_duration_and_nd(): void
@@ -345,6 +395,65 @@ class PunchLoginTest extends TestCase
         $punch = homeAttendance::logTimeIn($this->emp);
 
         $this->assertSame($later->id, $punch->schedule_id, 'should match the 08:00 shift, not the 06:00 one');
+    }
+
+    // ── Zero-worked-hours day is a full absence, not undertime/late ──────────
+
+    /**
+     * A day that nets 0 paid hours must charge NO undertime. Punching 05:37→05:38 (1 min,
+     * entirely BEFORE a 06:00–15:00 shift) produces 0 worked hours — a full absence. Before
+     * the fix, undertime was measured 05:38→15:00 (less break) ≈ 501 min and stacked on top
+     * of the full-day absence deduction (double-charge). Now it stays 0.
+     */
+    public function test_zero_worked_hours_before_shift_charges_no_undertime_or_late(): void
+    {
+        $sched = $this->schedule([
+            'sched_in'    => '06:00:00',
+            'sched_out'   => '15:00:00',
+            'break_start' => '12:00:00',
+            'break_end'   => '13:00:00',
+        ]);
+        homeAttendance::create([
+            'employee_id' => $this->emp, 'schedule_id' => $sched->id, 'attendance_date' => '2026-06-16',
+            'time_in' => '2026-06-16 05:37:00', 'time_out' => '2026-06-16 05:38:00',
+            'duration_hours' => 0, 'status' => 'present',
+        ])->updateDailySummary();
+
+        $summary = AttendanceSummary::where('employee_id', $this->emp)
+            ->whereDate('attendance_date', '2026-06-16')->first();
+        $this->assertNotNull($summary);
+        $this->assertEquals(0.0, (float) $summary->total_hours, 'punches fell entirely before the shift');
+        $this->assertSame(0, (int) $summary->mins_undertime, 'no undertime on a 0-hour absence (was ~501)');
+        $this->assertSame(0, (int) $summary->mins_late, 'no late on a 0-hour absence');
+        $this->assertSame('absent', $summary->status);
+    }
+
+    /**
+     * Mirror case for LATE: a brief punch landing entirely AFTER the shift (in 15:30,
+     * out 15:31 on a 06:00–15:00 shift) also nets 0 worked hours. Late would otherwise be
+     * ~510 min and double-charge the same absent day — it must stay 0.
+     */
+    public function test_zero_worked_hours_after_shift_charges_no_late(): void
+    {
+        $sched = $this->schedule([
+            'sched_in'    => '06:00:00',
+            'sched_out'   => '15:00:00',
+            'break_start' => '12:00:00',
+            'break_end'   => '13:00:00',
+        ]);
+        homeAttendance::create([
+            'employee_id' => $this->emp, 'schedule_id' => $sched->id, 'attendance_date' => '2026-06-16',
+            'time_in' => '2026-06-16 15:30:00', 'time_out' => '2026-06-16 15:31:00',
+            'duration_hours' => 0, 'status' => 'present',
+        ])->updateDailySummary();
+
+        $summary = AttendanceSummary::where('employee_id', $this->emp)
+            ->whereDate('attendance_date', '2026-06-16')->first();
+        $this->assertNotNull($summary);
+        $this->assertEquals(0.0, (float) $summary->total_hours);
+        $this->assertSame(0, (int) $summary->mins_late, 'no late on a 0-hour absence (was ~510)');
+        $this->assertSame(0, (int) $summary->mins_undertime);
+        $this->assertSame('absent', $summary->status);
     }
 
     // ── Missed / next-day logout parity (0 paid hours) ──────────────────────
