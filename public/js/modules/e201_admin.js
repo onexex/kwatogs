@@ -399,9 +399,12 @@ $(document).ready(function() {
         $('#btnUploadEmpDoc').attr('data-id', user.id).data('id', user.id);
         const escHtml = s => $('<div>').text(s == null ? '' : String(s)).html();
         const docs = user.employment_documents || [];
-        // Map clearance-tagged docs by their clearance_key (for the checklist + dossier links).
+        // Map clearance docs to checklist items. Explicitly-tagged docs win; an untagged
+        // Clearance-type doc falls back to the generic "Clearance Form" item, so a plain
+        // clearance upload still auto-ticks + links (no specific item needed).
         const clDocs = {};
-        docs.forEach(function(d) { if (d.clearance_key) clDocs[d.clearance_key] = { id: d.id, name: d.original_name }; });
+        docs.forEach(function(d) { if (d.clearance_key && !clDocs[d.clearance_key]) clDocs[d.clearance_key] = { id: d.id, name: d.original_name }; });
+        docs.forEach(function(d) { if (!d.clearance_key && d.doc_type === 'Clearance' && !clDocs['clearance_form']) clDocs['clearance_form'] = { id: d.id, name: d.original_name }; });
         if (docs.length) {
             const docRows = docs.map(function(d) {
                 const uploaded = d.created_at
