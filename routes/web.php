@@ -168,6 +168,13 @@ Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip
     Route::post('admin/e201/update-status/{user}', [EmployeeRecordController::class, 'updateStatus'])
         ->middleware('can:manageemployeestatus');
 
+    // E-201 employment documents (201 file). Upload/delete gated; download open to any E-201 viewer.
+    Route::post('admin/e201/documents/{user}', [EmployeeRecordController::class, 'uploadDocument'])
+        ->middleware('can:manageemployeedocuments');
+    Route::get('admin/e201/document/{document}/download', [EmployeeRecordController::class, 'downloadDocument']);
+    Route::delete('admin/e201/document/{document}', [EmployeeRecordController::class, 'deleteDocument'])
+        ->middleware('can:manageemployeedocuments');
+
 
     // JMC
     //JM 22/09/2022

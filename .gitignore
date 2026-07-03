@@ -2,6 +2,7 @@
 /public/hot
 /public/storage
 /public/changelog.json
+/public/docs
 /storage/*.key
 /vendor
 .env

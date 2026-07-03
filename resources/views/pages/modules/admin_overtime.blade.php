@@ -89,7 +89,7 @@
                             <option value="">— Select Employee —</option>
                             @foreach($employees as $emp)
                                 <option value="{{ $emp->empID }}">
-                                    {{ strtoupper($emp->lname) }}, {{ ucwords(strtolower($emp->fname)) }}
+                                    {{ strtoupper($emp->lname) }}, {{ strtoupper($emp->fname) }}
                                     &mdash; {{ $emp->empDetail->position->pos_desc ?? 'No Position' }}
                                 </option>
                             @endforeach

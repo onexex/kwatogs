@@ -55,9 +55,9 @@ class NoticeController extends Controller
             ->join('users as u', 'u.empID', '=', 'e.empID')
             ->where('e.empStatus', '1')
             ->selectRaw("e.empID as empid,
-                TRIM(CONCAT(u.lname, ', ', u.fname)) as name,
+                UPPER(TRIM(CONCAT(u.lname, ', ', u.fname))) as name,
                 COALESCE((SELECT dep_name FROM departments WHERE id = e.empDepID), '—') as dept")
-            ->orderBy('u.lname')->get();
+            ->orderBy('u.lname')->orderBy('u.fname')->get();
 
         return response()->json(['status' => 200, 'data' => $rows]);
     }

@@ -32,7 +32,7 @@ class LoanController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $employees = User::select('empID', 'lname', 'fname')->orderBy('fname')->get();
+        $employees = User::select('empID', 'lname', 'fname')->orderBy('lname')->orderBy('fname')->get();
 
         return view('pages.management.loan', compact('loans', 'employees', 'search', 'type', 'status', 'recurring'));
     }

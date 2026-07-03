@@ -11,7 +11,7 @@ class reportAttendanceCtrl extends Controller
 {
     public function index()
     {
-        $resultEmp = User::select('empID', 'fname', 'lname')->orderBy('lname')->get();
+        $resultEmp = User::select('empID', 'fname', 'lname')->orderBy('lname')->orderBy('fname')->get();
         return view('reports.attendance', compact('resultEmp'));
     }
 
