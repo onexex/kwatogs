@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\ScheduleRequestService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 
 class LandingController extends Controller
@@ -14,12 +16,17 @@ class LandingController extends Controller
      * access (matching the sidebar order in resources/views/layout/app.blade.php).
      * If they have no accessible page at all, send them back to login.
      */
-    public function index()
+    public function index(ScheduleRequestService $schedules)
     {
         $user = Auth::user();
 
         if ($user && $user->can('home')) {
-            return view('home');
+            $today = Carbon::today()->toDateString();
+            $todaySchedule = $user->empID
+                ? $schedules->currentSchedule($user->empID, $today)
+                : null;
+
+            return view('home', compact('todaySchedule', 'today'));
         }
 
         foreach ($this->landingCandidates() as $url => $permissions) {

@@ -279,6 +279,38 @@
         .sa-review { background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; font-size:.84rem; line-height:1.7; }
         .sa-list-item { border:1px solid #e2e8f0; border-radius:8px; padding:6px 10px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
         .sa-badge { font-size:.58rem; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+
+        /* ── Today's Schedule — slim banner ───────────────────────── */
+        .sched-flash { display:flex; align-items:center; flex-wrap:wrap; gap:8px 14px;
+            background:linear-gradient(135deg,var(--teal) 0%,var(--teal-dark) 100%); color:#fff;
+            border-radius:var(--radius-card); box-shadow:var(--shadow-card); padding:11px 16px; }
+        .sched-flash-icon { width:38px; height:38px; border-radius:10px; background:rgba(255,255,255,.18);
+            display:flex; align-items:center; justify-content:center; font-size:1.05rem; flex-shrink:0; }
+        .sched-flash-body { display:flex; align-items:baseline; flex-wrap:wrap; gap:2px 12px; flex:1 1 auto; min-width:0; }
+        .sched-flash-eyebrow { font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; opacity:.85; }
+        .sched-flash-shift { font-size:1.1rem; font-weight:700; line-height:1.2; }
+        .sched-flash-sub { font-size:.78rem; opacity:.9; }
+        .sched-flash-btn { background:#fff; color:var(--teal-dark); border:none; border-radius:20px;
+            padding:6px 14px; font-weight:600; font-size:.78rem; white-space:nowrap; flex-shrink:0; margin-left:auto; }
+        .sched-flash-btn:hover { background:var(--teal-light); color:var(--teal-dark); }
+
+        /* ── Mobile: de-crowd the card zone ───────────────────────── */
+        @media (max-width:576px) {
+            .home-shell { padding:16px 14px 48px; }
+            .home-topbar { padding:13px 15px; margin-bottom:14px; }
+            .sched-flash { padding:10px 13px; gap:5px 10px; }
+            .sched-flash-icon { width:33px; height:33px; font-size:.92rem; }
+            .sched-flash-shift { font-size:1rem; }
+            .sched-flash-btn { margin-left:0; flex:1 1 100%; width:100%; padding:8px; }
+            .summary-card { flex-direction:column; align-items:flex-start; padding:12px 11px; gap:8px; }
+            .summary-icon { width:34px; height:34px; font-size:.88rem; border-radius:10px; }
+            .summary-value { font-size:1.05rem; }
+            .summary-label { font-size:.57rem; letter-spacing:.3px; margin-bottom:2px; }
+            .summary-unit { font-size:.6rem; }
+            /* Kuya Kwatogs to the left so it clears the Time In button */
+            #saFab { left:16px; right:auto; bottom:16px; }
+            .sa-pop { left:16px; right:auto; bottom:74px; }
+        }
         </style>
 
     <div class="home-shell">
@@ -313,9 +345,40 @@
             </div>
         </div>
 
+        {{-- ── Today's Schedule (schedule flash) ── --}}
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="sched-flash">
+                    <div class="sched-flash-icon"><i class="fa-solid fa-calendar-day"></i></div>
+                    <div class="sched-flash-body">
+                        <span class="sched-flash-eyebrow">Today &middot; {{ \Carbon\Carbon::parse($today)->format('D, M d') }}</span>
+                        @if($todaySchedule)
+                            @php
+                                $flashIn  = \Carbon\Carbon::parse($todaySchedule->sched_in);
+                                $flashOut = \Carbon\Carbon::parse($todaySchedule->sched_out);
+                                $flashOvernight = strtotime($todaySchedule->sched_out) <= strtotime($todaySchedule->sched_in);
+                            @endphp
+                            <span class="sched-flash-shift">{{ $flashIn->format('g:i A') }} – {{ $flashOut->format('g:i A') }}@if($flashOvernight) <span class="fw-normal" style="font-size:.72rem;opacity:.8;">(ends next day)</span>@endif</span>
+                            @if($todaySchedule->break_start && $todaySchedule->break_end)
+                                <span class="sched-flash-sub"><i class="fa-solid fa-mug-hot me-1"></i>Break {{ \Carbon\Carbon::parse($todaySchedule->break_start)->format('g:i A') }} – {{ \Carbon\Carbon::parse($todaySchedule->break_end)->format('g:i A') }}</span>
+                            @endif
+                        @else
+                            <span class="sched-flash-shift">No schedule set for today</span>
+                            <span class="sched-flash-sub">Request one below if you're working today.</span>
+                        @endif
+                    </div>
+                    @can('createschedulechange')
+                    <button type="button" id="btnFlashRequest" class="sched-flash-btn">
+                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Request a change
+                    </button>
+                    @endcan
+                </div>
+            </div>
+        </div>
+
         {{-- ── Summary cards ── --}}
         <div class="row mb-4 g-3">
-            <div class="col-md-4">
+            <div class="col-4 col-md-4">
                 <div class="summary-card accent">
                     <div class="summary-icon"><i class="fa fa-clock"></i></div>
                     <div>
@@ -326,7 +389,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-4 col-md-4">
                 <div class="summary-card">
                     <div class="summary-icon" style="background:#fee2e2;color:var(--danger);"><i class="fa fa-hourglass-half"></i></div>
                     <div>
@@ -337,7 +400,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-4 col-md-4">
                 <div class="summary-card">
                     <div class="summary-icon" style="background:#dcfce7;color:var(--success);"><i class="fa fa-circle-check"></i></div>
                     <div>
@@ -813,6 +876,7 @@ $(function () {
     if (!$card.length) return;
     $('#saFab').on('click', () => { $card.toggleClass('open'); });
     $('#saClose').on('click', () => $card.removeClass('open'));
+    $('#btnFlashRequest').on('click', () => { $card.addClass('open'); showStep(1); });
     let step = 1; const maxStep = 4;
     const sw = (cond, msg, title) => { if (!cond) { (window.Swal ? Swal.fire(title || 'Notice', msg, 'warning') : alert(msg)); return false; } return true; };
 
