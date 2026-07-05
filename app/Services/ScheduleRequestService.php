@@ -21,6 +21,24 @@ class ScheduleRequestService
     }
 
     /**
+     * The shift whose WORKING DAY (sched_start_date) is exactly $date.
+     *
+     * This mirrors the time-in engine (homeAttendance::logTimeInInner keys off
+     * sched_start_date), so the home "Today's schedule" banner shows only a shift
+     * that actually STARTS today. currentSchedule() above uses a range match, which
+     * on an overnight shift also matches its END day — e.g. a Jul-4 12:00→00:00 shift
+     * would show as "today" on Jul 5 even though time-in won't accept it. Use this for
+     * display so the banner never advertises a punch the button will reject.
+     */
+    public function scheduleStartingOn(string $empID, string $date): ?EmployeeSchedule
+    {
+        return EmployeeSchedule::where('employee_id', $empID)
+            ->whereDate('sched_start_date', $date)
+            ->orderByDesc('sched_in')
+            ->first();
+    }
+
+    /**
      * Employee files a schedule change for a date. EMERGENCY MODE: the new
      * schedule is applied immediately so the employee can punch in right away,
      * even before HR is around. HR then reviews (approve = confirm, disapprove
