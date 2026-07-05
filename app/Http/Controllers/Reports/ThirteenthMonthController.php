@@ -23,10 +23,17 @@ class ThirteenthMonthController extends Controller
 
     /**
      * 13th-month pay = total basic salary EARNED during the calendar year ÷ 12.
-     * We sum `basicPay` (the actual basic earned per cutoff, already net of
-     * absences/undertime) across every pay_date in the selected year. Employees
-     * who only worked part of the year are pro-rated automatically because their
-     * total earned basic is simply smaller.
+     *
+     * `payrolls.basicPay` is NOT the earned basic: for RGLR it's the flat
+     * semi-monthly basic BEFORE absence/late/undertime deductions, and for
+     * daily-paid it's just the daily RATE (the real regular pay is folded into
+     * gross_pay). The earned basic per cutoff is therefore derived as
+     * gross_pay − overtime_pay − holiday_pay − night_diff_pay, which per the
+     * DOLE 13th-month guidelines also correctly excludes OT, holiday pay and
+     * night differential (allowances are never in gross_pay). Clamped ≥ 0 per
+     * row because gross_pay itself is floor-clamped at 0 during computation.
+     * Employees who only worked part of the year are pro-rated automatically
+     * because their total earned basic is simply smaller.
      *
      * @return array{0:\Illuminate\Support\Collection,1:int}
      */
@@ -63,14 +70,14 @@ class ThirteenthMonthController extends Controller
                 TRIM(CONCAT(COALESCE(u.lname,''), ', ', COALESCE(u.fname,''))) as employee_name,
                 COALESCE(d.dep_name,'—') as department_name,
                 COALESCE(c.comp_name,'—') as company_name,
-                SUM(COALESCE(p.basicPay,0)) as total_basic,
+                SUM(GREATEST(COALESCE(p.gross_pay,0) - COALESCE(p.overtime_pay,0) - COALESCE(p.holiday_pay,0) - COALESCE(p.night_diff_pay,0), 0)) as total_basic,
                 COUNT(DISTINCT p.pay_date) as periods,
                 COUNT(DISTINCT DATE_FORMAT(p.pay_date,'%Y-%m')) as months,
                 MIN(p.pay_date) as first_pay,
                 MAX(p.pay_date) as last_pay
             ")
             ->groupBy('u.empID', 'employee_name', 'department_name', 'company_name')
-            ->havingRaw('SUM(COALESCE(p.basicPay,0)) > 0')
+            ->havingRaw('SUM(GREATEST(COALESCE(p.gross_pay,0) - COALESCE(p.overtime_pay,0) - COALESCE(p.holiday_pay,0) - COALESCE(p.night_diff_pay,0), 0)) > 0')
             ->orderBy('employee_name')
             ->get();
 
