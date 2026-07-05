@@ -37,12 +37,12 @@
         <img src="{{ asset('img/kwatogslogo.jpg') }}" onerror="this.style.display='none'" alt="">
         <div>
             <div class="org">{{ $letterhead }}</div>
-            <div class="sub">13th Month Pay &mdash; Calendar Year {{ $year }}</div>
+            <div class="sub">13th Month Pay &mdash; Coverage: {{ $coverage }}</div>
         </div>
     </div>
 
     <div class="meta">
-        <b>Computation:</b> Total basic salary earned (Jan&ndash;Dec {{ $year }}) &divide; 12.
+        <b>Computation:</b> Total basic salary earned ({{ $coverage }}) &divide; 12.
         &nbsp;&bull;&nbsp; <b>Employees:</b> {{ $rows->count() }}
         &nbsp;&bull;&nbsp; <b>Generated:</b> {{ now()->format('M d, Y g:i A') }}
     </div>
@@ -71,7 +71,7 @@
                 <td class="r"><strong>{{ number_format($r->thirteenth, 2) }}</strong></td>
             </tr>
             @empty
-            <tr><td colspan="7" style="text-align:center; padding:20px; color:#94a3b8;">No records for {{ $year }}.</td></tr>
+            <tr><td colspan="7" style="text-align:center; padding:20px; color:#94a3b8;">No records within this coverage.</td></tr>
             @endforelse
         </tbody>
         <tfoot>
