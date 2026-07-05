@@ -171,10 +171,19 @@
         .sc-head {
             display: flex;
             align-items: center;
-            gap: 10px;
+            flex-wrap: wrap;
+            gap: 8px 12px;
             padding: 14px 22px;
             border-bottom: 1px solid var(--border);
             background: linear-gradient(to right, #fafcff, #f8fbfa);
+        }
+        .sc-head-left { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; min-width: 0; }
+        /* Punch-action bar — standalone row between the summary cards and the log */
+        .punch-bar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-bottom: 20px;
         }
         .sc-icon {
             width: 30px;
@@ -280,28 +289,24 @@
         .sa-list-item { border:1px solid #e2e8f0; border-radius:8px; padding:6px 10px; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
         .sa-badge { font-size:.58rem; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap; }
 
-        /* ── Today's Schedule — slim banner ───────────────────────── */
-        .sched-flash { display:flex; align-items:center; flex-wrap:wrap; gap:8px 14px;
-            background:linear-gradient(135deg,var(--teal) 0%,var(--teal-dark) 100%); color:#fff;
-            border-radius:var(--radius-card); box-shadow:var(--shadow-card); padding:11px 16px; }
-        .sched-flash-icon { width:38px; height:38px; border-radius:10px; background:rgba(255,255,255,.18);
-            display:flex; align-items:center; justify-content:center; font-size:1.05rem; flex-shrink:0; }
-        .sched-flash-body { display:flex; align-items:baseline; flex-wrap:wrap; gap:2px 12px; flex:1 1 auto; min-width:0; }
-        .sched-flash-eyebrow { font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; opacity:.85; }
-        .sched-flash-shift { font-size:1.1rem; font-weight:700; line-height:1.2; }
-        .sched-flash-sub { font-size:.78rem; opacity:.9; }
-        .sched-flash-btn { background:#fff; color:var(--teal-dark); border:none; border-radius:20px;
-            padding:6px 14px; font-weight:600; font-size:.78rem; white-space:nowrap; flex-shrink:0; margin-left:auto; }
-        .sched-flash-btn:hover { background:var(--teal-light); color:var(--teal-dark); }
+        /* ── Today's schedule chips (Attendance Log header) ───────── */
+        .sc-sched { display:flex; align-items:center; flex-wrap:wrap;
+            gap:5px 8px; min-width:0; }
+        .sc-sched-label { font-size:.68rem; font-weight:700; text-transform:uppercase;
+            letter-spacing:.5px; color:var(--slate-light); white-space:nowrap; }
+        .sc-sched-pill { display:inline-flex; align-items:center; gap:5px; background:var(--teal-light);
+            color:var(--teal-dark); font-size:.72rem; font-weight:600; padding:3px 10px;
+            border-radius:20px; white-space:nowrap; }
+        .sc-sched-pill.alt { background:#f1f5f9; color:var(--slate-light); }
+        .sc-sched-pill small { font-weight:500; opacity:.8; }
 
         /* ── Mobile: de-crowd the card zone ───────────────────────── */
         @media (max-width:576px) {
             .home-shell { padding:16px 14px 48px; }
             .home-topbar { padding:13px 15px; margin-bottom:14px; }
-            .sched-flash { padding:10px 13px; gap:5px 10px; }
-            .sched-flash-icon { width:33px; height:33px; font-size:.92rem; }
-            .sched-flash-shift { font-size:1rem; }
-            .sched-flash-btn { margin-left:0; flex:1 1 100%; width:100%; padding:8px; }
+            .sc-head-left { flex-basis:100%; }
+            .sc-sched { flex-basis:100%; justify-content:flex-start; }
+            .punch-bar .btn { flex:1 1 0; }
             .summary-card { flex-direction:column; align-items:flex-start; padding:12px 11px; gap:8px; }
             .summary-icon { width:34px; height:34px; font-size:.88rem; border-radius:10px; }
             .summary-value { font-size:1.05rem; }
@@ -342,37 +347,6 @@
                 <button type="button" id="btnLogRef" class="btn btn-teal" title="Refresh Logs">
                     <i class="fa fa-refresh"></i>
                 </button>
-            </div>
-        </div>
-
-        {{-- ── Today's Schedule (schedule flash) ── --}}
-        <div class="row mb-3">
-            <div class="col-12">
-                <div class="sched-flash">
-                    <div class="sched-flash-icon"><i class="fa-solid fa-calendar-day"></i></div>
-                    <div class="sched-flash-body">
-                        <span class="sched-flash-eyebrow">Today &middot; {{ \Carbon\Carbon::parse($today)->format('D, M d') }}</span>
-                        @if($todaySchedule)
-                            @php
-                                $flashIn  = \Carbon\Carbon::parse($todaySchedule->sched_in);
-                                $flashOut = \Carbon\Carbon::parse($todaySchedule->sched_out);
-                                $flashOvernight = strtotime($todaySchedule->sched_out) <= strtotime($todaySchedule->sched_in);
-                            @endphp
-                            <span class="sched-flash-shift">{{ $flashIn->format('g:i A') }} – {{ $flashOut->format('g:i A') }}@if($flashOvernight) <span class="fw-normal" style="font-size:.72rem;opacity:.8;">(ends next day)</span>@endif</span>
-                            @if($todaySchedule->break_start && $todaySchedule->break_end)
-                                <span class="sched-flash-sub"><i class="fa-solid fa-mug-hot me-1"></i>Break {{ \Carbon\Carbon::parse($todaySchedule->break_start)->format('g:i A') }} – {{ \Carbon\Carbon::parse($todaySchedule->break_end)->format('g:i A') }}</span>
-                            @endif
-                        @else
-                            <span class="sched-flash-shift">No schedule set for today</span>
-                            <span class="sched-flash-sub">Request one below if you're working today.</span>
-                        @endif
-                    </div>
-                    @can('createschedulechange')
-                    <button type="button" id="btnFlashRequest" class="sched-flash-btn">
-                        <i class="fa-solid fa-wand-magic-sparkles me-1"></i> Request a change
-                    </button>
-                    @endcan
-                </div>
             </div>
         </div>
 
@@ -485,11 +459,42 @@
         </div>
         @endcan
 
+        {{-- ── Punch actions — between the summary cards and the attendance log ── --}}
+        <div class="punch-bar">
+            <button type="button" id="btnTimeIn"
+                class="btn btn-punch-in text-white rounded-pill px-4 py-2 fw-bold shadow-sm transition-hover">
+                <i class="bi bi-clock me-1"></i> Time In
+            </button>
+            <button type="button" id="btnTimeOut"
+                class="btn btn-punch-out text-white rounded-pill px-4 py-2 fw-bold shadow-sm transition-hover">
+                <i class="bi bi-box-arrow-right me-1"></i> Time Out
+            </button>
+        </div>
+
         {{-- ── Attendance log ── --}}
         <div class="sc">
             <div class="sc-head">
-                <div class="sc-icon"><i class="bi bi-clock-history"></i></div>
-                <h5 class="sc-title">Attendance Log</h5>
+                <div class="sc-head-left">
+                    <div class="sc-icon"><i class="bi bi-clock-history"></i></div>
+                    <h5 class="sc-title">Attendance Log</h5>
+                    {{-- Today's schedule at a glance (was the schedule-flash banner) --}}
+                    <div class="sc-sched" id="todaySched">
+                        <span class="sc-sched-label">Today &middot; {{ \Carbon\Carbon::parse($today)->format('D, M d') }}</span>
+                        @if($todaySchedule)
+                            @php
+                                $flashIn  = \Carbon\Carbon::parse($todaySchedule->sched_in);
+                                $flashOut = \Carbon\Carbon::parse($todaySchedule->sched_out);
+                                $flashOvernight = strtotime($todaySchedule->sched_out) <= strtotime($todaySchedule->sched_in);
+                            @endphp
+                            <span class="sc-sched-pill"><i class="fa-solid fa-business-time"></i>{{ $flashIn->format('g:i A') }} – {{ $flashOut->format('g:i A') }}@if($flashOvernight)&nbsp;<small>(ends next day)</small>@endif</span>
+                            @if($todaySchedule->break_start && $todaySchedule->break_end)
+                                <span class="sc-sched-pill alt"><i class="fa-solid fa-mug-hot"></i>Break {{ \Carbon\Carbon::parse($todaySchedule->break_start)->format('g:i A') }} – {{ \Carbon\Carbon::parse($todaySchedule->break_end)->format('g:i A') }}</span>
+                            @endif
+                        @else
+                            <span class="sc-sched-pill alt"><i class="fa-solid fa-calendar-xmark"></i>No schedule set for today</span>
+                        @endif
+                    </div>
+                </div>
             </div>
             <div class="sc-body">
                 <div class="table-responsive" style="max-height: 65vh; overflow-y: auto;">
@@ -508,22 +513,6 @@
                         <tbody id="tblAttendance" class="text-center border-top-0">
                         </tbody>
                     </table>
-                </div>
-            </div>
-        </div>
-
-        {{-- ── Action buttons ── --}}
-        <div class="row mt-4">
-            <div class="col-12 text-end">
-                <div class="d-inline-flex gap-3">
-                    <button type="button" id="btnTimeOut"
-                        class="btn btn-punch-out text-white rounded-pill px-4 py-2 fw-bold shadow-sm transition-hover">
-                        <i class="bi bi-box-arrow-right me-1"></i> Time Out
-                    </button>
-                    <button type="button" id="btnTimeIn"
-                        class="btn btn-punch-in text-white rounded-pill px-4 py-2 fw-bold shadow-sm transition-hover">
-                        <i class="bi bi-clock me-1"></i> Time In
-                    </button>
                 </div>
             </div>
         </div>
@@ -876,7 +865,6 @@ $(function () {
     if (!$card.length) return;
     $('#saFab').on('click', () => { $card.toggleClass('open'); });
     $('#saClose').on('click', () => $card.removeClass('open'));
-    $('#btnFlashRequest').on('click', () => { $card.addClass('open'); showStep(1); });
     let step = 1; const maxStep = 4;
     const sw = (cond, msg, title) => { if (!cond) { (window.Swal ? Swal.fire(title || 'Notice', msg, 'warning') : alert(msg)); return false; } return true; };
 
