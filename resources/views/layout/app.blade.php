@@ -80,10 +80,15 @@
             display: flex !important;
             align-items: center;
         }
+        /* The base theme sets white-space:nowrap on .collapse-item; with flex, a long
+           label ("Pending Schedule Requests") then can't shrink and pushes its badge
+           past the sidebar edge. Let labels wrap and keep the badge intact. */
+        .collapse-item { white-space: normal !important; }
         .nav-item .nav-link .badge,
         .collapse-item .badge {
             font-size: 0.65rem;
             padding: 0.3em 0.55em;
+            flex-shrink: 0;
         }
 
         /* Collapse Inner Styling */
@@ -384,6 +389,18 @@
                         })
                         ->count();
                 }
+
+                // 6. Count pending schedule-change requests waiting for approval.
+                //    NOTE: intentionally unscoped (all FORAPPROVAL rows), matching
+                //    ScheduleRequestController::pending() exactly — that list page has no
+                //    company/supervisor filter, so the badge must not filter either.
+                $pendingScheduleCount = 0;
+                if (auth()->user()?->can('approveschedulechange')) {
+                    $pendingScheduleCount = \App\Models\ScheduleRequest::where('status', 'FORAPPROVAL')->count();
+                }
+
+                // Parent (Workforce) badge = everything pending inside the dropdown.
+                $workforcePendingCount = $pendingLeaveCount + $pendingScheduleCount;
             @endphp
 
             @if ($hasPagesAccess)
@@ -392,8 +409,8 @@
                     <a class="nav-link {{ $modulePagesGroupActive ? 'active-parent' : 'collapsed' }}" href="#" data-bs-toggle="collapse" data-bs-target="#collapseModules" aria-expanded="{{ $modulePagesGroupActive ? 'true' : 'false' }}">
                         <i class="fas fa-fw fa-cubes"></i>
                         <span>Workforce</span>
-                        @if ($pendingLeaveCount > 0)
-                            <span class="badge rounded-pill bg-danger ms-auto">{{ $pendingLeaveCount }}</span>
+                        @if ($workforcePendingCount > 0)
+                            <span class="badge rounded-pill bg-danger ms-auto">{{ $workforcePendingCount }}</span>
                         @endif
                     </a>
                     <div id="collapseModules" class="collapse {{ $modulePagesGroupActive ? 'show' : '' }}" data-bs-parent="#accordionSidebar">
@@ -411,6 +428,9 @@
                                             <i class="fa-solid {{ $page['icon'] }} me-1"></i> {{ $page['name'] }}
                                             @if ($key === 'pendingleaverequests' && $pendingLeaveCount > 0)
                                                 <span class="badge rounded-pill bg-danger ms-auto">{{ $pendingLeaveCount }}</span>
+                                            @endif
+                                            @if ($key === 'approveschedulechange' && $pendingScheduleCount > 0)
+                                                <span class="badge rounded-pill bg-danger ms-auto">{{ $pendingScheduleCount }}</span>
                                             @endif
                                         </a>
                                     @endforeach

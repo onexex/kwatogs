@@ -22,8 +22,11 @@ class LandingController extends Controller
 
         if ($user && $user->can('home')) {
             $today = Carbon::today()->toDateString();
+            // Show only a shift that STARTS today (working-day match), matching the
+            // time-in engine — a range match would also surface an overnight shift from
+            // yesterday whose end date lands on today, which time-in won't let you punch.
             $todaySchedule = $user->empID
-                ? $schedules->currentSchedule($user->empID, $today)
+                ? $schedules->scheduleStartingOn($user->empID, $today)
                 : null;
 
             return view('home', compact('todaySchedule', 'today'));
