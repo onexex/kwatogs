@@ -66,7 +66,7 @@ class FinalPayReportController extends Controller
                 COALESCE(d.dep_name,'—') as department_name,
                 ed.separation_date, ed.separation_reason, ed.years_rendered,
                 COALESCE(ed.empBasic,0) as monthly_basic, COALESCE(ed.empHrate,0) as hourly_rate,
-                COALESCE((SELECT SUM(p.basicPay) FROM payrolls p
+                COALESCE((SELECT SUM(GREATEST(COALESCE(p.gross_pay,0) - COALESCE(p.overtime_pay,0) - COALESCE(p.holiday_pay,0) - COALESCE(p.night_diff_pay,0), 0)) FROM payrolls p
                     WHERE p.employee_id = ed.empID AND YEAR(p.pay_date) = YEAR(ed.separation_date)), 0) as basic_earned,
                 COALESCE((SELECT SUM(lca.balance) FROM leave_credit_allocations lca
                     WHERE lca.employee_id = ed.empID AND lca.year = YEAR(ed.separation_date)), 0) as leave_balance
