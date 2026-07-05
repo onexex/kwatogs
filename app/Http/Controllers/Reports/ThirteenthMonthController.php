@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Reports;
 use App\Http\Controllers\Controller;
 use App\Models\department;
 use App\Support\SimpleXlsx;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -35,13 +36,39 @@ class ThirteenthMonthController extends Controller
      * Employees who only worked part of the year are pro-rated automatically
      * because their total earned basic is simply smaller.
      *
-     * @return array{0:\Illuminate\Support\Collection,1:int}
+     * COVERAGE: pay dates inside `coverage_from`..`coverage_to`. Defaults to
+     * the selected calendar year (Jan 1 – Dec 31) but is adjustable so payout
+     * can run before Dec 24 (e.g. Dec 1 prev year – Nov 30). Parsing is
+     * defensive (export/print are plain GET links): bad input falls back to
+     * the calendar year, a reversed range is swapped, and the window is capped
+     * at one year — every label downstream shows the EFFECTIVE window.
+     *
+     * @return array{0:\Illuminate\Support\Collection,1:int,2:Carbon,3:Carbon}
      */
     private function compute(Request $request): array
     {
-        $year  = (int) ($request->input('year') ?: now()->year);
-        $start = "{$year}-01-01";
-        $end   = "{$year}-12-31";
+        $year = (int) ($request->input('year') ?: now()->year);
+
+        try {
+            $from = $request->filled('coverage_from') ? Carbon::parse($request->input('coverage_from'))->startOfDay() : null;
+            $to   = $request->filled('coverage_to') ? Carbon::parse($request->input('coverage_to'))->startOfDay() : null;
+        } catch (\Throwable) {
+            $from = $to = null;
+        }
+        if (!$from || !$to) {
+            $from = Carbon::create($year, 1, 1);
+            $to   = Carbon::create($year, 12, 31);
+        }
+        if ($from->gt($to)) {
+            [$from, $to] = [$to, $from];
+        }
+        if ($from->diffInDays($to) > 366) {
+            $to = $from->copy()->addYear()->subDay();
+        }
+
+        $year  = $to->year; // report/payout year = coverage end year
+        $start = $from->format('Y-m-d');
+        $end   = $to->format('Y-m-d');
 
         $q = DB::table('payrolls as p')
             ->join('users as u', 'u.empID', '=', 'p.employee_id')
@@ -86,32 +113,40 @@ class ThirteenthMonthController extends Controller
             $r->thirteenth  = round($r->total_basic / 12, 2);
         }
 
-        return [$rows, $year];
+        return [$rows, $year, $from, $to];
+    }
+
+    private function coverageLabel(Carbon $from, Carbon $to): string
+    {
+        return $from->format('M j, Y').' – '.$to->format('M j, Y');
     }
 
     public function fetch(Request $request)
     {
-        [$rows, $year] = $this->compute($request);
+        [$rows, $year, $from, $to] = $this->compute($request);
 
         return response()->json([
-            'data'        => $rows,
-            'year'        => $year,
-            'total_basic' => $rows->sum('total_basic'),
-            'total_13th'  => $rows->sum('thirteenth'),
-            'count'       => $rows->count(),
+            'data'           => $rows,
+            'year'           => $year,
+            'coverage_from'  => $from->format('Y-m-d'),
+            'coverage_to'    => $to->format('Y-m-d'),
+            'coverage_label' => $this->coverageLabel($from, $to),
+            'total_basic'    => $rows->sum('total_basic'),
+            'total_13th'     => $rows->sum('thirteenth'),
+            'count'          => $rows->count(),
         ]);
     }
 
     public function export(Request $request)
     {
-        [$rows, $year] = $this->compute($request);
+        [$rows, $year, $from, $to] = $this->compute($request);
 
         $x = new SimpleXlsx('13th Month Pay');
         $x->setColumnWidths([6, 14, 34, 22, 22, 10, 18, 18]);
 
         $x->setString('A1', self::LETTERHEAD, SimpleXlsx::S_TITLE);
-        $x->setString('A2', "13TH MONTH PAY — CALENDAR YEAR {$year}", SimpleXlsx::S_TITLE);
-        $x->setString('A3', 'Total basic salary earned ÷ 12', SimpleXlsx::S_TITLE);
+        $x->setString('A2', '13TH MONTH PAY — COVERAGE '.strtoupper($this->coverageLabel($from, $to)), SimpleXlsx::S_TITLE);
+        $x->setString('A3', 'Total basic salary earned within the coverage ÷ 12', SimpleXlsx::S_TITLE);
 
         $hr = 5;
         $headers = ['NO.', 'EMP ID', 'EMPLOYEE NAME', 'DEPARTMENT', 'COMPANY', 'MONTHS', 'TOTAL BASIC EARNED', '13TH MONTH PAY'];
@@ -147,11 +182,12 @@ class ThirteenthMonthController extends Controller
 
     public function print(Request $request)
     {
-        [$rows, $year] = $this->compute($request);
+        [$rows, $year, $from, $to] = $this->compute($request);
 
         return view('pages.reports.thirteenth_month_print', [
             'rows'       => $rows,
             'year'       => $year,
+            'coverage'   => $this->coverageLabel($from, $to),
             'totalBasic' => $rows->sum('total_basic'),
             'total13th'  => $rows->sum('thirteenth'),
             'letterhead' => self::LETTERHEAD,

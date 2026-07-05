@@ -45,7 +45,7 @@
 <div class="rpt-shell">
     <div class="rpt-topbar">
         <p class="page-title"><i class="fa fa-gift me-2" style="color:var(--teal)"></i>13th Month Pay</p>
-        <p class="page-sub">Total basic salary earned during the year &divide; 12 &mdash; pro-rated automatically for partial-year employees.</p>
+        <p class="page-sub">Total basic salary earned within the coverage period &divide; 12 &mdash; pro-rated automatically for partial-year employees. Set the coverage first (defaults to the calendar year; adjust it e.g. to Dec&ndash;Nov when paying out before Dec 24).</p>
     </div>
 
     <div class="sc">
@@ -60,6 +60,14 @@
                     </select>
                 </div>
                 <div class="col-6 col-md-2">
+                    <label class="field-label">Coverage From</label>
+                    <input type="date" id="fltFrom" class="form-control form-control-sm">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="field-label">Coverage To</label>
+                    <input type="date" id="fltTo" class="form-control form-control-sm">
+                </div>
+                <div class="col-6 col-md-3">
                     <label class="field-label">Company</label>
                     <select id="fltCompany" class="form-select form-select-sm">
                         <option value="all">All</option>
@@ -68,7 +76,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-6 col-md-2">
+                <div class="col-6 col-md-3">
                     <label class="field-label">Department</label>
                     <select id="fltDept" class="form-select form-select-sm">
                         <option value="all">All</option>
@@ -77,7 +85,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-6 col-md-3">
+                <div class="col-12 col-md-4">
                     <label class="field-label">Search</label>
                     <input type="text" id="fltSearch" class="form-control form-control-sm" placeholder="Name or ID...">
                 </div>
@@ -100,6 +108,7 @@
         <div class="sc-head">
             <div class="sc-icon"><i class="fa fa-gift"></i></div>
             <h5 class="sc-title">13th Month Computation</h5>
+            <span class="pill ms-auto" id="covLabel" title="Coverage period"><i class="fa fa-calendar me-1"></i>&mdash;</span>
         </div>
         <div class="table-responsive" style="max-height:66vh; overflow:auto;">
             <table class="table table-hover align-middle mb-0 rpt-table">
@@ -125,10 +134,20 @@ $(function () {
     const peso = n => '₱' + Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const params = () => ({
         year: $('#fltYear').val(),
+        coverage_from: $('#fltFrom').val(),
+        coverage_to: $('#fltTo').val(),
         company_id: $('#fltCompany').val() || 'all',
         department_id: $('#fltDept').val() || 'all',
         search: $('#fltSearch').val(),
     });
+
+    // Picking a year resets the coverage to that calendar year; the dates
+    // stay editable for a custom window (e.g. Dec 1 prev yr – Nov 30).
+    function setCoverageFromYear() {
+        const y = $('#fltYear').val();
+        $('#fltFrom').val(`${y}-01-01`);
+        $('#fltTo').val(`${y}-12-31`);
+    }
 
     function load() {
         $('#tbl').html('<tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm text-secondary"></div></td></tr>');
@@ -138,7 +157,11 @@ $(function () {
             $('#kEmp').text(d.count || 0);
             $('#kBasic').text(peso(d.total_basic));
             $('#k13').text(peso(d.total_13th));
-            if (!rows.length) { $('#tbl').html('<tr><td colspan="6" class="text-center text-muted py-4">No payroll records found for this year.</td></tr>'); return; }
+            $('#covLabel').html(`<i class="fa fa-calendar me-1"></i>${d.coverage_label || ''}`);
+            // The server may normalize a bad/reversed/over-long window — reflect the effective one.
+            if (d.coverage_from) $('#fltFrom').val(d.coverage_from);
+            if (d.coverage_to) $('#fltTo').val(d.coverage_to);
+            if (!rows.length) { $('#tbl').html('<tr><td colspan="6" class="text-center text-muted py-4">No payroll records found within this coverage.</td></tr>'); return; }
             let h = '';
             rows.forEach(r => {
                 h += `<tr>
@@ -157,9 +180,11 @@ $(function () {
 
     $('#btnFilter').on('click', load);
     $('#fltSearch').on('keyup', e => { if (e.key === 'Enter') load(); });
-    $('#fltYear,#fltCompany,#fltDept').on('change', load);
+    $('#fltYear').on('change', () => { setCoverageFromYear(); load(); });
+    $('#fltFrom,#fltTo,#fltCompany,#fltDept').on('change', load);
     $('#btnExport').on('click', () => window.location = '/reports/thirteenth-month/export?' + new URLSearchParams(params()).toString());
     $('#btnPrint').on('click', () => window.open('/reports/thirteenth-month/print?' + new URLSearchParams(params()).toString(), '_blank'));
+    setCoverageFromYear();
     load();
 });
 </script>
