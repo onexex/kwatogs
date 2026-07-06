@@ -31,6 +31,15 @@ class homeAttendance extends Model
         'night_diff_hours' => 'decimal:2',
     ];
 
+    /**
+     * Grace window (hours) past a shift's scheduled end within which a clock-out is still treated as
+     * a legitimate, if slightly late, departure. Only a clock-out MORE than this many hours past the
+     * scheduled end is treated as a forgotten punch ("missed logout") and zeroed. Measured from the
+     * scheduled end so it behaves identically for day and overnight shifts; must stay well below a
+     * full day so a genuine next-morning forgotten punch is still caught.
+     */
+    public const MISSED_LOGOUT_GRACE_HOURS = 6;
+
     // -----------------------
     // Relationships
     // -----------------------
@@ -369,12 +378,16 @@ class homeAttendance extends Model
             $this->duration_hours = max($totalMinutes / 60, 0);
             $this->night_diff_hours = $evaluated['night_diff_hours'];
             $this->remarks = $evaluated['remarks'];
-            // Missed logout: the employee never clocked out and is closing the punch on a
-            // LATER calendar day than the shift's scheduled end. Mirror autoCloseMissedLogout()
-            // so the manual Time-OUT path and the auto-close-on-next-time-in path agree —
-            // company policy: a missed logout earns no paid hours. (Legitimate overnight shifts
-            // log out on the SAME date as sched_out, so this condition is false for them.)
-            if ($actualOut->toDateString() !== $schedOut->toDateString() && $actualOut->gt($schedOut)) {
+            // Missed logout: the employee forgot to clock out and is only now closing a stale
+            // punch, implausibly far past the shift end. We measure that by how far past the
+            // SCHEDULED end the clock-out lands (NOT by calendar date) — a day shift ending 11PM
+            // whose owner clocks out at 12AM crosses midnight yet is only ~1h late and is clearly
+            // legitimate, while an overnight shift's forgotten punch can sit on the SAME calendar
+            // day as sched_out. Only beyond the grace window do we mirror autoCloseMissedLogout()
+            // and apply company policy: a missed logout earns no paid hours. Within the grace
+            // window the clamp above already caps paid hours at the scheduled end, so the real
+            // clock-out time is preserved in time_out and the rendered hours stand.
+            if ($actualOut->gt($schedOut->copy()->addHours(self::MISSED_LOGOUT_GRACE_HOURS))) {
                 $this->time_out         = $schedOut;   // match autoClose: pin to scheduled end
                 $this->duration_hours   = 0;
                 $this->night_diff_hours = 0;
@@ -383,7 +396,12 @@ class homeAttendance extends Model
         } else {
             // No schedule fallback (Actual time)
             $evaluated = $this->evaluatePunch($actualIn, $actualOut);
-            if ($actualOut->toDateString() !== $actualIn->toDateString()) {
+            // With no schedule to clamp against, measure the grace from the punch-in itself: a
+            // shift can legitimately run past midnight, so only an implausibly long elapsed time
+            // (a typical shift + the same grace window) reads as a forgotten punch. This mirrors
+            // the scheduled branch instead of zeroing every cross-midnight clock-out.
+            $noSchedMissedThresholdHours = 12 + self::MISSED_LOGOUT_GRACE_HOURS;
+            if ($actualOut->gt($actualIn->copy()->addHours($noSchedMissedThresholdHours))) {
                 // Missed logout with no schedule to clamp against — no paid hours.
                 $this->duration_hours   = 0;
                 $this->night_diff_hours = 0;

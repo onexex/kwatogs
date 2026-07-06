@@ -510,4 +510,43 @@ class PunchLoginTest extends TestCase
         $this->assertEquals(8.0, (float) $punch->night_diff_hours);
         $this->assertStringNotContainsString('Missed logout', (string) $punch->remarks);
     }
+
+    /**
+     * Regression guard (the Cacal bug): a DAY shift that ends at 23:00 whose owner clocks out just
+     * past midnight is only ~1h late — NOT a missed logout. The old calendar-date check zeroed the
+     * whole day because 00:00 (Day 2) fell on a different date than sched_out (Day 1 23:00). With
+     * the grace-window fix (6h past sched_out), 00:00 is well inside the window, so the day keeps
+     * its clamped hours and the real clock-out time survives.
+     * Shift 14:00–23:00 (break 18:00–19:00), in Day 1 19:01, out Day 2 00:00 → 23:00 − 19:01 = 3.98h.
+     */
+    public function test_day_shift_logout_just_past_midnight_retains_hours(): void
+    {
+        $this->schedule([
+            'sched_start_date' => '2026-07-05',
+            'sched_in'         => '14:00:00',
+            'sched_out'        => '23:00:00',
+            'sched_end_date'   => '2026-07-05',
+            'break_start'      => '18:00:00',
+            'break_end'        => '19:00:00',
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-07-05 19:01:00'));
+        $punch = homeAttendance::logTimeIn($this->emp);
+
+        Carbon::setTestNow(Carbon::parse('2026-07-06 00:00:00')); // 1h past the 23:00 end, next day
+        $punch->logTimeOut();
+        $punch->refresh();
+
+        // 19:01→23:00 (clamped to sched end) = 3h59m ≈ 3.98h; break 18:00–19:00 is before time-in.
+        $this->assertEqualsWithDelta(3.98, (float) $punch->duration_hours, 0.01, 'past-midnight day-shift clock-out keeps clamped hours');
+        $this->assertStringNotContainsString('Missed logout', (string) $punch->remarks);
+        // Real clock-out is preserved — NOT pinned back to the 23:00 scheduled end.
+        $this->assertSame('2026-07-06 00:00:00', Carbon::parse($punch->time_out)->format('Y-m-d H:i:s'));
+
+        $summary = AttendanceSummary::where('employee_id', $this->emp)
+            ->whereDate('attendance_date', '2026-07-05')->first();
+        $this->assertNotNull($summary);
+        $this->assertEqualsWithDelta(3.98, (float) $summary->total_hours, 0.01);
+        $this->assertSame('present', $summary->status);
+    }
 }
