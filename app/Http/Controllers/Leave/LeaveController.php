@@ -41,6 +41,22 @@ class LeaveController extends Controller
             ]);
         }
 
+        // Business rule: an employee may only file a leave on a day they have actually
+        // logged in (a time-in punch exists for today). No time-in today => the whole
+        // application is blocked, regardless of the requested leave dates.
+        $hasLoginToday = \App\Models\homeAttendance::where('employee_id', $user->empID)
+            ->whereNotNull('time_in')
+            ->whereDate('time_in', Carbon::today())
+            ->exists();
+
+        if (!$hasLoginToday) {
+            return response()->json([
+                'status'  => 422,
+                'blocked' => true,
+                'message' => 'You must be timed-in for today before filing a leave application.',
+            ]);
+        }
+
         if (isset($request->halfday)) {
             if ($request->date_from != $request->date_to) {
                 return response()->json([

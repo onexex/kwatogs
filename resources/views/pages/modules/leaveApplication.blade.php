@@ -516,6 +516,15 @@
                     });
 
                     return
+                } else if (response.data.blocked) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Cannot File Leave',
+                        text: response.data.message,
+                        confirmButtonText: 'OK',
+                        customClass: { confirmButton: 'rounded-pill' }
+                    });
+                    return
                 } else if (response.data.auto_disapproved) {
                     Swal.fire({
                         icon: 'warning',
