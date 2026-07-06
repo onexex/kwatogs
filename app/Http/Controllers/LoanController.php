@@ -58,8 +58,11 @@ class LoanController extends Controller
         // Recurring only applies to non-government charges.
         $isRecurring = $request->boolean('is_recurring') && !in_array($request->loan_type, self::GOV_TYPES);
 
-        // Only keep the specification when the type is "other"
-        $otherDescription = $request->loan_type === 'other' ? $request->other_description : null;
+        // Keep the specification/description for "other" and "charges/penalty" so
+        // each charge can be itemized (with its caption) on the payslip.
+        $otherDescription = in_array($request->loan_type, ['other', 'charges/penalty'], true)
+            ? $request->other_description
+            : null;
 
         // Recurring charges carry no principal/balance and no end date.
         $loanAmount = $isRecurring ? 0 : $request->loan_amount;
@@ -104,7 +107,9 @@ class LoanController extends Controller
 
         $loan->employee_id          = $request->employee_id ?? $loan->employee_id;
         $loan->loan_type            = $request->loan_type;
-        $loan->other_description    = $request->loan_type === 'other' ? $request->other_description : null;
+        $loan->other_description    = in_array($request->loan_type, ['other', 'charges/penalty'], true)
+            ? $request->other_description
+            : null;
         $loan->monthly_amortization = $request->monthly_amortization;
         $loan->start_date           = $request->start_date;
         $loan->end_date             = $isRecurring ? null : $request->end_date;
