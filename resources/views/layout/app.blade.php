@@ -386,6 +386,12 @@
                             if ($pendingLeaveUser->can('approvecfoleave')) {
                                 $q->orWhere('leaves.status', \App\Enums\LeaveStatusEnum::APPROVED->name);
                             }
+
+                            // Guard the empty-closure case: without either approval
+                            // permission the badge must not count every company leave.
+                            if (! $pendingLeaveUser->can('approveleave') && ! $pendingLeaveUser->can('approvecfoleave')) {
+                                $q->whereRaw('1 = 0');
+                            }
                         })
                         ->count();
                 }

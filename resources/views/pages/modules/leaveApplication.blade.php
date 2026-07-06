@@ -641,16 +641,54 @@
             })
         });
 
+        // Cache of all fetched leaves so the date filter can re-render without a round-trip.
+        let allLeaves = [];
+
+        // Refresh buttons (filter card + table header) re-fetch from the server.
+        $(document).on('click', '#btnRefreshFilter, #btnRefreshTbl', function(e) {
+            e.preventDefault();
+            fetchLeaves();
+        });
+
+        // Changing either date bound re-applies the filter against the cached rows.
+        $(document).on('change', '#filterDateFrom, #filterDateTo', function() {
+            renderLeaves();
+        });
+
         fetchLeaves()
 
         async function fetchLeaves() {
             try {
                 const response = await axios.get('/pages/modules/leave/getall');
-                const leaves = response.data.leaves;
-                const tblLeaveApp = document.getElementById('tblLeaveApp');
-                tblLeaveApp.innerHTML = '';
+                allLeaves = response.data.leaves || [];
+                renderLeaves();
+            } catch (error) {
+                console.error('Error fetching leave history:', error);
+            }
+        }
 
-                leaves.forEach(leave => {
+        function renderLeaves() {
+            const tblLeaveApp = document.getElementById('tblLeaveApp');
+            tblLeaveApp.innerHTML = '';
+
+            const fromVal = document.getElementById('filterDateFrom').value;
+            const toVal = document.getElementById('filterDateTo').value;
+            const from = fromVal ? new Date(fromVal + 'T00:00:00') : null;
+            const to = toVal ? new Date(toVal + 'T23:59:59') : null;
+
+            const leaves = allLeaves.filter(leave => {
+                const start = new Date(leave.start_date);
+                if (from && start < from) return false;
+                if (to && start > to) return false;
+                return true;
+            });
+
+            if (leaves.length === 0) {
+                tblLeaveApp.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-4">No leave records found.</td></tr>`;
+                return;
+            }
+
+            leaves.forEach(leave => {
                     let buttonAction = '';
                     let status = '';
 
@@ -692,9 +730,6 @@
                     `;
                     tblLeaveApp.insertAdjacentHTML('beforeend', row);
                 });
-            } catch (error) {
-                console.error('Error fetching leave history:', error);
-            }
         }
     })
 </script>
