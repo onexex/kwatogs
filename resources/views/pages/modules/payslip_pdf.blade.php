@@ -55,8 +55,17 @@
     $compLoan= (float) $p->company_loan;
     $cashAdv = (float) $p->cash_advance;
     $charges = (float) $p->penalty_amount;
+    $other   = (float) $p->other_deduction;
 
-    $listedDed = $absut + $ob + $op + $sss + $phil + $pag + $tax + $sssLoan + $pagLoan + $compLoan + $cashAdv + $charges + $adjDed->sum('amount');
+    // Itemize Charges/Penalty + Other loan deductions from the per-charge
+    // LoanPayment rows (each carries its own description → caption); fall back to
+    // the aggregate column for legacy runs. Aggregates drive the totals so the
+    // slip always foots. Keep in sync with payslip.blade.php.
+    $loanPmts    = $p->relationLoaded('loanPayments') ? $p->loanPayments : collect();
+    $chargeItems = $loanPmts->filter(fn($lp) => optional($lp->loan)->loan_type === 'charges/penalty');
+    $otherItems  = $loanPmts->filter(fn($lp) => optional($lp->loan)->loan_type === 'other');
+
+    $listedDed = $absut + $ob + $op + $sss + $phil + $pag + $tax + $sssLoan + $pagLoan + $compLoan + $cashAdv + $charges + $other + $adjDed->sum('amount');
     $takehome  = (float) $p->pay_rec;
     $residual  = round($earnings - $listedDed - $takehome, 2);
     $totalDed  = $listedDed + max($residual, 0);
@@ -116,7 +125,18 @@
                 @if ($pagLoan > 0)<tr><td>Pag-IBIG Loan</td><td align="right">{{ $peso($pagLoan) }}</td></tr>@endif
                 @if ($compLoan > 0)<tr><td>Company Loan</td><td align="right">{{ $peso($compLoan) }}</td></tr>@endif
                 @if ($cashAdv > 0)<tr><td>Cash Advance</td><td align="right">{{ $peso($cashAdv) }}</td></tr>@endif
-                @if ($charges > 0)<tr><td>Charges / Penalty</td><td align="right">{{ $peso($charges) }}</td></tr>@endif
+                @if ($chargeItems->isNotEmpty())
+                    <tr><td colspan="2" style="color: #6b7280; font-size: 8pt; text-transform: uppercase;">Charge / Penalty</td></tr>
+                    @foreach ($chargeItems as $ci)<tr><td style="padding-left: 10px;">{{ optional($ci->loan)->other_description ?: 'Charge / Penalty' }}</td><td align="right">{{ $peso($ci->amount_paid) }}</td></tr>@endforeach
+                @elseif ($charges > 0)
+                    <tr><td>Charge / Penalty</td><td align="right">{{ $peso($charges) }}</td></tr>
+                @endif
+                @if ($otherItems->isNotEmpty())
+                    <tr><td colspan="2" style="color: #6b7280; font-size: 8pt; text-transform: uppercase;">Other Deductions</td></tr>
+                    @foreach ($otherItems as $oi)<tr><td style="padding-left: 10px;">{{ optional($oi->loan)->other_description ?: 'Other Deduction' }}</td><td align="right">{{ $peso($oi->amount_paid) }}</td></tr>@endforeach
+                @elseif ($other > 0)
+                    <tr><td>Other Deduction</td><td align="right">{{ $peso($other) }}</td></tr>
+                @endif
                 @foreach ($adjDed as $a)<tr><td>Adjustment: {{ $a['label'] }}</td><td align="right">{{ $peso($a['amount']) }}</td></tr>@endforeach
                 @if ($residual > 0.005)<tr><td>Other Deductions</td><td align="right">{{ $peso($residual) }}</td></tr>@endif
                 <tr><td style="border-top: 1px solid #e5e7eb; font-weight: bold;">Total Deductions</td><td align="right" style="border-top: 1px solid #e5e7eb; font-weight: bold;">{{ $peso($totalDed) }}</td></tr>

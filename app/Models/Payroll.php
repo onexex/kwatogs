@@ -82,6 +82,16 @@ class Payroll extends Model
     }
 
     /**
+     * Per-cutoff loan/charge deductions recorded against this payroll (one row
+     * per deducted Loan). Used to itemize the "Charges / Penalty" and "Other"
+     * deduction lines on the payslip — eager-load with `loanPayments.loan`.
+     */
+    public function loanPayments()
+    {
+        return $this->hasMany(LoanPayment::class, 'payroll_id');
+    }
+
+    /**
      * Get the company associated with the payroll.
      */
     public function company()

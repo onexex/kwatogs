@@ -29,6 +29,10 @@ class PayslipPdfService
         // each as its own labeled earnings/deduction line, matching the on-screen slip.
         $adjustments = is_array($bd) ? ($bd['adjustments']['entries'] ?? []) : [];
 
+        // Itemize the Charges/Penalty + Other deduction lines (one LoanPayment per
+        // deducted charge). Loaded here so the PDF is correct regardless of caller.
+        $payroll->loadMissing('loanPayments.loan');
+
         $html = view('pages.modules.payslip_pdf', [
             'p'           => $payroll,
             'daysWorked'  => $daysWorked,

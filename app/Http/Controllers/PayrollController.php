@@ -1313,6 +1313,9 @@ class PayrollController extends Controller
                 'employee.empDetail.department',
                 'employee.empDetail.position',
                 'employee.empDetail.company',
+                // Itemize the Charges/Penalty + Other deduction lines on the slip
+                // (one LoanPayment per deducted charge); bulk-loaded, no N+1.
+                'loanPayments.loan',
             ])
             ->join('users', 'payrolls.employee_id', '=', 'users.empID')
             ->where('payrolls.pay_date', $payDate)

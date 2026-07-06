@@ -36,6 +36,8 @@
         .col h4 { margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); border-bottom:1px solid var(--line); padding-bottom:6px; }
         .ln { display:flex; justify-content:space-between; font-size:13px; padding:4px 0; }
         .ln .v { font-variant-numeric: tabular-nums; }
+        .ded-cap { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; font-weight:700; margin-top:6px; }
+        .ded-item span:first-child { padding-left:14px; }
         .sub-tot { display:flex; justify-content:space-between; font-size:13px; font-weight:700; border-top:1px solid var(--line); margin-top:6px; padding-top:6px; }
 
         .settle { margin-top:18px; border-top:2px solid var(--line); padding-top:12px; }
@@ -115,8 +117,18 @@
             $compLoan= (float) $p->company_loan;
             $cashAdv = (float) $p->cash_advance;
             $charges = (float) $p->penalty_amount;
+            $other   = (float) $p->other_deduction;
 
-            $listedDed = $absut + $ob + $op + $sss + $phil + $pag + $tax + $sssLoan + $pagLoan + $compLoan + $cashAdv + $charges + $adjDed->sum('amount');
+            // Itemize the Charges/Penalty and Other loan deductions from the
+            // per-charge LoanPayment rows recorded against this payroll (each
+            // carries its own description → caption). Falls back to the aggregate
+            // column when no rows exist (e.g. legacy runs). The aggregate columns
+            // still drive the totals below, so the slip always foots.
+            $loanPmts    = $p->relationLoaded('loanPayments') ? $p->loanPayments : collect();
+            $chargeItems = $loanPmts->filter(fn($lp) => optional($lp->loan)->loan_type === 'charges/penalty');
+            $otherItems  = $loanPmts->filter(fn($lp) => optional($lp->loan)->loan_type === 'other');
+
+            $listedDed = $absut + $ob + $op + $sss + $phil + $pag + $tax + $sssLoan + $pagLoan + $compLoan + $cashAdv + $charges + $other + $adjDed->sum('amount');
             $takehome  = (float) $p->pay_rec;
             // Residual (manual/custom deductions or rounding) so the slip always foots to pay receivable
             $residual  = round($earnings - $listedDed - $takehome, 2);
@@ -176,7 +188,18 @@
                     @if ($pagLoan > 0)<div class="ln"><span>Pag-IBIG Loan</span><span class="v">{{ $peso($pagLoan) }}</span></div>@endif
                     @if ($compLoan > 0)<div class="ln"><span>Company Loan</span><span class="v">{{ $peso($compLoan) }}</span></div>@endif
                     @if ($cashAdv > 0)<div class="ln"><span>Cash Advance</span><span class="v">{{ $peso($cashAdv) }}</span></div>@endif
-                    @if ($charges > 0)<div class="ln"><span>Charges / Penalty</span><span class="v">{{ $peso($charges) }}</span></div>@endif
+                    @if ($chargeItems->isNotEmpty())
+                        <div class="ded-cap">Charge / Penalty</div>
+                        @foreach ($chargeItems as $ci)<div class="ln ded-item"><span>{{ optional($ci->loan)->other_description ?: 'Charge / Penalty' }}</span><span class="v">{{ $peso($ci->amount_paid) }}</span></div>@endforeach
+                    @elseif ($charges > 0)
+                        <div class="ln"><span>Charge / Penalty</span><span class="v">{{ $peso($charges) }}</span></div>
+                    @endif
+                    @if ($otherItems->isNotEmpty())
+                        <div class="ded-cap">Other Deductions</div>
+                        @foreach ($otherItems as $oi)<div class="ln ded-item"><span>{{ optional($oi->loan)->other_description ?: 'Other Deduction' }}</span><span class="v">{{ $peso($oi->amount_paid) }}</span></div>@endforeach
+                    @elseif ($other > 0)
+                        <div class="ln"><span>Other Deduction</span><span class="v">{{ $peso($other) }}</span></div>
+                    @endif
                     @foreach ($adjDed as $a)<div class="ln"><span>Adjustment: {{ $a['label'] }}</span><span class="v">{{ $peso($a['amount']) }}</span></div>@endforeach
                     @if ($residual > 0.005)<div class="ln"><span>Other Deductions</span><span class="v">{{ $peso($residual) }}</span></div>@endif
                     <div class="sub-tot"><span>Total Deductions</span><span>{{ $peso($totalDed) }}</span></div>
