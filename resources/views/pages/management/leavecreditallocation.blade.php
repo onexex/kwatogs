@@ -274,6 +274,12 @@
                 <div class="sc-icon"><i class="fa-solid fa-list-check"></i></div>
                 <h5 class="sc-title">Leave Credit Allocations</h5>
             </div>
+            <div class="sc-head-right">
+                <div class="input-group input-group-sm" style="max-width: 260px;">
+                    <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                    <input type="text" id="lcaSearch" class="form-control" placeholder="Search employee name...">
+                </div>
+            </div>
         </div>
         <div class="sc-body">
             <div class="table-responsive fixTableHead" style="max-height: 75vh; overflow-y: auto;">
@@ -416,6 +422,18 @@
 
 <script>
     $(document).ready(function() {
+        // Filter the allocation table by employee name (client-side; table is server-rendered).
+        $('#lcaSearch').on('keyup', function () {
+            const term = $(this).val().toLowerCase().trim();
+            $('#tblOTFile tr').each(function () {
+                const $row = $(this);
+                const $nameCell = $row.find('td').first();
+                if ($nameCell.attr('colspan')) return; // skip the "No records" row
+                const name = $nameCell.text().toLowerCase();
+                $row.toggle(name.indexOf(term) !== -1);
+            });
+        });
+
         $(document).on('click', '#btnSaveLeaveCredit', function(e) {
             const employeeId = $('#txtEmployee').val();
             const leaveTypeId = $('#txtleave').val();
