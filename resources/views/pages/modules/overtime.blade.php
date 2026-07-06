@@ -296,12 +296,17 @@
             <div class="filter-bar">
                 <div>
                     <label class="field-label" for="txtDateFromTop">From</label>
-                    <input type="date" id="txtDateFromTop" class="form-control">
+                    <input type="date" id="txtDateFromTop" class="form-control" value="{{ request('date_from') }}">
                 </div>
                 <div>
                     <label class="field-label" for="txtDateToTop">To</label>
-                    <input type="date" id="txtDateToTop" class="form-control">
+                    <input type="date" id="txtDateToTop" class="form-control" value="{{ request('date_to') }}">
                 </div>
+                @if (request('date_from') || request('date_to'))
+                    <div class="align-self-end">
+                        <a href="{{ url()->current() }}" class="btn btn-sm btn-outline-secondary">Clear</a>
+                    </div>
+                @endif
             </div>
         </div>
     </div>
@@ -601,6 +606,23 @@
 
     </script>
 @endif
+
+    <script>
+        // Date-range filter: reload the page with query params so the server filters the list.
+        document.addEventListener('DOMContentLoaded', function () {
+            const otFrom = document.getElementById('txtDateFromTop');
+            const otTo = document.getElementById('txtDateToTop');
+            function applyOtDateFilter() {
+                const params = new URLSearchParams(window.location.search);
+                if (otFrom.value) params.set('date_from', otFrom.value); else params.delete('date_from');
+                if (otTo.value) params.set('date_to', otTo.value); else params.delete('date_to');
+                params.delete('page'); // reset to first page on a new filter
+                window.location = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+            }
+            if (otFrom) otFrom.addEventListener('change', applyOtDateFilter);
+            if (otTo) otTo.addEventListener('change', applyOtDateFilter);
+        });
+    </script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {

@@ -13,13 +13,20 @@ use Illuminate\Support\Facades\Auth;
 
 class OvertimeController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
 
+        // Optional date-range filter on the OT work date (date_from column).
+        $filterFrom = $request->query('date_from');
+        $filterTo   = $request->query('date_to');
+
         $overtimes = Overtime::where('emp_detail_id', $user->empDetail->id)
+            ->when($filterFrom, fn ($q) => $q->whereDate('date_from', '>=', $filterFrom))
+            ->when($filterTo, fn ($q) => $q->whereDate('date_from', '<=', $filterTo))
             ->orderByDesc('created_at')
             ->paginate(10)
+            ->withQueryString()
             ->through(function ($ot) {
                 $from = Carbon::parse($ot->date_from . ' ' . $ot->time_in);
                 $to = Carbon::parse($ot->date_to . ' ' . $ot->time_out);
@@ -71,6 +78,18 @@ class OvertimeController extends Controller
         $user = Auth::user();
 
         if ($user ) {
+            // Must be timed-in today before filing overtime (a time-in punch exists for today).
+            $hasLoginToday = \App\Models\homeAttendance::where('employee_id', $user->empID)
+                ->whereNotNull('time_in')
+                ->whereDate('time_in', Carbon::today())
+                ->exists();
+
+            if (!$hasLoginToday) {
+                return back()->withErrors([
+                    'dateFrom' => 'You must be timed-in for today before filing overtime.'
+                ])->withInput();
+            }
+
             $otfilling = otfiling::where('comp_id', $user->empDetail->empCompID)
                 ->first();
 

@@ -387,36 +387,65 @@ $(document).ready(function() {
         getall();
     });
 
+    // Full record set kept client-side so the date filter can work without re-fetching.
+    var allObRecords = [];
+
+    // Date-range filter: re-render whenever either date input changes.
+    $('#txtDateFromTop, #txtDateToTop').on('change', function () {
+        renderOb(filterObByDate(allObRecords));
+    });
+
+    // Keep only records whose start_date falls within the chosen From/To range.
+    // start_date is stored as 'YYYY-MM-DD', so lexical string comparison is safe.
+    function filterObByDate(records) {
+        var from = $('#txtDateFromTop').val();
+        var to = $('#txtDateToTop').val();
+        if (!from && !to) return records;
+        return records.filter(function (row) {
+            var d = (row.start_date || '').substring(0, 10);
+            if (!d) return false;
+            if (from && d < from) return false;
+            if (to && d > to) return false;
+            return true;
+        });
+    }
+
+    // Render a set of OB records into the table.
+    function renderOb(records) {
+        var htmlData = '';
+        $(records).each(function(index, row) {
+            var statusText = (row.status || 'Pending');
+            var statusClass = statusText === 'Approved'
+                ? 'badge-approved'
+                : (statusText === 'Rejected' ? 'badge-disapproved' : 'badge-pending');
+
+            htmlData += '<tr>' +
+                '<td>' + (row.start_date || '—') + '</td>' +
+                '<td>' + (row.end_date || '—') + '</td>' +
+                '<td>' + (row.destination || '—') + '</td>' +
+                '<td>' + (row.purpose || '—') + '</td>' +
+                '<td>' + (row.total_hrs || '—') + ' hr(s)</td>' +
+                '<td>' + (row.remarks || '—') + '</td>' +
+                '<td><span class="badge-status ' + statusClass + '">' + statusText + '</span></td>' +
+                '</tr>';
+        });
+
+        if (!records || records.length === 0) {
+            htmlData = '<tr><td colspan="7" class="text-center py-5 text-muted">' +
+                '<i class="fa fa-folder-open d-block mb-2 fs-4"></i>' +
+                'No business trip records found.' +
+                '</td></tr>';
+        }
+
+        $("#tblOBTTracker").empty().append(htmlData);
+    }
+
     // Get all OB records
     function getall() {
-        var htmlData = '';
         axios.get('/obtTracker/getall')
             .then(function(response) {
-                $(response.data.data).each(function(index, row) {
-                    var statusText = (row.status || 'Pending');
-                    var statusClass = statusText === 'Approved'
-                        ? 'badge-approved'
-                        : (statusText === 'Rejected' ? 'badge-disapproved' : 'badge-pending');
-
-                    htmlData += '<tr>' +
-                        '<td>' + (row.start_date || '—') + '</td>' +
-                        '<td>' + (row.end_date || '—') + '</td>' +
-                        '<td>' + (row.destination || '—') + '</td>' +
-                        '<td>' + (row.purpose || '—') + '</td>' +
-                        '<td>' + (row.total_hrs || '—') + ' hr(s)</td>' +
-                        '<td>' + (row.remarks || '—') + '</td>' +
-                        '<td><span class="badge-status ' + statusClass + '">' + statusText + '</span></td>' +
-                        '</tr>';
-                });
-
-                if (!response.data.data || response.data.data.length === 0) {
-                    htmlData = '<tr><td colspan="7" class="text-center py-5 text-muted">' +
-                        '<i class="fa fa-folder-open d-block mb-2 fs-4"></i>' +
-                        'No business trip records found.' +
-                        '</td></tr>';
-                }
-
-                $("#tblOBTTracker").empty().append(htmlData);
+                allObRecords = response.data.data || [];
+                renderOb(filterObByDate(allObRecords));
             })
             .catch(function(error) {
                 $("#tblOBTTracker").empty().append(

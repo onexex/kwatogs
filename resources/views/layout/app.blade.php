@@ -386,6 +386,12 @@
                             if ($pendingLeaveUser->can('approvecfoleave')) {
                                 $q->orWhere('leaves.status', \App\Enums\LeaveStatusEnum::APPROVED->name);
                             }
+
+                            // Guard the empty-closure case: without either approval
+                            // permission the badge must not count every company leave.
+                            if (! $pendingLeaveUser->can('approveleave') && ! $pendingLeaveUser->can('approvecfoleave')) {
+                                $q->whereRaw('1 = 0');
+                            }
                         })
                         ->count();
                 }
@@ -399,8 +405,25 @@
                     $pendingScheduleCount = \App\Models\ScheduleRequest::where('status', 'FORAPPROVAL')->count();
                 }
 
-                // Parent (Workforce) badge = everything pending inside the dropdown.
-                $workforcePendingCount = $pendingLeaveCount + $pendingScheduleCount;
+                // 7. Employee's OWN upcoming approved/confirmed leaves (start date still ahead of
+                //    today). Drives a reminder badge on their "Leave Application" item so they can
+                //    see at a glance that an approved leave is coming up. Employee-scoped (their
+                //    empID only).
+                $myUpcomingLeaveCount = 0;
+                if (auth()->check() && auth()->user()->empID) {
+                    $myUpcomingLeaveCount = \App\Models\Leave::where('employee_id', auth()->user()->empID)
+                        ->whereIn('status', [
+                            \App\Enums\LeaveStatusEnum::APPROVED->name,
+                            \App\Enums\LeaveStatusEnum::APPROVEDBYCFO->name,
+                        ])
+                        ->whereDate('start_date', '>', \Carbon\Carbon::today())
+                        ->count();
+                }
+
+                // Parent (Workforce) badge = everything flagged inside the dropdown: pending
+                // approvals + the employee's own upcoming approved-leave reminder, so the count
+                // is visible even while the dropdown is collapsed.
+                $workforcePendingCount = $pendingLeaveCount + $pendingScheduleCount + $myUpcomingLeaveCount;
             @endphp
 
             @if ($hasPagesAccess)
@@ -428,6 +451,9 @@
                                             <i class="fa-solid {{ $page['icon'] }} me-1"></i> {{ $page['name'] }}
                                             @if ($key === 'pendingleaverequests' && $pendingLeaveCount > 0)
                                                 <span class="badge rounded-pill bg-danger ms-auto">{{ $pendingLeaveCount }}</span>
+                                            @endif
+                                            @if ($key === 'leaveapplication' && $myUpcomingLeaveCount > 0)
+                                                <span class="badge rounded-pill bg-success ms-auto" title="Upcoming approved leave">{{ $myUpcomingLeaveCount }}</span>
                                             @endif
                                             @if ($key === 'approveschedulechange' && $pendingScheduleCount > 0)
                                                 <span class="badge rounded-pill bg-danger ms-auto">{{ $pendingScheduleCount }}</span>
