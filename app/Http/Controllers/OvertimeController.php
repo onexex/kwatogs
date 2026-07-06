@@ -71,6 +71,18 @@ class OvertimeController extends Controller
         $user = Auth::user();
 
         if ($user ) {
+            // Must be timed-in today before filing overtime (a time-in punch exists for today).
+            $hasLoginToday = \App\Models\homeAttendance::where('employee_id', $user->empID)
+                ->whereNotNull('time_in')
+                ->whereDate('time_in', Carbon::today())
+                ->exists();
+
+            if (!$hasLoginToday) {
+                return back()->withErrors([
+                    'dateFrom' => 'You must be timed-in for today before filing overtime.'
+                ])->withInput();
+            }
+
             $otfilling = otfiling::where('comp_id', $user->empDetail->empCompID)
                 ->first();
 

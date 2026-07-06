@@ -68,6 +68,16 @@ class obsCtrl extends Controller
                 return response()->json(['status'=>201, 'msg'=>"Please check the required field!", 'error'=>$validator->errors()->toArray()]);
             }
 
+            // Must be timed-in today before filing an OB (a time-in punch exists for today).
+            $hasLoginToday = \App\Models\homeAttendance::where('employee_id', session()->get('LoggedUserEmpID'))
+                ->whereNotNull('time_in')
+                ->whereDate('time_in', Carbon::today())
+                ->exists();
+
+            if (!$hasLoginToday) {
+                return response()->json(['status'=>201, 'msg'=>"You must be timed-in for today before filing an OB."]);
+            }
+
             // $now = Carbon::now();
             $DateTimeNow = Carbon::now()->toDateTimeString();
             $day_desc=date("l");
