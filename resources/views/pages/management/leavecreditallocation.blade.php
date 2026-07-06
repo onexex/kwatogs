@@ -283,7 +283,8 @@
                             <th class="ps-4" scope="col">Employee</th>
                             <th scope="col">Company</th>
                             <th scope="col">Leave Type</th>
-                            <th scope="col">Leave Credit</th>
+                            <th scope="col">Allocated</th>
+                            <th scope="col">Remaining</th>
                             <th scope="col">Year</th>
                             <th class="pe-4 text-end" scope="col">Action</th>
                         </tr>
@@ -296,6 +297,7 @@
                                     <td>{{ $allocation->user->empDetail->company->comp_name ?? 'N/A' }}</td>
                                     <td>{{ $allocation->leaveType->type_leave ?? 'N/A' }}</td>
                                     <td>{{ $allocation->credits_allocated }}</td>
+                                    <td class="fw-semibold {{ (float) $allocation->balance <= 0 ? 'text-danger' : 'text-success' }}">{{ rtrim(rtrim(number_format((float) $allocation->balance, 2), '0'), '.') }}</td>
                                     <td>{{ $allocation->year }}</td>
                                     <td class="pe-4 text-end">
                                         <div class="d-flex justify-content-end gap-2">
@@ -327,7 +329,7 @@
                             @endforeach
                         @else
                             <tr>
-                                <td colspan="6" class="text-center">No leave credit allocations found.</td>
+                                <td colspan="7" class="text-center">No leave credit allocations found.</td>
                             </tr>
                         @endif
                     </tbody>

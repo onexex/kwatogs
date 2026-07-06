@@ -565,7 +565,9 @@
                         if (leaveCredit) {
                             leaveCredit.value = response.data.message
                         }
-                    } else if (response.data.leave_credit) {
+                    } else if (response.data.leave_credit != null) {
+                        // Use != null so a legitimate 0 balance still updates the field
+                        // (0 is falsy, so the old value would otherwise stick).
                         leaveCredit.value = response.data.leave_credit
                     }
                 })
@@ -573,6 +575,19 @@
                 leaveCredit.value = 0
             }
         })
+
+        // Reload Leave Credits when switching between Paid and Unpaid.
+        $(document).on('change', '#selLeaveKind', function () { $('#selLeaveType').trigger('change'); });
+
+        // When the form opens, auto-select the default (first) leave type and trigger its
+        // change handler so Leave Credits load right away instead of showing "-".
+        $('#mdlLeaveApp').on('shown.bs.modal', function () {
+            const $type = $('#selLeaveType');
+            if (!$type.val() && $type.find('option').length) {
+                $type.prop('selectedIndex', 0);
+            }
+            $type.trigger('change');
+        });
 
         $(document).on('change', '#date_from, #date_to', function(e) {
 

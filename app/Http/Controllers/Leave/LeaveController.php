@@ -313,7 +313,10 @@ class LeaveController extends Controller
 
                     if ($preAllocatedLeave) {
                          return response()->json([
-                            'leave_credit' =>  $preAllocatedLeave->credits_allocated
+                            // Show the CURRENT balance (allocated minus already-approved leave),
+                            // not the original allocation — otherwise the form always displays the
+                            // full grant and "Remaining Leave" never reflects prior deductions.
+                            'leave_credit' =>  (float) $preAllocatedLeave->balance
                         ]);
                     } else {
                         return response()->json([
