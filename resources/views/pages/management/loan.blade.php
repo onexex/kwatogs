@@ -541,7 +541,7 @@
                                 @if($loan->is_recurring)
                                     <span class="badge-recurring"><i class="fas fa-rotate me-1"></i>RECURRING</span>
                                 @endif
-                                @if($loan->loan_type === 'other' && $loan->other_description)
+                                @if(in_array($loan->loan_type, ['other', 'charges/penalty']) && $loan->other_description)
                                     <div class="small text-muted mt-1">{{ $loan->other_description }}</div>
                                 @endif
                             </td>
@@ -694,7 +694,7 @@
                         </div>
 
                         <div class="col-md-6" id="otherSpecifyWrap" style="display:none;">
-                            <label class="field-label" for="other_description">Specify (Other) <span class="req">*</span></label>
+                            <label class="field-label" for="other_description"><span id="otherSpecifyLabel">Specify (Other)</span> <span class="req" id="otherSpecifyReq">*</span></label>
                             <input type="text" class="form-control" name="other_description" id="other_description" placeholder="Describe the charge / adjustment" maxlength="255">
                         </div>
 
@@ -806,12 +806,22 @@ $(document).ready(function() {
         $('#loanModal').modal('show');
     });
 
-    // Show the "Specify" field only when the type is "Other"
+    // Show the description field for "Other" and "Charges/Penalty". For a charge
+    // the text becomes the per-item caption shown on the payslip (optional); for
+    // "Other" it stays required.
     function toggleOtherSpecify() {
-        const isOther = $('#loan_type').val() === 'other';
-        $('#otherSpecifyWrap').toggle(isOther);
+        const type    = $('#loan_type').val();
+        const isOther  = type === 'other';
+        const isCharge = type === 'charges/penalty';
+        const show     = isOther || isCharge;
+        $('#otherSpecifyWrap').toggle(show);
         $('#other_description').prop('required', isOther);
-        if (!isOther) { $('#other_description').val(''); }
+        $('#otherSpecifyLabel').text(isCharge ? 'Charge / Penalty Description' : 'Specify (Other)');
+        $('#otherSpecifyReq').toggle(isOther);
+        $('#other_description').attr('placeholder', isCharge
+            ? 'e.g. Uniform fee, Lost ID — shown on the payslip'
+            : 'Describe the charge / adjustment');
+        if (!show) { $('#other_description').val(''); }
     }
 
     // Government-type loans are inherently finite — recurring is disabled for them.
