@@ -13,13 +13,20 @@ use Illuminate\Support\Facades\Auth;
 
 class OvertimeController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
 
+        // Optional date-range filter on the OT work date (date_from column).
+        $filterFrom = $request->query('date_from');
+        $filterTo   = $request->query('date_to');
+
         $overtimes = Overtime::where('emp_detail_id', $user->empDetail->id)
+            ->when($filterFrom, fn ($q) => $q->whereDate('date_from', '>=', $filterFrom))
+            ->when($filterTo, fn ($q) => $q->whereDate('date_from', '<=', $filterTo))
             ->orderByDesc('created_at')
             ->paginate(10)
+            ->withQueryString()
             ->through(function ($ot) {
                 $from = Carbon::parse($ot->date_from . ' ' . $ot->time_in);
                 $to = Carbon::parse($ot->date_to . ' ' . $ot->time_out);
