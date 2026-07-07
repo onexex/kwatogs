@@ -23,7 +23,7 @@
     .kpi .val { font-size:1.7rem; font-weight:800; color:var(--slate); line-height:1; }
     .kpi .lbl { font-size:.68rem; font-weight:700; color:var(--slate-light); text-transform:uppercase; letter-spacing:.4px; margin-top:3px; }
 
-    .grid { display:grid; grid-template-columns:repeat(12,1fr); gap:16px; }
+    .grid { display:grid; grid-template-columns:repeat(12,1fr); gap:16px; grid-auto-flow:row dense; }
     .cc-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
     .cc-h { display:flex; align-items:center; gap:9px; padding:13px 18px; border-bottom:1px solid var(--border); background:linear-gradient(to right,#fafcff,#f8fbfa); }
     .cc-h .i { width:28px; height:28px; border-radius:8px; background:var(--teal-light); color:var(--teal); display:flex; align-items:center; justify-content:center; font-size:.75rem; }
@@ -211,9 +211,49 @@
             </div>
         </div>
 
+        {{-- Missed logouts needing validation (last 15 days = one cutoff) --}}
+        <div class="cc-card cc-4">
+            <div class="cc-h">
+                <div class="i" style="background:#fee2e2;color:var(--danger);"><i class="fa fa-user-clock"></i></div>
+                <h6>Missed Logouts to Validate</h6>
+                @if($d['missedLogouts']->isNotEmpty())
+                    <span class="right badge-status" style="background:#fee2e2;color:#b91c1c;">{{ $d['missedLogouts']->count() }}</span>
+                @endif
+            </div>
+            <div class="cc-b" style="max-height:220px;overflow:auto;">
+                @forelse($d['missedLogouts'] as $r)
+                    <div class="alert-row" style="flex-direction:column;align-items:flex-start;gap:3px;">
+                        <span class="nm text-capitalize d-flex align-items-center gap-2" style="width:100%;">
+                            {{ $r->name }}
+                            @if($r->locked)
+                                <span class="badge-status ms-auto" style="background:#f1f5f9;color:#64748b;font-size:.58rem;"
+                                      title="A generated payroll already covers this day — regenerate that run before editing.">LOCKED</span>
+                            @endif
+                        </span>
+                        <span class="meta">
+                            {{ \Carbon\Carbon::parse($r->date)->format('M d') }}
+                            &middot; in {{ \Carbon\Carbon::parse($r->time_in)->format('g:i A') }}
+                            &middot; sched
+                            @if($r->sched_in && $r->sched_out)
+                                {{ \Carbon\Carbon::parse($r->sched_in)->format('g:i A') }}–{{ \Carbon\Carbon::parse($r->sched_out)->format('g:i A') }}
+                            @else — @endif
+                        </span>
+                    </div>
+                @empty
+                    <div class="empty">No missed logouts pending validation.</div>
+                @endforelse
+                @if($d['missedLogouts']->isNotEmpty())
+                    @can('summarylogs')
+                        <a href="/pages/modules/summary-logs" class="d-block text-center mt-2"
+                           style="font-size:.72rem;color:var(--teal);font-weight:600;">Fix in Summary Logs →</a>
+                    @endcan
+                @endif
+            </div>
+        </div>
+
         {{-- Today's attendance --}}
         <div class="cc-card cc-4">
-            <div class="cc-h"><div class="i"><i class="fa fa-user-clock"></i></div><h6>Today's Attendance</h6></div>
+            <div class="cc-h"><div class="i"><i class="fa fa-user-clock"></i></div><h6 title="As of now. 'Absent' counts only shifts that have already started; night or later shifts still pending appear as 'not yet due', never as absent. Approved leave, OB, and department holidays are excused.">Today's Attendance</h6></div>
             <div class="cc-b">
                 <div class="att-grid">
                     <div class="att"><div class="v text-success" data-today="present">{{ $d['present'] }}</div><div class="l">Present</div></div>
@@ -222,7 +262,9 @@
                     <div class="att"><div class="v" style="color:var(--teal)" data-today="onOb">{{ $d['onOb'] }}</div><div class="l">On OB</div></div>
                 </div>
                 <div class="mt-3 text-center" style="font-size:.78rem;color:var(--slate-light);">
-                    <i class="fa fa-hourglass-half text-warning me-1"></i> <span data-today="late">{{ $d['late'] }}</span> late today &middot; <span data-today="scheduled">{{ $d['scheduled'] }}</span> scheduled
+                    <i class="fa fa-hourglass-half text-warning me-1"></i> <span data-today="late">{{ $d['late'] }}</span> late today
+                    &middot; <span data-today="notYetDue" title="Scheduled today but shift not started yet (e.g. night/later shifts)">{{ $d['notYetDue'] }}</span> not yet due
+                    &middot; <span data-today="scheduled">{{ $d['scheduled'] }}</span> scheduled
                 </div>
             </div>
         </div>
@@ -270,7 +312,7 @@
 
         {{-- Absenteeism by department --}}
         <div class="cc-card cc-4" id="absCard">
-            <div class="cc-h"><div class="i"><i class="fa fa-triangle-exclamation"></i></div><h6>Absenteeism by Dept (30d)</h6></div>
+            <div class="cc-h"><div class="i"><i class="fa fa-triangle-exclamation"></i></div><h6 title="Counts only shifts that have already ended (a night shift isn't judged until it's over). Approved leave, OB, and department holidays are excused.">Absenteeism by Dept (30d)</h6></div>
             <div class="cc-b">
                 @forelse($d['absentByDept'] as $r)
                     @php $rate = $r->scheduled > 0 ? round(($r->scheduled - $r->present)/$r->scheduled*100) : 0;
