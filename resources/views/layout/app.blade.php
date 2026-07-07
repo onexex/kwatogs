@@ -632,9 +632,20 @@
                     </button>
 
                     <ul class="navbar-nav ms-auto">
+                        {{-- HR Attention Center — floating panel of everything waiting on this HR user (partial at end of body) --}}
+                        @can('hrdashboard')
+                            <li class="nav-item no-arrow d-flex align-items-center">
+                                <a class="nav-link" href="#" id="hrAttnBell" role="button" title="Needs your attention" style="padding-left:.35rem;padding-right:.35rem;">
+                                    <span class="position-relative d-inline-flex">
+                                        <i class="fas fa-list-check text-secondary" style="font-size:1.05rem;"></i>
+                                        <span id="hrAttnBadge" class="position-absolute translate-middle badge rounded-pill bg-danger" style="top:2px;left:100%;font-size:.55rem;padding:.2em .45em;display:none;">0</span>
+                                    </span>
+                                </a>
+                            </li>
+                        @endcan
                         {{-- Notices bell — links to My Notices, badge = own unread active notices --}}
                         <li class="nav-item no-arrow me-2">
-                            <a class="nav-link position-relative" href="{{ route('notices.mine') }}" title="My Notices">
+                            <a class="nav-link position-relative" href="{{ route('notices.mine') }}" title="My Notices" style="padding-left:.6rem;">
                                 <i class="fas fa-bell text-secondary"></i>
                                 @if ($myUnreadNotices > 0)
                                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:.6rem;">
@@ -781,6 +792,10 @@
     <script src="{{ asset('js/system.js') }}" defer></script>
 
     @stack('scripts')
+
+    @can('hrdashboard')
+        @include('partials.hr_attention')
+    @endcan
 </body>
 
 </html>
