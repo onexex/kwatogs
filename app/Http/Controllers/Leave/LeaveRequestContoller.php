@@ -40,6 +40,13 @@ class LeaveRequestContoller extends Controller
                     $q->orWhere('leaves.status', LeaveStatusEnum::APPROVED->name);
                 }
 
+                // If the user has neither approval permission, add an always-false
+                // condition so an empty closure doesn't fall through to "no filter"
+                // (which would leak every leave in the company, incl. DISAPPROVED).
+                if (! $user->can('approveleave') && ! $user->can('approvecfoleave')) {
+                    $q->whereRaw('1 = 0');
+                }
+
             });
 
         $leaveLists = $query->paginate(10)->through(function ($leave) {

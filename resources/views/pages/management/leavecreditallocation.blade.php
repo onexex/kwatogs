@@ -274,6 +274,12 @@
                 <div class="sc-icon"><i class="fa-solid fa-list-check"></i></div>
                 <h5 class="sc-title">Leave Credit Allocations</h5>
             </div>
+            <div class="sc-head-right">
+                <div class="input-group input-group-sm" style="max-width: 260px;">
+                    <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                    <input type="text" id="lcaSearch" class="form-control" placeholder="Search employee name...">
+                </div>
+            </div>
         </div>
         <div class="sc-body">
             <div class="table-responsive fixTableHead" style="max-height: 75vh; overflow-y: auto;">
@@ -283,7 +289,8 @@
                             <th class="ps-4" scope="col">Employee</th>
                             <th scope="col">Company</th>
                             <th scope="col">Leave Type</th>
-                            <th scope="col">Leave Credit</th>
+                            <th scope="col">Allocated</th>
+                            <th scope="col">Remaining</th>
                             <th scope="col">Year</th>
                             <th class="pe-4 text-end" scope="col">Action</th>
                         </tr>
@@ -296,6 +303,7 @@
                                     <td>{{ $allocation->user->empDetail->company->comp_name ?? 'N/A' }}</td>
                                     <td>{{ $allocation->leaveType->type_leave ?? 'N/A' }}</td>
                                     <td>{{ $allocation->credits_allocated }}</td>
+                                    <td class="fw-semibold {{ (float) $allocation->balance <= 0 ? 'text-danger' : 'text-success' }}">{{ rtrim(rtrim(number_format((float) $allocation->balance, 2), '0'), '.') }}</td>
                                     <td>{{ $allocation->year }}</td>
                                     <td class="pe-4 text-end">
                                         <div class="d-flex justify-content-end gap-2">
@@ -327,7 +335,7 @@
                             @endforeach
                         @else
                             <tr>
-                                <td colspan="6" class="text-center">No leave credit allocations found.</td>
+                                <td colspan="7" class="text-center">No leave credit allocations found.</td>
                             </tr>
                         @endif
                     </tbody>
@@ -414,6 +422,18 @@
 
 <script>
     $(document).ready(function() {
+        // Filter the allocation table by employee name (client-side; table is server-rendered).
+        $('#lcaSearch').on('keyup', function () {
+            const term = $(this).val().toLowerCase().trim();
+            $('#tblOTFile tr').each(function () {
+                const $row = $(this);
+                const $nameCell = $row.find('td').first();
+                if ($nameCell.attr('colspan')) return; // skip the "No records" row
+                const name = $nameCell.text().toLowerCase();
+                $row.toggle(name.indexOf(term) !== -1);
+            });
+        });
+
         $(document).on('click', '#btnSaveLeaveCredit', function(e) {
             const employeeId = $('#txtEmployee').val();
             const leaveTypeId = $('#txtleave').val();

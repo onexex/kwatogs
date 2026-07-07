@@ -516,6 +516,15 @@
                     });
 
                     return
+                } else if (response.data.blocked) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Cannot File Leave',
+                        text: response.data.message,
+                        confirmButtonText: 'OK',
+                        customClass: { confirmButton: 'rounded-pill' }
+                    });
+                    return
                 } else if (response.data.auto_disapproved) {
                     Swal.fire({
                         icon: 'warning',
@@ -556,7 +565,9 @@
                         if (leaveCredit) {
                             leaveCredit.value = response.data.message
                         }
-                    } else if (response.data.leave_credit) {
+                    } else if (response.data.leave_credit != null) {
+                        // Use != null so a legitimate 0 balance still updates the field
+                        // (0 is falsy, so the old value would otherwise stick).
                         leaveCredit.value = response.data.leave_credit
                     }
                 })
@@ -564,6 +575,19 @@
                 leaveCredit.value = 0
             }
         })
+
+        // Reload Leave Credits when switching between Paid and Unpaid.
+        $(document).on('change', '#selLeaveKind', function () { $('#selLeaveType').trigger('change'); });
+
+        // When the form opens, auto-select the default (first) leave type and trigger its
+        // change handler so Leave Credits load right away instead of showing "-".
+        $('#mdlLeaveApp').on('shown.bs.modal', function () {
+            const $type = $('#selLeaveType');
+            if (!$type.val() && $type.find('option').length) {
+                $type.prop('selectedIndex', 0);
+            }
+            $type.trigger('change');
+        });
 
         $(document).on('change', '#date_from, #date_to', function(e) {
 
@@ -641,16 +665,54 @@
             })
         });
 
+        // Cache of all fetched leaves so the date filter can re-render without a round-trip.
+        let allLeaves = [];
+
+        // Refresh buttons (filter card + table header) re-fetch from the server.
+        $(document).on('click', '#btnRefreshFilter, #btnRefreshTbl', function(e) {
+            e.preventDefault();
+            fetchLeaves();
+        });
+
+        // Changing either date bound re-applies the filter against the cached rows.
+        $(document).on('change', '#filterDateFrom, #filterDateTo', function() {
+            renderLeaves();
+        });
+
         fetchLeaves()
 
         async function fetchLeaves() {
             try {
                 const response = await axios.get('/pages/modules/leave/getall');
-                const leaves = response.data.leaves;
-                const tblLeaveApp = document.getElementById('tblLeaveApp');
-                tblLeaveApp.innerHTML = '';
+                allLeaves = response.data.leaves || [];
+                renderLeaves();
+            } catch (error) {
+                console.error('Error fetching leave history:', error);
+            }
+        }
 
-                leaves.forEach(leave => {
+        function renderLeaves() {
+            const tblLeaveApp = document.getElementById('tblLeaveApp');
+            tblLeaveApp.innerHTML = '';
+
+            const fromVal = document.getElementById('filterDateFrom').value;
+            const toVal = document.getElementById('filterDateTo').value;
+            const from = fromVal ? new Date(fromVal + 'T00:00:00') : null;
+            const to = toVal ? new Date(toVal + 'T23:59:59') : null;
+
+            const leaves = allLeaves.filter(leave => {
+                const start = new Date(leave.start_date);
+                if (from && start < from) return false;
+                if (to && start > to) return false;
+                return true;
+            });
+
+            if (leaves.length === 0) {
+                tblLeaveApp.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-4">No leave records found.</td></tr>`;
+                return;
+            }
+
+            leaves.forEach(leave => {
                     let buttonAction = '';
                     let status = '';
 
@@ -692,9 +754,6 @@
                     `;
                     tblLeaveApp.insertAdjacentHTML('beforeend', row);
                 });
-            } catch (error) {
-                console.error('Error fetching leave history:', error);
-            }
         }
     })
 </script>

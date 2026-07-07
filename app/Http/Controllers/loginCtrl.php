@@ -100,6 +100,9 @@ class loginCtrl extends Controller
         $request->session()->put('LoggedUserComp', $userinfo->empCompID);
         $request->session()->put('LoggedISID', $userinfo->empISID);
         $request->session()->put('loggedEmployee', $userinfo->fname . ' ' .$userinfo->lname );
+        // One-shot flag: show the HR Attention Center welcome banner once, on the first page
+        // after login (the partial reads then forgets it). Fresh each login (session regenerated).
+        $request->session()->put('hr_attention_greet', true);
 
         $userAccess = DB::table('access')
             ->where('empID', '=', $userinfo->empID)

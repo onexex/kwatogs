@@ -41,6 +41,22 @@ class LeaveController extends Controller
             ]);
         }
 
+        // Business rule: an employee may only file a leave on a day they have actually
+        // logged in (a time-in punch exists for today). No time-in today => the whole
+        // application is blocked, regardless of the requested leave dates.
+        $hasLoginToday = \App\Models\homeAttendance::where('employee_id', $user->empID)
+            ->whereNotNull('time_in')
+            ->whereDate('time_in', Carbon::today())
+            ->exists();
+
+        if (!$hasLoginToday) {
+            return response()->json([
+                'status'  => 422,
+                'blocked' => true,
+                'message' => 'You must be timed-in for today before filing a leave application.',
+            ]);
+        }
+
         if (isset($request->halfday)) {
             if ($request->date_from != $request->date_to) {
                 return response()->json([
@@ -95,29 +111,8 @@ class LeaveController extends Controller
             if (!$autoDisapproveReason && !$leaveValidation) {
                 $autoDisapproveReason = 'No leave validation found for this leave type. Contact supervisor.';
             } elseif (!$autoDisapproveReason) {
-                $today = Carbon::now()->startOfDay();
-                $targetDate = Carbon::parse($request->date_from);
-                $diff = $today->diffInDays($targetDate, false);
-                $daysAfter = $diff < 0 ? abs($diff) : 0;
-                $daysBefore = $diff > 0 ? $diff : 0;
-
-                if ($leaveValidation->file_before == 1 && $leaveValidation->no_before_file > 0) {
-                    if ($daysBefore > $leaveValidation->no_before_file) {
-                        $autoDisapproveReason = 'This leave type requires filing at least ' . $leaveValidation->no_before_file . ' day(s) before the leave start date.';
-                    }
-                } elseif ($leaveValidation->file_before == 0 && $daysBefore > 0) {
-                    $autoDisapproveReason = 'This leave type cannot be filed in advance.';
-                }
-
-                if (!$autoDisapproveReason) {
-                    if ($leaveValidation->file_after == 1 && $leaveValidation->no_after_file > 0) {
-                        if ($daysAfter > $leaveValidation->no_after_file) {
-                            $autoDisapproveReason = 'This leave type requires filing within ' . $leaveValidation->no_after_file . ' day(s) after the leave date.';
-                        }
-                    } elseif ($leaveValidation->file_after == 0 && $daysAfter > 0) {
-                        $autoDisapproveReason = 'This leave type cannot be filed after the leave has occurred.';
-                    }
-                }
+                // Filing-window (before/after) + minimum-duration rules.
+                $autoDisapproveReason = $this->filingWindowReason($leaveValidation, $request->date_from, $request->date_to, $halfday);
 
                 if (!$autoDisapproveReason && !$empDetail->empDateRegular) {
                     $autoDisapproveReason = 'Missing regularization date. Contact supervisor.';
@@ -172,6 +167,22 @@ class LeaveController extends Controller
                         }
                     }
                 }
+            }
+        } elseif ($request->leavekind == 1) {
+            // Unpaid leave: enforce the same filing-window (before/after) and minimum-duration
+            // rules as paid leave, but WITHOUT the leave-credit/balance and regularization gates
+            // (unpaid leave consumes no credits). Rules apply only when a validation row exists;
+            // with no config there is nothing to enforce, so the request is allowed through.
+            $leaveType = leavetype::where('id', $request->leavetype)->first();
+
+            $leaveValidation = $leaveType
+                ? leavevalidationModel::where('leave_type', $leaveType->id)
+                    ->where('compID', $user->empDetail->empCompID)
+                    ->first()
+                : null;
+
+            if ($leaveValidation) {
+                $autoDisapproveReason = $this->filingWindowReason($leaveValidation, $request->date_from, $request->date_to, $halfday);
             }
         }
 
@@ -233,6 +244,49 @@ class LeaveController extends Controller
         return $diffDays * 8;
     }
 
+    /**
+     * Filing-window + minimum-duration validation shared by paid and unpaid leave.
+     *
+     * Checks, in order: file-before window (must file at least N days in advance / may not
+     * file in advance), file-after window (must file within N days after / may not file after
+     * the fact), and the leave type's minimum number of days per application (min_leave).
+     * Deliberately excludes any leave-credit/balance logic. Returns the disapproval reason
+     * string, or null when the request satisfies all configured rules.
+     */
+    private function filingWindowReason(leavevalidationModel $leaveValidation, string $dateFrom, string $dateTo, int $halfday): ?string
+    {
+        $today = Carbon::now()->startOfDay();
+        $targetDate = Carbon::parse($dateFrom);
+        $diff = $today->diffInDays($targetDate, false);
+        $daysAfter = $diff < 0 ? abs($diff) : 0;
+        $daysBefore = $diff > 0 ? $diff : 0;
+
+        if ($leaveValidation->file_before == 1 && $leaveValidation->no_before_file > 0) {
+            if ($daysBefore > $leaveValidation->no_before_file) {
+                return 'This leave type requires filing at least ' . $leaveValidation->no_before_file . ' day(s) before the leave start date.';
+            }
+        } elseif ($leaveValidation->file_before == 0 && $daysBefore > 0) {
+            return 'This leave type cannot be filed in advance.';
+        }
+
+        if ($leaveValidation->file_after == 1 && $leaveValidation->no_after_file > 0) {
+            if ($daysAfter > $leaveValidation->no_after_file) {
+                return 'This leave type requires filing within ' . $leaveValidation->no_after_file . ' day(s) after the leave date.';
+            }
+        } elseif ($leaveValidation->file_after == 0 && $daysAfter > 0) {
+            return 'This leave type cannot be filed after the leave has occurred.';
+        }
+
+        if ($leaveValidation->min_leave > 0) {
+            $leaveDurationDays = $halfday ? 0.5 : (Carbon::parse($dateTo)->diffInDays(Carbon::parse($dateFrom)) + 1);
+            if ($leaveDurationDays < $leaveValidation->min_leave) {
+                return 'This leave type requires a minimum of ' . $leaveValidation->min_leave . ' day(s) per application.';
+            }
+        }
+
+        return null;
+    }
+
     public function checkLeaveCredit(Request $request)
     {
         $user = Auth::user();
@@ -259,7 +313,10 @@ class LeaveController extends Controller
 
                     if ($preAllocatedLeave) {
                          return response()->json([
-                            'leave_credit' =>  $preAllocatedLeave->credits_allocated
+                            // Show the CURRENT balance (allocated minus already-approved leave),
+                            // not the original allocation — otherwise the form always displays the
+                            // full grant and "Remaining Leave" never reflects prior deductions.
+                            'leave_credit' =>  (float) $preAllocatedLeave->balance
                         ]);
                     } else {
                         return response()->json([

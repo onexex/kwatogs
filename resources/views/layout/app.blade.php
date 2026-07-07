@@ -386,6 +386,12 @@
                             if ($pendingLeaveUser->can('approvecfoleave')) {
                                 $q->orWhere('leaves.status', \App\Enums\LeaveStatusEnum::APPROVED->name);
                             }
+
+                            // Guard the empty-closure case: without either approval
+                            // permission the badge must not count every company leave.
+                            if (! $pendingLeaveUser->can('approveleave') && ! $pendingLeaveUser->can('approvecfoleave')) {
+                                $q->whereRaw('1 = 0');
+                            }
                         })
                         ->count();
                 }
@@ -399,8 +405,25 @@
                     $pendingScheduleCount = \App\Models\ScheduleRequest::where('status', 'FORAPPROVAL')->count();
                 }
 
-                // Parent (Workforce) badge = everything pending inside the dropdown.
-                $workforcePendingCount = $pendingLeaveCount + $pendingScheduleCount;
+                // 7. Employee's OWN upcoming approved/confirmed leaves (start date still ahead of
+                //    today). Drives a reminder badge on their "Leave Application" item so they can
+                //    see at a glance that an approved leave is coming up. Employee-scoped (their
+                //    empID only).
+                $myUpcomingLeaveCount = 0;
+                if (auth()->check() && auth()->user()->empID) {
+                    $myUpcomingLeaveCount = \App\Models\Leave::where('employee_id', auth()->user()->empID)
+                        ->whereIn('status', [
+                            \App\Enums\LeaveStatusEnum::APPROVED->name,
+                            \App\Enums\LeaveStatusEnum::APPROVEDBYCFO->name,
+                        ])
+                        ->whereDate('start_date', '>', \Carbon\Carbon::today())
+                        ->count();
+                }
+
+                // Parent (Workforce) badge = everything flagged inside the dropdown: pending
+                // approvals + the employee's own upcoming approved-leave reminder, so the count
+                // is visible even while the dropdown is collapsed.
+                $workforcePendingCount = $pendingLeaveCount + $pendingScheduleCount + $myUpcomingLeaveCount;
             @endphp
 
             @if ($hasPagesAccess)
@@ -428,6 +451,9 @@
                                             <i class="fa-solid {{ $page['icon'] }} me-1"></i> {{ $page['name'] }}
                                             @if ($key === 'pendingleaverequests' && $pendingLeaveCount > 0)
                                                 <span class="badge rounded-pill bg-danger ms-auto">{{ $pendingLeaveCount }}</span>
+                                            @endif
+                                            @if ($key === 'leaveapplication' && $myUpcomingLeaveCount > 0)
+                                                <span class="badge rounded-pill bg-success ms-auto" title="Upcoming approved leave">{{ $myUpcomingLeaveCount }}</span>
                                             @endif
                                             @if ($key === 'approveschedulechange' && $pendingScheduleCount > 0)
                                                 <span class="badge rounded-pill bg-danger ms-auto">{{ $pendingScheduleCount }}</span>
@@ -606,9 +632,20 @@
                     </button>
 
                     <ul class="navbar-nav ms-auto">
+                        {{-- HR Attention Center — floating panel of everything waiting on this HR user (partial at end of body) --}}
+                        @can('hrdashboard')
+                            <li class="nav-item no-arrow d-flex align-items-center">
+                                <a class="nav-link" href="#" id="hrAttnBell" role="button" title="Needs your attention" style="padding-left:.35rem;padding-right:.35rem;">
+                                    <span class="position-relative d-inline-flex">
+                                        <i class="fas fa-list-check text-secondary" style="font-size:1.05rem;"></i>
+                                        <span id="hrAttnBadge" class="position-absolute translate-middle badge rounded-pill bg-danger" style="top:2px;left:100%;font-size:.55rem;padding:.2em .45em;display:none;">0</span>
+                                    </span>
+                                </a>
+                            </li>
+                        @endcan
                         {{-- Notices bell — links to My Notices, badge = own unread active notices --}}
                         <li class="nav-item no-arrow me-2">
-                            <a class="nav-link position-relative" href="{{ route('notices.mine') }}" title="My Notices">
+                            <a class="nav-link position-relative" href="{{ route('notices.mine') }}" title="My Notices" style="padding-left:.6rem;">
                                 <i class="fas fa-bell text-secondary"></i>
                                 @if ($myUnreadNotices > 0)
                                     <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size:.6rem;">
@@ -755,6 +792,10 @@
     <script src="{{ asset('js/system.js') }}" defer></script>
 
     @stack('scripts')
+
+    @can('hrdashboard')
+        @include('partials.hr_attention')
+    @endcan
 </body>
 
 </html>

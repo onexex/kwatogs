@@ -609,6 +609,7 @@ Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip
     Route::get('/pages/management/hr-dashboard/live', [HrDashboardController::class, 'live'])->name('hr-dashboard.live')->middleware('can:hrdashboard');
     Route::get('/pages/management/hr-dashboard/whoin', [HrDashboardController::class, 'whoIn'])->name('hr-dashboard.whoin')->middleware('can:hrdashboard');
     Route::get('/pages/management/hr-dashboard/dept', [HrDashboardController::class, 'deptEmployees'])->name('hr-dashboard.dept')->middleware('can:hrdashboard');
+    Route::get('/pages/management/hr-dashboard/attention', [HrDashboardController::class, 'attention'])->name('hr-dashboard.attention')->middleware('can:hrdashboard');
     Route::get('/payroll/approval/status', [PayrollApprovalController::class, 'status'])->name('payroll.approval.status');
     Route::post('/payroll/approve', [PayrollApprovalController::class, 'approve'])->name('payroll.approve')->middleware('can:approvepayroll');
     Route::post('/payroll/reopen', [PayrollApprovalController::class, 'reopen'])->name('payroll.reopen')->middleware('can:regeneratepayroll');
