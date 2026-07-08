@@ -71,10 +71,36 @@
     /* Uniform, all-caps dropdowns in the Issue Notice modal (display only) */
     #mdlNotice .form-select, #mdlNotice .form-select option { text-transform:uppercase; letter-spacing:.3px; }
     #mdlNotice .modal-footer { background:var(--surface); border-top:1px solid var(--border); }
+
+    /* Bulk recipient pickers (Send To = multiple / department) */
+    .recip-toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+    .recip-toolbar .count { font-size:.72rem; font-weight:700; color:var(--slate-light); white-space:nowrap; }
+    .recip-toolbar .form-control { flex:1; min-width:160px; text-transform:none; }
+    .link-btn { background:none; border:none; color:var(--teal); font-size:.74rem; font-weight:700; cursor:pointer; padding:2px 6px; }
+    .link-btn:hover { color:var(--teal-dark); text-decoration:underline; }
+    .recip-list { max-height:200px; overflow-y:auto; background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius-input); text-transform:none; }
+    .recip-row { display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid var(--border); cursor:pointer; margin:0; font-size:.82rem; color:var(--slate); }
+    .recip-row:last-child { border-bottom:0; }
+    .recip-row:hover { background:var(--teal-light); }
+    .recip-row input { width:15px; height:15px; accent-color:var(--teal); flex-shrink:0; cursor:pointer; }
+    .recip-row .dept { font-size:.7rem; color:var(--muted); margin-left:auto; white-space:nowrap; }
+    .recip-empty { padding:14px 12px; text-align:center; color:var(--muted); font-size:.8rem; }
+    .recip-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:8px; }
+    .recip-chip { display:flex; align-items:center; gap:8px; background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius-input); padding:8px 12px; font-size:.8rem; font-weight:600; color:var(--slate); cursor:pointer; margin:0; transition:all .15s; }
+    .recip-chip:hover { border-color:var(--teal-mid); }
+    .recip-chip.checked { background:var(--teal-light); border-color:var(--teal); }
+    .recip-chip input { width:15px; height:15px; accent-color:var(--teal); flex-shrink:0; cursor:pointer; }
+    .recip-hint { font-size:.72rem; color:var(--muted); margin-top:4px; display:block; }
     .btn-submit { background:linear-gradient(135deg,#008080,#006666); color:#fff; border:none; border-radius:10px; padding:10px 26px; font-size:.82rem; font-weight:700; letter-spacing:.4px; text-transform:uppercase; cursor:pointer; }
     .btn-submit:hover { color:#fff; transform:translateY(-1px); }
-    .filters { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
-    .filters .form-select, .filters .form-control { padding:6px 10px; font-size:.8rem; }
+    /* Fill the row next to the title and right-align the controls. */
+    .filters { display:flex; flex:1 1 auto; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end; }
+    /* Bootstrap defaults .form-select/.form-control to width:100%, which makes
+       each control claim its own row inside the flex bar and balloons the header
+       height. Pin them to fixed widths so all three stay on one line. */
+    .filters .form-select, .filters .form-control { padding:6px 10px; font-size:.8rem; width:auto; flex:0 0 auto; }
+    .filters .form-select { min-width:120px; }
+    .filters .form-control { width:220px; max-width:100%; }
 </style>
 
 <div class="ntc-shell">
@@ -151,10 +177,16 @@
             <div class="modal-body">
                 <input type="hidden" id="noticeId">
                 <div class="row g-3">
-                    <div class="col-lg-7">
-                        <label class="field-label" for="selEmployee">Employee <span class="req">*</span></label>
-                        <select class="form-select" id="selEmployee"><option value="">Select employee…</option></select>
-                        <span class="text-danger small d-block mt-1" id="err-employee_id"></span>
+                    <div class="col-lg-7" id="recipientModeWrap">
+                        <label class="field-label" for="selRecipientMode">Send To <span class="req">*</span></label>
+                        <select class="form-select" id="selRecipientMode">
+                            <option value="single">Single employee</option>
+                            <option value="employees">Multiple employees</option>
+                            <option value="department">Department(s)</option>
+                            <option value="all">All active employees</option>
+                        </select>
+                        <span class="recip-hint">Bulk sending is available for memos only.</span>
+                        <span class="text-danger small d-block mt-1" id="err-recipient_mode"></span>
                     </div>
                     <div class="col-lg-5">
                         <label class="field-label" for="selType">Type <span class="req">*</span></label>
@@ -162,6 +194,41 @@
                             <option value="memo">Memo (informational)</option>
                             <option value="disciplinary">Disciplinary Notice (counts toward suspension)</option>
                         </select>
+                    </div>
+                    <div class="col-12" id="empSingleWrap">
+                        <label class="field-label" for="selEmployee">Employee <span class="req">*</span></label>
+                        <select class="form-select" id="selEmployee"><option value="">Select employee…</option></select>
+                        <span class="text-danger small d-block mt-1" id="err-employee_id"></span>
+                    </div>
+                    <div class="col-12" id="empMultiWrap" style="display:none;">
+                        <label class="field-label">Employees <span class="req">*</span></label>
+                        <div class="recip-toolbar">
+                            <input type="text" class="form-control form-control-sm" id="txtEmpSearch" placeholder="Search name / department…">
+                            <span class="count"><span id="empPickCount">0</span> selected</span>
+                            <button type="button" class="link-btn" id="btnEmpAll">Select all</button>
+                            <button type="button" class="link-btn" id="btnEmpClear">Clear</button>
+                        </div>
+                        <div class="recip-list" id="empCheckList"></div>
+                        <span class="text-danger small d-block mt-1" id="err-employee_ids"></span>
+                    </div>
+                    <div class="col-12" id="deptMultiWrap" style="display:none;">
+                        <label class="field-label">Departments <span class="req">*</span></label>
+                        <div class="recip-toolbar">
+                            <span class="count"><span id="deptPickCount">0</span> of {{ $departments->count() }} selected</span>
+                            <button type="button" class="link-btn" id="btnDeptAll">Select all</button>
+                            <button type="button" class="link-btn" id="btnDeptClear">Clear</button>
+                        </div>
+                        <div class="recip-grid">
+                            @forelse ($departments as $dept)
+                                <label class="recip-chip"><input type="checkbox" class="chk-dept" value="{{ $dept->id }}"><span>{{ $dept->dep_name }}</span></label>
+                            @empty
+                                <div class="text-muted small">No departments found.</div>
+                            @endforelse
+                        </div>
+                        <span class="text-danger small d-block mt-1" id="err-department_ids"></span>
+                    </div>
+                    <div class="col-12" id="allWrap" style="display:none;">
+                        <div class="recip-hint" style="font-size:.8rem; color:var(--slate-light);"><i class="fa-solid fa-users me-1"></i> The memo will be sent to every active employee.</div>
                     </div>
                     <div class="col-lg-7" id="catWrap" style="display:none;">
                         <label class="field-label" for="selCategory">Category</label>
