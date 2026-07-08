@@ -11,15 +11,15 @@ class LoanController extends Controller
     public function index(Request $request)
     {
         $search    = trim((string) $request->input('search', ''));
-        $type      = $request->input('type', '');
-        $status    = $request->input('status', '');
-        $recurring = $request->input('recurring', '');
+        $type      = (string) $request->input('type', '');
+        $status    = (string) $request->input('status', '');
+        $recurring = (string) $request->input('recurring', '');
 
         $loans = Loan::with('employee')
             ->when($search !== '', function ($q) use ($search) {
-                $q->whereHas('employee', function ($e) use ($search) {
-                    $e->where('fname', 'like', "%{$search}%")
-                      ->orWhere('lname', 'like', "%{$search}%");
+                $q->where(function ($w) use ($search) {
+                    $w->where('fname', 'like', "%{$search}%")
+                        ->orWhere('lname', 'like', "%{$search}%");
                 });
             })
             ->when($type !== '', fn ($q) => $q->where('loans.loan_type', $type))
