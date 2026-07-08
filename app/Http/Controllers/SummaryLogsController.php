@@ -82,7 +82,19 @@ class SummaryLogsController extends Controller
             ->get()
             ->groupBy('employee_id');
 
-        $summaries->each(function ($summary) use ($logs, $schedules, $payrolls) {
+        // Manual-adjustment audit trail — the exact "was this summary hand-edited?" signal.
+        // update() writes one AuditLog row per real edit (and none on a no-op save), so the
+        // presence of a row flags an adjusted day; its user_name/created_at/changes drive the
+        // "Adjusted" pill tooltip. model_id is stored as a string in AuditLog::record().
+        $summaryIds  = $summaries->pluck('id')->map(fn ($id) => (string) $id);
+        $adjustments = AuditLog::where('model', 'AttendanceSummary')
+            ->where('action', 'updated')
+            ->whereIn('model_id', $summaryIds)
+            ->orderByDesc('created_at')
+            ->get(['model_id', 'user_name', 'changes', 'created_at'])
+            ->groupBy('model_id');
+
+        $summaries->each(function ($summary) use ($logs, $schedules, $payrolls, $adjustments) {
             $emp = $summary->employee_id;
             $date = $summary->attendance_date->format('Y-m-d');
 
@@ -111,6 +123,15 @@ class SummaryLogsController extends Controller
             $summary->payroll_locked = (bool) $covering;
             $summary->payroll_period = $covering
                 ? $covering->payroll_start_date->format('M d') . ' – ' . $covering->payroll_end_date->format('M d, Y')
+                : null;
+
+            // Latest manual adjustment (if any) — display-only fields for the "Adjusted" pill.
+            $adj = optional($adjustments->get((string) $summary->id))->first();
+            $summary->is_adjusted = (bool) $adj;
+            $summary->adjusted_by = $adj?->user_name;
+            $summary->adjusted_at = optional($adj?->created_at)->format('M d, Y g:i A');
+            $summary->adjusted_from_gross = $adj && isset($adj->changes['total_hours']['from'])
+                ? $adj->changes['total_hours']['from']
                 : null;
         });
 
@@ -219,6 +240,14 @@ class SummaryLogsController extends Controller
         // We just verified no payroll covers this day (the lock check above passed).
         $summary->payroll_locked = false;
         $summary->payroll_period = null;
+        // We just recorded an adjustment above — flag the just-saved row so the pill shows
+        // immediately without a refetch. Author/time match the audit row we wrote.
+        $summary->is_adjusted = true;
+        $summary->adjusted_by = Auth::user()
+            ? (trim((Auth::user()->fname ?? '') . ' ' . (Auth::user()->lname ?? '')) ?: (Auth::user()->name ?? 'User'))
+            : 'system';
+        $summary->adjusted_at = now()->format('M d, Y g:i A');
+        $summary->adjusted_from_gross = $changes['total_hours']['from'] ?? null;
 
         return response()->json([
             'status' => 'success',

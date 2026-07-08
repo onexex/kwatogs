@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <td>${item.formatted_date ?? '-'}</td>
                         <td>${schedCell}</td>
                         <td colspan="2">${logRows}</td>
-                        <td class="fw-bold">${grossHours.toFixed(2)}</td>
+                        <td class="fw-bold">${grossHours.toFixed(2)}${adjustedBadge(item)}</td>
                         <td class="text-danger fw-bold">${ded > 0 ? ded + 'm' : '-'}</td>
                         <td class="text-primary fw-bold">${netHours.toFixed(2)}</td>
                         <td>${m(late)}</td>
@@ -341,6 +341,21 @@ document.addEventListener('DOMContentLoaded', function () {
     // WHEN it was closed: the shown time-out is the back-dated scheduled end, but the real
     // close happened on the employee's next punch-in — recorded as the punch's updated_at.
     // That timestamp is surfaced as a hover tooltip so it's visible without querying the DB.
+    // Row-level "Adjusted" pill: shown when this summary's computed figures were manually
+    // overwritten via the Summary Logs back door. The tooltip explains that the punch remark
+    // below still reflects the ORIGINAL system computation, so a corrected gross next to a
+    // stale "Missed logout" remark is no longer confusing. Flag/fields come from fetch().
+    function adjustedBadge(item) {
+        if (!item || !item.is_adjusted) return "";
+        let title = "Manually adjusted";
+        if (item.adjusted_by) title += ` by ${item.adjusted_by}`;
+        if (item.adjusted_at) title += ` on ${item.adjusted_at}`;
+        if (item.adjusted_from_gross !== null && item.adjusted_from_gross !== undefined)
+            title += ` — original gross ${item.adjusted_from_gross}`;
+        title += ". The punch remark below reflects the original system computation.";
+        return `<span class="ms-1" style="font-size:.6rem;font-weight:700;color:#008080;background:#e0f2f1;padding:1px 6px;border-radius:6px;cursor:help;vertical-align:middle;" title="${escapeHtml(title)}"><i class="fa-solid fa-pen-nib me-1"></i>Adjusted</span>`;
+    }
+
     function remarkLabel(log) {
         const r = String((log && log.remarks) || "").trim();
         if (!r || /^regular shift$/i.test(r)) return "";
