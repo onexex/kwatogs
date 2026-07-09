@@ -51,6 +51,25 @@
     .empty-row td { text-align:center; color:var(--muted); padding:30px; }
     .field-label { font-weight:700; font-size:.82rem; color:var(--slate); margin-bottom:4px; display:block; }
     .req { color:var(--danger); }
+
+    /* Inputs — match the branded form styling used across modules. */
+    .apl-shell .form-control, .apl-shell .form-select,
+    #mdlApplicant .form-control, #mdlApplicant .form-select {
+        border:1.5px solid var(--border); border-radius:var(--radius-input);
+        font-size:.875rem; color:var(--slate); background:#fafbfc; padding:.55rem .85rem;
+    }
+    .apl-shell .form-control:focus, .apl-shell .form-select:focus,
+    #mdlApplicant .form-control:focus, #mdlApplicant .form-select:focus {
+        border-color:var(--teal); box-shadow:0 0 0 3px rgba(0,128,128,.1); background:#fff; outline:none;
+    }
+
+    /* Branded modal (teal header, tinted body) — same as Notices/COE modals. */
+    #mdlApplicant .modal-content { border-radius:var(--radius-card); border:none; overflow:hidden; }
+    #mdlApplicant .modal-header { background:var(--teal); color:#fff; border-bottom:none; padding:16px 22px; }
+    #mdlApplicant .modal-title { color:#fff; font-weight:800; }
+    #mdlApplicant .btn-close { filter:brightness(0) invert(1); }
+    #mdlApplicant .modal-body { background:var(--bg); padding:22px; }
+    #mdlApplicant .modal-footer { background:#fff; border-top:1px solid var(--border); padding:14px 22px; }
 </style>
 
 <div class="apl-shell">
@@ -114,12 +133,12 @@
 </div>
 
 {{-- ── Add / Edit modal ── --}}
-<div class="modal fade" id="mdlApplicant" tabindex="-1">
+<div class="modal fade" id="mdlApplicant" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <form id="frmApplicant" enctype="multipart/form-data">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="mdlApplicantTitle">New Applicant</h5>
+                    <h5 class="modal-title"><i class="fa-solid fa-user-tie me-2"></i><span id="mdlApplicantTitle">New Applicant</span></h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
