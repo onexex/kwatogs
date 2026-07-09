@@ -580,6 +580,19 @@
         <form id="frmEnrolment" autocomplete="off">
             @csrf
 
+            @if(!empty($prefill))
+                {{-- Hiring an applicant: link this onboarding to the applicant so it
+                     gets flagged "hired" on successful save (see registerCtrl::create). --}}
+                <input type="hidden" name="applicant_id" id="applicantId" value="{{ $prefill->id }}">
+                <div class="alert alert-info d-flex align-items-center gap-2 mb-3" role="alert">
+                    <i class="fa fa-user-check"></i>
+                    <span>Completing onboarding for applicant
+                        <strong>{{ $prefill->full_name }}</strong>
+                        (applied for <strong>{{ $prefill->desired_position }}</strong>).
+                        Fill in the remaining employment details to hire.</span>
+                </div>
+            @endif
+
             {{-- Error summary banner --}}
             <div id="errorBanner" style="display:none;" class="mb-2"></div>
 
@@ -1117,6 +1130,50 @@
         if (btn) { btn.click(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
     }
 </script>
+
+@if(!empty($prefill))
+@php
+    $prefillData = [
+        'firstname'  => $prefill->first_name,
+        'middlename' => $prefill->middle_name,
+        'lastname'   => $prefill->last_name,
+        'email'      => $prefill->email,
+        'mobile'     => $prefill->mobile,
+        'department' => $prefill->department_id,
+        'position'   => $prefill->desired_position,
+    ];
+@endphp
+<script>
+    /* ─── Pre-fill from Applicant "Hire" action ─── */
+    document.addEventListener('DOMContentLoaded', function () {
+        var a = {!! json_encode($prefillData) !!};
+
+        var set = function (id, val) { var el = document.getElementById(id); if (el && val) el.value = val; };
+        set('txtfname', a.firstname);
+        set('txtMiddleName', a.middlename);
+        set('txtLastName', a.lastname);
+        set('txtEmailAddress', a.email);
+        set('txtMobileNumber', a.mobile);
+
+        // Department is a <select> keyed by department id.
+        if (a.department) {
+            var dep = document.getElementById('selDepartment');
+            if (dep) dep.value = a.department;
+        }
+        // Desired position is free text — select the matching option if one exists.
+        if (a.position) {
+            var pos = document.getElementById('selPosition');
+            if (pos) {
+                Array.from(pos.options).forEach(function (o) {
+                    if (o.text.trim().toLowerCase() === String(a.position).trim().toLowerCase()) {
+                        pos.value = o.value;
+                    }
+                });
+            }
+        }
+    });
+</script>
+@endif
 
 <script src="{{ asset('js/modules/enrollment.js') }}" defer></script>
 @endsection

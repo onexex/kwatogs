@@ -398,6 +398,22 @@ class registerCtrl extends Controller
             // Audit the new employee (inserts via query builder bypass model events).
             \App\Models\AuditLog::record('created', 'empDetail', $empID, $valueDetails);
 
+            // If this onboarding was launched from the Applicant module's "Hire"
+            // action, flag that applicant as hired and link it to the new employee.
+            if ($request->filled('applicant_id')) {
+                $applicant = \App\Models\Applicant::find($request->applicant_id);
+                if ($applicant && $applicant->status !== 'hired') {
+                    $applicant->forceFill([
+                        'status'      => 'hired',
+                        'hired_empID' => $empID,
+                        'hired_at'    => $current_date_time,
+                        'reviewed_by' => auth()->user()
+                            ? (trim((auth()->user()->fname ?? '') . ' ' . (auth()->user()->lname ?? '')) ?: 'HR')
+                            : 'HR',
+                    ])->save();
+                }
+            }
+
             if ($request->hasFile('path')) {
                 // Absolute path to the real served public/ folder. More robust than a
                 // relative path here: the deploy ships the whole app (public/ included)
