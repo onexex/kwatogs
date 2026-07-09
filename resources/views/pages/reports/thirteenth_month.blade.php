@@ -67,6 +67,10 @@
                     <label class="field-label">Coverage To</label>
                     <input type="date" id="fltTo" class="form-control form-control-sm">
                 </div>
+                <div class="col-6 col-md-2">
+                    <label class="field-label" title="Date printed on the payslip (release date)">Payout Date</label>
+                    <input type="date" id="fltPayDate" class="form-control form-control-sm">
+                </div>
                 <div class="col-6 col-md-3">
                     <label class="field-label">Company</label>
                     <select id="fltCompany" class="form-select form-select-sm">
@@ -119,10 +123,11 @@
                         <th>Company</th>
                         <th class="text-center">Months</th>
                         <th class="text-end">Total Basic Earned</th>
-                        <th class="text-end pe-3">13th Month Pay</th>
+                        <th class="text-end">13th Month Pay</th>
+                        <th class="text-center pe-3">Slip</th>
                     </tr>
                 </thead>
-                <tbody id="tbl"><tr><td colspan="6" class="text-center text-muted py-4">Pick a year and click Filter.</td></tr></tbody>
+                <tbody id="tbl"><tr><td colspan="7" class="text-center text-muted py-4">Pick a year and click Filter.</td></tr></tbody>
                 <tfoot id="tfoot"></tfoot>
             </table>
         </div>
@@ -139,6 +144,7 @@ $(function () {
         company_id: $('#fltCompany').val() || 'all',
         department_id: $('#fltDept').val() || 'all',
         search: $('#fltSearch').val(),
+        pay_date: $('#fltPayDate').val(),
     });
 
     // Picking a year resets the coverage to that calendar year; the dates
@@ -161,21 +167,23 @@ $(function () {
             // The server may normalize a bad/reversed/over-long window — reflect the effective one.
             if (d.coverage_from) $('#fltFrom').val(d.coverage_from);
             if (d.coverage_to) $('#fltTo').val(d.coverage_to);
-            if (!rows.length) { $('#tbl').html('<tr><td colspan="6" class="text-center text-muted py-4">No payroll records found within this coverage.</td></tr>'); return; }
+            if (!rows.length) { $('#tbl').html('<tr><td colspan="7" class="text-center text-muted py-4">No payroll records found within this coverage.</td></tr>'); return; }
             let h = '';
             rows.forEach(r => {
+                const slipQs = new URLSearchParams(Object.assign({}, params(), { employee_id: r.employee_id })).toString();
                 h += `<tr>
                     <td class="ps-3"><span class="fw-bold text-uppercase">${r.employee_name || ''}</span><br><span class="text-muted">${r.employee_id}</span></td>
                     <td>${r.department_name ?? '—'}</td>
                     <td>${r.company_name ?? '—'}</td>
                     <td class="text-center"><span class="pill">${r.months}/12</span></td>
                     <td class="text-end">${peso(r.total_basic)}</td>
-                    <td class="text-end pe-3 fw-bold" style="color:var(--teal-dark)">${peso(r.thirteenth)}</td>
+                    <td class="text-end fw-bold" style="color:var(--teal-dark)">${peso(r.thirteenth)}</td>
+                    <td class="text-center pe-3"><button class="btn-ghost btn-slip" data-qs="${slipQs}" title="Print 13th month payslip"><i class="fa fa-receipt"></i></button></td>
                 </tr>`;
             });
             $('#tbl').html(h);
-            $('#tfoot').html(`<tr><td colspan="4" class="text-end">GRAND TOTAL (${d.count} employees):</td><td class="text-end">${peso(d.total_basic)}</td><td class="text-end pe-3">${peso(d.total_13th)}</td></tr>`);
-        }).catch(() => $('#tbl').html('<tr><td colspan="6" class="text-center text-danger py-4">Failed to load.</td></tr>'));
+            $('#tfoot').html(`<tr><td colspan="4" class="text-end">GRAND TOTAL (${d.count} employees):</td><td class="text-end">${peso(d.total_basic)}</td><td class="text-end">${peso(d.total_13th)}</td><td class="pe-3"></td></tr>`);
+        }).catch(() => $('#tbl').html('<tr><td colspan="7" class="text-center text-danger py-4">Failed to load.</td></tr>'));
     }
 
     $('#btnFilter').on('click', load);
@@ -184,6 +192,10 @@ $(function () {
     $('#fltFrom,#fltTo,#fltCompany,#fltDept').on('change', load);
     $('#btnExport').on('click', () => window.location = '/reports/thirteenth-month/export?' + new URLSearchParams(params()).toString());
     $('#btnPrint').on('click', () => window.open('/reports/thirteenth-month/print?' + new URLSearchParams(params()).toString(), '_blank'));
+    // Per-employee 13th-month payslip (opens the printable slip in a new tab).
+    $('#tbl').on('click', '.btn-slip', function () {
+        window.open('/reports/thirteenth-month/payslip?' + $(this).data('qs'), '_blank');
+    });
     setCoverageFromYear();
     load();
 });

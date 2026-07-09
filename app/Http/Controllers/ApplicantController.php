@@ -67,6 +67,8 @@ class ApplicantController extends Controller
                 $w->where('a.first_name', 'like', $s)
                   ->orWhere('a.last_name', 'like', $s)
                   ->orWhere('a.desired_position', 'like', $s)
+                  ->orWhere('a.qualifications', 'like', $s)
+                  ->orWhere('a.highest_education', 'like', $s)
                   ->orWhere('a.mobile', 'like', $s)
                   ->orWhere('a.email', 'like', $s);
             });
@@ -88,6 +90,9 @@ class ApplicantController extends Controller
             'email'            => 'nullable|email|max:120',
             'mobile'           => 'nullable|string|max:20',
             'desired_position' => 'required|string|max:120',
+            'highest_education'=> 'nullable|string|in:' . implode(',', Applicant::EDUCATION_LEVELS),
+            'years_experience' => 'nullable|numeric|min:0|max:60',
+            'qualifications'   => 'nullable|string|max:2000',
             'department_id'    => 'nullable|integer|exists:departments,id',
             'source'           => 'nullable|string|max:40',
             'rating'           => 'nullable|integer|min:1|max:5',
@@ -107,6 +112,9 @@ class ApplicantController extends Controller
             'email'            => $request->email,
             'mobile'           => $request->mobile,
             'desired_position' => $request->desired_position,
+            'highest_education'=> $request->highest_education ?: null,
+            'years_experience' => $request->filled('years_experience') ? $request->years_experience : null,
+            'qualifications'   => $request->qualifications,
             'department_id'    => $request->department_id ?: null,
             'source'           => $request->source,
             'rating'           => $request->rating ?: null,

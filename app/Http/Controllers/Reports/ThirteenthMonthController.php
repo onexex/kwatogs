@@ -193,4 +193,77 @@ class ThirteenthMonthController extends Controller
             'letterhead' => self::LETTERHEAD,
         ]);
     }
+
+    /**
+     * Single-employee 13th-month PAYSLIP (printable slip in the payroll-payslip
+     * style). Reuses compute() so the 13th-month figure is identical to the
+     * report/export, then adds slip-only facts: company/department header +
+     * address, BASIC RATE (from emp_details), TOTAL DAYS worked and TOTAL
+     * TARDINESS (hrs) over the coverage. `pay_date` is the payout date shown on
+     * the slip (defaults to the coverage end; it may fall outside the coverage
+     * because 13th month is often released before Dec 24).
+     */
+    public function payslip(Request $request)
+    {
+        [$rows, $year, $from, $to] = $this->compute($request);
+
+        $empId = (string) $request->query('employee_id', '');
+        abort_if($empId === '', 404);
+
+        $row   = $rows->firstWhere('employee_id', $empId); // may be null (no basic in coverage)
+        $start = $from->format('Y-m-d');
+        $end   = $to->format('Y-m-d');
+
+        try {
+            $payDate = $request->filled('pay_date')
+                ? Carbon::parse($request->input('pay_date'))
+                : $to->copy();
+        } catch (\Throwable) {
+            $payDate = $to->copy();
+        }
+
+        // Employee + company/department header facts (department carries the
+        // company profile in this app — see CLAUDE.md).
+        $emp = DB::table('users as u')
+            ->leftJoin('emp_details as ed', 'ed.empID', '=', 'u.empID')
+            ->leftJoin('departments as d', 'd.id', '=', 'ed.empDepID')
+            ->leftJoin('companies as c', 'c.comp_id', '=', 'ed.empCompID')
+            ->leftJoin('positions as pos', 'pos.id', '=', 'ed.empPos')
+            ->where('u.empID', $empId)
+            ->selectRaw("
+                u.empID,
+                TRIM(CONCAT(COALESCE(u.lname,''), ', ', COALESCE(u.fname,''))) as employee_name,
+                ed.empBasic as basic_rate,
+                ed.empClassification,
+                d.dep_name, d.dep_address, c.comp_name, pos.pos_desc
+            ")
+            ->first();
+
+        abort_if(!$emp, 404, 'Employee not found.');
+
+        // Days worked and total tardiness both come from attendance_summaries
+        // over the coverage (the payrolls table stores deduction amounts, not
+        // minutes). Days = distinct attendance days with recorded hours.
+        $att = DB::table('attendance_summaries')
+            ->where('employee_id', $empId)
+            ->whereBetween('attendance_date', [$start, $end])
+            ->selectRaw('COUNT(DISTINCT CASE WHEN total_hours > 0 THEN attendance_date END) as days,
+                         COALESCE(SUM(mins_late), 0) as tardy_mins')
+            ->first();
+
+        $totalDays = (int) ($att->days ?? 0);
+        $tardyMins = (float) ($att->tardy_mins ?? 0);
+
+        return view('pages.reports.thirteenth_month_payslip', [
+            'emp'        => $emp,
+            'coverage'   => $this->coverageLabel($from, $to),
+            'payDate'    => $payDate,
+            'totalDays'  => $totalDays,
+            'tardyHours' => round($tardyMins / 60, 2),
+            'totalBasic' => (float) ($row->total_basic ?? 0),
+            'thirteenth' => (float) ($row->thirteenth ?? 0),
+            'months'     => (int) ($row->months ?? 0),
+            'letterhead' => self::LETTERHEAD,
+        ]);
+    }
 }
