@@ -478,10 +478,10 @@
         </div>
 
         {{-- ── Filter bar ── --}}
-        <form method="GET" action="{{ route('loans.index') }}" class="loan-filterbar">
+        <form method="GET" action="{{ route('loans.index') }}" class="loan-filterbar" id="loanFilterForm">
             <div class="loan-filter-search">
                 <i class="fas fa-search"></i>
-                <input type="text" name="search" value="{{ $search }}" class="form-control"
+                <input type="text" name="search" id="loanSearchInput" value="{{ $search }}" class="form-control"
                        placeholder="Search employee name…" autocomplete="off">
             </div>
 
@@ -753,6 +753,33 @@
 
 <script>
 $(document).ready(function() {
+
+    // ── Filter bar: search as you type (debounced) + auto-apply dropdowns ──
+    // The list is server-filtered via a GET reload; this just submits the form
+    // automatically so the user doesn't have to click "Filter".
+    let loanSearchTimer = null;
+    $('#loanSearchInput').on('input', function () {
+        clearTimeout(loanSearchTimer);
+        loanSearchTimer = setTimeout(function () {
+            $('#loanFilterForm').submit();
+        }, 450);
+    });
+    // Submit immediately on Enter (don't wait for the debounce).
+    $('#loanSearchInput').on('keydown', function (e) {
+        if (e.key === 'Enter') { clearTimeout(loanSearchTimer); }
+    });
+    $('#loanFilterForm').find('select').on('change', function () {
+        $('#loanFilterForm').submit();
+    });
+    // After a search reload, put the cursor back at the end of the box so the
+    // user can keep typing without re-clicking it.
+    (function restoreSearchFocus() {
+        const $s = $('#loanSearchInput');
+        if ($s.val() !== '') {
+            const v = $s.val();
+            $s.trigger('focus').val('').val(v); // move caret to end
+        }
+    })();
 
     // ── Switch the modal between bulk-add and single-edit employee inputs ──
     function setEmployeeMode(mode) {
