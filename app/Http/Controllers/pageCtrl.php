@@ -73,8 +73,20 @@ class pageCtrl extends Controller
 
         return view('pages.management.e201')->with('resultUser',$resultUser);
     }
-    public function registration()
+    public function registration(Request $request)
     {
+        // When arriving from the Applicant module's "Hire" action, pre-fill the
+        // onboarding form with the applicant's captured initial data. The real
+        // employee is created here; registerCtrl::create then flags the applicant
+        // as hired (via the hidden applicant_id field).
+        $prefill = null;
+        if ($request->filled('applicant')) {
+            $applicant = \App\Models\Applicant::find($request->query('applicant'));
+            if ($applicant && $applicant->status !== 'hired') {
+                $prefill = $applicant;
+            }
+        }
+
         $getCompany=company::get();
         $getClassification=classification::get();
         // $getClassification=classification::get();
@@ -86,6 +98,7 @@ class pageCtrl extends Controller
         $getHMO=HMOModel::get();
 
         return view('pages.modules.registration')
+        ->with('prefill',$prefill)
         ->with('hmoData',$getHMO)
         ->with('agencyData',$getAgency)
         ->with('joblevelData',$getJoblevel)

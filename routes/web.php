@@ -31,6 +31,7 @@ use App\Http\Controllers\liloValidationsCtrl;
 use App\Http\Controllers\LoanController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\NoticeController;
+use App\Http\Controllers\ApplicantController;
 use App\Http\Controllers\CoeController;
 use App\Http\Controllers\CoeSignatoryController;
 use App\Http\Controllers\PayAdjustmentController;
@@ -682,6 +683,14 @@ Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip
     Route::get('/programs/eligibility', [ProgramController::class, 'eligibility'])->middleware('can:programs');
     Route::post('/programs/grant', [ProgramController::class, 'grant'])->middleware('can:programs');
     Route::post('/programs/revoke', [ProgramController::class, 'revoke'])->middleware('can:programs');
+
+    // Applicant Tracking / Recruitment — pool + hire-to-onboarding (Workforce)
+    Route::get('pages/modules/applicants', [ApplicantController::class, 'index'])->name('applicants.index')->middleware('can:applicantmanagement');
+    Route::get('/applicants/list', [ApplicantController::class, 'list'])->middleware('can:applicantmanagement');
+    Route::post('/applicants/save', [ApplicantController::class, 'save'])->middleware('can:applicantmanagement');
+    Route::post('/applicants/status', [ApplicantController::class, 'updateStatus'])->middleware('can:applicantmanagement');
+    Route::post('/applicants/delete', [ApplicantController::class, 'delete'])->middleware('can:applicantmanagement');
+    Route::get('/applicants/{applicant}/hire', [ApplicantController::class, 'hire'])->middleware('can:applicantmanagement');
 
     Route::get('pages/modules/loanManagement', [LoanController::class, 'index'])->name('loans.index');
     Route::post('/loans/store', [LoanController::class, 'store'])->name('loans.store');

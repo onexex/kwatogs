@@ -328,6 +328,7 @@
                     'noticemanagement' => ['name' => 'Notices & Memos', 'url' => '/pages/modules/notices', 'icon' => 'fa-file-circle-exclamation', 'group' => 'People & HR'],
                     'coemanagement'    => ['name' => 'Certificate of Employment', 'url' => '/pages/modules/coe', 'icon' => 'fa-file-signature', 'group' => 'People & HR'],
                     'programs'         => ['name' => 'Programs', 'url' => '/pages/modules/programs', 'icon' => 'fa-award', 'group' => 'People & HR'],
+                    'applicantmanagement' => ['name' => 'Applicants', 'url' => '/pages/modules/applicants', 'icon' => 'fa-user-tie', 'group' => 'People & HR'],
                     'attendanceimport' => ['name' => 'Attendance Import', 'url' => '/attendance-import', 'icon' => 'fa-file-import', 'group' => 'Attendance & Time'],
                     'overtimeimport'   => ['name' => 'Overtime Import', 'url' => '/overtime-import', 'icon' => 'fa-clock', 'group' => 'Overtime & OB'],
                     'leaveimport'      => ['name' => 'Leave Import', 'url' => '/leave-import', 'icon' => 'fa-calendar-check', 'group' => 'Leave'],
