@@ -18,15 +18,28 @@ class Applicant extends Model
 
     protected $fillable = [
         'first_name', 'last_name', 'middle_name', 'email', 'mobile',
-        'desired_position', 'department_id', 'source', 'resume_path',
+        'desired_position', 'highest_education', 'years_experience', 'qualifications',
+        'department_id', 'source', 'resume_path',
         'rating', 'notes', 'applied_at', 'status', 'hired_empID',
         'hired_at', 'rejection_reason', 'reviewed_by',
     ];
 
     protected $casts = [
-        'applied_at' => 'date',
-        'hired_at'   => 'datetime',
-        'rating'     => 'integer',
+        'applied_at'       => 'date',
+        'hired_at'         => 'datetime',
+        'rating'           => 'integer',
+        'years_experience' => 'float',
+    ];
+
+    /** Allowed highest-educational-attainment values (kept in sync with the Blade <select>). */
+    public const EDUCATION_LEVELS = [
+        'Elementary',
+        'High School',
+        'Senior High School',
+        'Vocational / Technical',
+        'College Undergraduate',
+        'College Graduate',
+        'Post-graduate',
     ];
 
     public function department(): BelongsTo

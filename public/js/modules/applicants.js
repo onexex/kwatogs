@@ -56,13 +56,29 @@ $(document).ready(function () {
         return '<tr>' +
             '<td><strong>' + esc(a.full_name || (a.last_name + ', ' + a.first_name)) + '</strong></td>' +
             '<td>' + esc(a.desired_position) + '</td>' +
+            '<td>' + qualsCell(a) + '</td>' +
             '<td>' + esc(a.department_name || '—') + '</td>' +
             '<td>' + (contact.length ? contact.join('<br>') : '—') + '</td>' +
-            '<td>' + esc(a.source || '—') + '</td>' +
             '<td>' + esc(a.applied_at || '—') + '</td>' +
             '<td>' + badge + '</td>' +
             '<td style="white-space:nowrap;">' + actions + '</td>' +
             '</tr>';
+    }
+
+    /* Compact qualifications cell: education badge + years exp + truncated skills. */
+    function qualsCell(a) {
+        var parts = [];
+        if (a.highest_education) parts.push('<span class="badge-soft">' + esc(a.highest_education) + '</span>');
+        if (a.years_experience != null && a.years_experience !== '') {
+            var y = Number(a.years_experience);
+            parts.push('<div class="quals-sub">' + esc(y) + ' yr' + (y === 1 ? '' : 's') + ' exp</div>');
+        }
+        if (a.qualifications) {
+            var full = String(a.qualifications);
+            var trunc = full.length > 60 ? full.slice(0, 60) + '…' : full;
+            parts.push('<div class="quals-sub" title="' + esc(full) + '">' + esc(trunc) + '</div>');
+        }
+        return parts.length ? parts.join('') : '<span class="text-muted">—</span>';
     }
 
     /* ── Add ── */
@@ -101,6 +117,9 @@ $(document).ready(function () {
         $('#apMobile').val(a.mobile);
         $('#apEmail').val(a.email);
         $('#apPosition').val(a.desired_position);
+        $('#apEducation').val(a.highest_education || '');
+        $('#apExperience').val(a.years_experience != null ? a.years_experience : '');
+        $('#apQualifications').val(a.qualifications || '');
         $('#apDept').val(a.department_id || '');
         $('#apSource').val(a.source || '');
         $('#apApplied').val(a.applied_at || '');

@@ -738,6 +738,24 @@
                         </div>
                         <div class="sc-body">
 
+                            @if(!empty($prefill))
+                                {{-- Captured from the applicant record so HR can transcribe/complete
+                                     the structured education below (applicants store a level + free-text
+                                     qualifications, not per-school rows). --}}
+                                <div class="alert d-flex flex-column gap-1 mb-4"
+                                     style="background:#e0f2f1; border:1px solid #4db6ac; border-radius:8px; color:#334155;">
+                                    <div style="font-weight:800; color:#006666;">
+                                        <i class="fa fa-user-check me-1"></i> From applicant application
+                                    </div>
+                                    <div><strong>Highest Education:</strong> {{ $prefill->highest_education ?: '—' }}</div>
+                                    <div><strong>Years of Experience:</strong>
+                                        {{ $prefill->years_experience !== null ? rtrim(rtrim(number_format((float) $prefill->years_experience, 1), '0'), '.') . ' yr(s)' : '—' }}
+                                    </div>
+                                    <div><strong>Skills / Qualifications:</strong> {{ $prefill->qualifications ?: '—' }}</div>
+                                    <div class="text-muted" style="font-size:.78rem;">Reference only — fill in the school details below.</div>
+                                </div>
+                            @endif
+
                             {{-- Primary --}}
                             <div class="sub-divider"><span>Primary Education</span></div>
                             <div class="row g-3 mb-4">
