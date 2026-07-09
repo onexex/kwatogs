@@ -48,6 +48,7 @@
     .btn-mini.hire:hover { background:var(--success); color:#fff; }
     .btn-mini.del { border-color:var(--danger); color:var(--danger); }
     .btn-mini.del:hover { background:var(--danger); color:#fff; }
+    .quals-sub { font-size:.76rem; color:var(--slate-light); margin-top:3px; }
     .empty-row td { text-align:center; color:var(--muted); padding:30px; }
     .field-label { font-weight:700; font-size:.82rem; color:var(--slate); margin-bottom:4px; display:block; }
     .req { color:var(--danger); }
@@ -116,9 +117,9 @@
                     <tr>
                         <th>Applicant</th>
                         <th>Desired Position</th>
+                        <th>Qualifications</th>
                         <th>Department</th>
                         <th>Contact</th>
-                        <th>Source</th>
                         <th>Applied</th>
                         <th>Status</th>
                         <th style="width:1%;">Actions</th>
@@ -181,6 +182,23 @@
                                     <option value="{{ $d->id }}">{{ $d->dep_name }}</option>
                                 @endforeach
                             </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="field-label">Highest Education</label>
+                            <select class="form-select" name="highest_education" id="apEducation">
+                                <option value="">— Select —</option>
+                                @foreach(\App\Models\Applicant::EDUCATION_LEVELS as $lvl)
+                                    <option value="{{ $lvl }}">{{ $lvl }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="field-label">Years of Experience</label>
+                            <input type="number" step="0.5" min="0" max="60" class="form-control" name="years_experience" id="apExperience" placeholder="e.g. 3">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="field-label">Skills / Qualifications</label>
+                            <textarea class="form-control" name="qualifications" id="apQualifications" rows="2" placeholder="e.g. Food handling certificate, 2 yrs kitchen experience, can work night shift…"></textarea>
                         </div>
                         <div class="col-md-4">
                             <label class="field-label">Source</label>
