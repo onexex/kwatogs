@@ -2,7 +2,7 @@
     use Carbon\Carbon;
 
     $company   = $snap['company']         ?? config('app.name', 'the Company');
-    $name      = $snap['full_name']       ?? $coe->employee_id;
+    $name      = !empty($snap['full_name']) ? ucwords(strtolower($snap['full_name'])) : $coe->employee_id;
     $position  = $snap['position']        ?? '—';
     $dept      = $snap['department']      ?? '—';
     $empStatus = $snap['employment_status'] ?? null;
@@ -43,6 +43,7 @@
 <table cellpadding="0" cellspacing="0" style="width:100%;">
     @if ($logoUri)
         <tr><td style="text-align:center; padding-bottom:6px;"><img src="{{ $logoUri }}" style="height:62px;"></td></tr>
+        <tr><td style="text-align:center;"><br></td></tr>
     @endif
     <tr><td style="text-align:center; font-size:17pt; font-weight:bold; color:#006666;">{{ $dept }}</td></tr>
     <tr><td style="text-align:center; font-size:9pt; color:#64748b; padding-bottom:5px;">Human Resources Department</td></tr>
@@ -52,7 +53,7 @@
     <tr><td style="background-color:#006666; height:2px; font-size:1px; line-height:1px;">&nbsp;</td></tr>
 </table>
 
-<br><br>
+<br><br><br>
 <table cellpadding="0" cellspacing="0" style="width:100%;">
     <tr><td style="text-align:center; font-size:15pt; font-weight:bold; letter-spacing:1px; color:#334155;">CERTIFICATE OF EMPLOYMENT</td></tr>
     @if ($coe->certificate_no)
@@ -60,7 +61,7 @@
     @endif
 </table>
 
-<br><br>
+<br><br><br>
 <table cellpadding="0" cellspacing="0" style="width:100%; font-size:11pt;">
     <tr><td style="font-weight:bold;">TO WHOM IT MAY CONCERN:</td></tr>
 </table>
@@ -70,12 +71,7 @@
     <tr>
         <td>
             This is to certify that <b>{{ $name }}</b> {{ $beVerb }}
-            @if ($classif)
-                a {{ $empStatus ? strtolower($empStatus) . ' ' : '' }}({{ $classif }})
-            @else
-                {{ $empStatus ? 'a ' . strtolower($empStatus) : 'an' }}
-            @endif
-            employee of <b>{{ $dept }}</b>, {{ $holdPhrase }}
+            a bonafide employee of <b>{{ $dept }}</b>, {{ $holdPhrase }}
             <b>{{ $position }}</b>, {{ $tenurePhrase }}.
         </td>
     </tr>
@@ -99,11 +95,11 @@
         </td>
     </tr>
     <tr>
-        <td>Issued this {{ $issued }}.</td>
+        <td>Issued this on {{ $issued }} at 186-B Purok 2 Inosluban, Lipa City, Batangas.</td>
     </tr>
 </table>
 
-<br><br><br>
+<br><br><br><br>
 <table cellpadding="0" cellspacing="0" style="width:100%;">
     <tr>
         <td style="width:55%;">&nbsp;</td>
@@ -113,8 +109,9 @@
             @else
                 <br><br>
             @endif
-            <table cellpadding="0" cellspacing="0" style="width:100%;">
-                <tr><td style="border-top:1px solid #334155; text-align:center; font-weight:bold; font-size:11pt; padding-top:3px;">{{ $coe->signatory_name ?: 'Authorized Signatory' }}</td></tr>
+            <table cellpadding="0" cellspacing="0" style="width:100%; margin-top:-8px;">
+                <tr><td style="border-top:1px solid #334155; font-size:1px; line-height:1px;">&nbsp;</td></tr>
+                <tr><td style="text-align:center; font-weight:bold; font-size:11pt; padding-top:3px;">{{ $coe->signatory_name ? strtoupper($coe->signatory_name) : 'AUTHORIZED SIGNATORY' }}</td></tr>
                 @if ($coe->signatory_title)
                     <tr><td style="text-align:center; font-size:9pt; color:#64748b;">{{ $coe->signatory_title }}</td></tr>
                 @endif

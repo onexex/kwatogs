@@ -48,6 +48,10 @@ class SummaryLogsController extends Controller
         $empId = $request->input('empID');
         $dateFrom = $request->input('dateFrom');
         $dateTo = $request->input('dateTo');
+        // "Missed logouts only" mode — reached from the HR Attention panel / dashboard card
+        // so a click lands on exactly the days pending validation (punched in, never out,
+        // summary still 0), not the whole range.
+        $missedOnly = filter_var($request->input('missedOnly'), FILTER_VALIDATE_BOOLEAN);
 
         $summaries = AttendanceSummary::with(['employee', 'manualDeductions'])
             ->join('users', 'attendance_summaries.employee_id', '=', 'users.empID')
@@ -102,6 +106,12 @@ class SummaryLogsController extends Controller
             $summary->formatted_date = $date;
             $summary->deduction_minutes = (int) $summary->manualDeductions->sum('deduction_minutes');
 
+            // Pending missed-logout day: punched in but never out (a log carries the
+            // "Missed logout" remark) AND the computed gross is still 0 (not yet corrected).
+            $summary->is_missed_logout = ((float) $summary->total_hours === 0.0)
+                && collect($summary->logs)->contains(fn ($l) =>
+                    stripos((string) ($l->remarks ?? ''), 'Missed logout') !== false);
+
             $sched = optional($schedules->get($emp))->first(function ($s) use ($date) {
                 $start = \Carbon\Carbon::parse($s->sched_start_date)->format('Y-m-d');
                 $end   = \Carbon\Carbon::parse($s->sched_end_date)->format('Y-m-d');
@@ -134,6 +144,11 @@ class SummaryLogsController extends Controller
                 ? $adj->changes['total_hours']['from']
                 : null;
         });
+
+        // Restrict to only the days pending missed-logout validation, if requested.
+        if ($missedOnly) {
+            $summaries = $summaries->filter(fn ($s) => $s->is_missed_logout)->values();
+        }
 
         return response()->json([
             'status' => 'success',
