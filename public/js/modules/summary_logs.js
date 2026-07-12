@@ -13,6 +13,9 @@ document.addEventListener('DOMContentLoaded', function () {
     // edit modal can pull the record and in-place update it after a save.
     let rows = [];
     let lastSavedId = null;
+    // "Missed logouts only" mode — set from the ?missed=1 deep link (HR Attention panel /
+    // dashboard card). Kept sticky across Refresh until the user clears it.
+    let missedOnly = false;
 
     $("#btn_slrefresh").on("click", fetchSummaries);
 
@@ -23,6 +26,7 @@ document.addEventListener('DOMContentLoaded', function () {
             empID: empSelect.val(),
             dateFrom: dateFrom.val(),
             dateTo: dateTo.val(),
+            missedOnly: missedOnly,
         })
         .then(response => {
             const res = response.data;
@@ -406,6 +410,41 @@ document.addEventListener('DOMContentLoaded', function () {
         const ampm = h >= 12 ? "PM" : "AM";
         h = h % 12 || 12;
         return `${h}:${min} ${ampm}`;
+    }
+
+    // Deep-link support: the HR Dashboard "Missed Logouts to Validate" card links
+    // here with ?emp=<id>&from=<date>&to=<date> so a click lands pre-filtered on the
+    // exact day (instead of the default all-personnel/last-7-days view). Apply any
+    // provided params to the filter controls before the initial fetch.
+    (function applyUrlFilters() {
+        const p = new URLSearchParams(window.location.search);
+        const emp = p.get("emp");
+        const from = p.get("from");
+        const to = p.get("to");
+        if (from) dateFrom.val(from);
+        if (to) dateTo.val(to);
+        if (emp && empSelect.find(`option[value="${emp}"]`).length) {
+            empSelect.val(emp);
+        }
+        missedOnly = p.get("missed") === "1";
+        if (missedOnly) renderMissedBanner();
+    })();
+
+    // Sticky notice shown while the missed-logouts-only filter is active, with a
+    // one-click "Show all" that drops the filter and re-fetches the same range.
+    function renderMissedBanner() {
+        $("#slFlash").html(`
+            <div class="alert alert-warning alert-dismissible fade show mb-0 d-flex align-items-center" role="alert" style="font-size:.8rem;">
+                <i class="fa-solid fa-right-from-bracket me-2"></i>
+                <span>Showing only <b>missed logouts pending validation</b> for this range.</span>
+                <button type="button" id="slClearMissed" class="btn btn-sm btn-outline-secondary rounded-pill ms-auto px-3 py-0" style="font-size:.72rem;">Show all</button>
+            </div>
+        `);
+        $("#slClearMissed").on("click", function () {
+            missedOnly = false;
+            $("#slFlash").empty();
+            fetchSummaries();
+        });
     }
 
     fetchSummaries();

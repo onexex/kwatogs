@@ -155,8 +155,8 @@
         <a class="kpi" href="/pages/management/e201"><div class="ic" style="background:var(--teal-light);color:var(--teal);"><i class="fa fa-users"></i></div><div><div class="val" data-kpi="active">{{ number_format($d['active']) }}</div><div class="lbl">Active Employees</div></div></a>
         <a class="kpi" href="#whoInCard"><div class="ic" style="background:#dcfce7;color:var(--success);"><i class="fa fa-user-check"></i></div><div><div class="val" data-kpi="present">{{ number_format($d['present']) }}</div><div class="lbl">Present Today</div></div></a>
         <a class="kpi" href="#absCard"><div class="ic" style="background:#fee2e2;color:var(--danger);"><i class="fa fa-user-xmark"></i></div><div><div class="val" data-kpi="absent">{{ number_format($d['absent']) }}</div><div class="lbl">Absent Today</div></div></a>
-        <a class="kpi" href="/pages/modules/leaverequests"><div class="ic" style="background:#e0f2fe;color:var(--info);"><i class="fa fa-plane-departure"></i></div><div><div class="val" data-kpi="leaveob">{{ number_format($d['onLeave'] + $d['onOb']) }}</div><div class="lbl">On Leave / OB</div></div></a>
-        <a class="kpi" href="/pages/modules/leaverequests"><div class="ic" style="background:#fef3c7;color:var(--warning);"><i class="fa fa-bell"></i></div><div><div class="val" data-kpi="pendTotal">{{ number_format($d['pendTotal']) }}</div><div class="lbl">Pending Approvals</div></div></a>
+        <a class="kpi" href="#todayCard"><div class="ic" style="background:#e0f2fe;color:var(--info);"><i class="fa fa-plane-departure"></i></div><div><div class="val" data-kpi="leaveob">{{ number_format($d['onLeave'] + $d['onOb']) }}</div><div class="lbl">On Leave / OB</div></div></a>
+        <a class="kpi" href="#apprCard"><div class="ic" style="background:#fef3c7;color:var(--warning);"><i class="fa fa-bell"></i></div><div><div class="val" data-kpi="pendTotal">{{ number_format($d['pendTotal']) }}</div><div class="lbl">Pending Approvals</div></div></a>
         <a class="kpi" href="#trendCard"><div class="ic" style="background:#e0f2fe;color:var(--info);"><i class="fa fa-calendar-check"></i></div><div><div class="val" style="color:{{ $d['attendanceRate'] >= 90 ? 'var(--success)' : 'var(--warning)' }}">{{ $d['attendanceRate'] }}%</div><div class="lbl">Attendance (30d)</div></div></a>
         <a class="kpi" href="#trendCard"><div class="ic" style="background:var(--teal-light);color:var(--teal);"><i class="fa fa-clock"></i></div><div><div class="val" data-kpi="ontime">{{ $d['onTimeRate'] }}%</div><div class="lbl">On-time (30d)</div></div></a>
     </div>
@@ -222,7 +222,18 @@
             </div>
             <div class="cc-b" style="max-height:220px;overflow:auto;">
                 @forelse($d['missedLogouts'] as $r)
-                    <div class="alert-row" style="flex-direction:column;align-items:flex-start;gap:3px;">
+                    @php
+                        $slDate = \Carbon\Carbon::parse($r->date)->toDateString();
+                        $slUrl  = url('/pages/modules/summary-logs')
+                            . '?emp=' . urlencode($r->empid) . '&from=' . $slDate . '&to=' . $slDate;
+                    @endphp
+                    @can('summarylogs')
+                        <a href="{{ $slUrl }}" class="alert-row text-decoration-none"
+                           style="flex-direction:column;align-items:flex-start;gap:3px;color:inherit;"
+                           title="Open this day in Summary Logs to validate">
+                    @else
+                        <div class="alert-row" style="flex-direction:column;align-items:flex-start;gap:3px;">
+                    @endcan
                         <span class="nm text-capitalize d-flex align-items-center gap-2" style="width:100%;">
                             {{ $r->name }}
                             @if($r->locked)
@@ -238,21 +249,26 @@
                                 {{ \Carbon\Carbon::parse($r->sched_in)->format('g:i A') }}–{{ \Carbon\Carbon::parse($r->sched_out)->format('g:i A') }}
                             @else — @endif
                         </span>
-                    </div>
+                    @can('summarylogs')
+                        </a>
+                    @else
+                        </div>
+                    @endcan
                 @empty
                     <div class="empty">No missed logouts pending validation.</div>
                 @endforelse
                 @if($d['missedLogouts']->isNotEmpty())
                     @can('summarylogs')
-                        <a href="/pages/modules/summary-logs" class="d-block text-center mt-2"
-                           style="font-size:.72rem;color:var(--teal);font-weight:600;">Fix in Summary Logs →</a>
+                        <a href="{{ url('/pages/modules/summary-logs') . '?missed=1&from=' . \Carbon\Carbon::today()->subDays(14)->toDateString() . '&to=' . \Carbon\Carbon::today()->toDateString() }}"
+                           class="d-block text-center mt-2"
+                           style="font-size:.72rem;color:var(--teal);font-weight:600;">View all in Summary Logs →</a>
                     @endcan
                 @endif
             </div>
         </div>
 
         {{-- Today's attendance --}}
-        <div class="cc-card cc-4">
+        <div class="cc-card cc-4" id="todayCard">
             <div class="cc-h"><div class="i"><i class="fa fa-user-clock"></i></div><h6 title="As of now. 'Absent' counts only shifts that have already started; night or later shifts still pending appear as 'not yet due', never as absent. Approved leave, OB, and department holidays are excused.">Today's Attendance</h6></div>
             <div class="cc-b">
                 <div class="att-grid">
