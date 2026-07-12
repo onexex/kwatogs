@@ -644,7 +644,7 @@ class HrDashboardController extends Controller
             ['approvals', 'pendingleaverequests', $leave, 'Leave requests to approve', 'Leave Requests', '/pages/modules/leaverequests', 'fa-calendar-xmark', 'info'],
             ['approvals', 'pendingovertimerequests', $ot, 'Overtime requests', 'Overtime', '/pages/modules/overtimerequests', 'fa-clock', 'info'],
             ['approvals', 'approveschedulechange', $sched, 'Schedule change requests', 'Schedule Requests', '/pages/modules/schedulerequests', 'fa-calendar-day', 'info'],
-            ['attendance', 'summarylogs', $missed, 'Missed logouts to validate', 'Summary Logs', '/pages/modules/summary-logs', 'fa-right-from-bracket', 'warning'],
+            ['attendance', 'summarylogs', $missed, 'Missed logouts to validate', 'Summary Logs', '/pages/modules/summary-logs?missed=1&from=' . Carbon::today()->subDays(14)->toDateString() . '&to=' . $today, 'fa-right-from-bracket', 'warning'],
             ['attendance', 'hrdashboard', $noSchedule, 'Active staff with no schedule', 'Employee Schedules', '/employee-schedules', 'fa-calendar-plus', 'warning'],
             ['attendance', $e201, $missingDocs, 'Missing government docs', 'SSS, PhilHealth, TIN', '/pages/management/e201', 'fa-file-circle-exclamation', 'warning'],
             ['attendance', $e201, $expiringPassport, 'Passports expiring soon', 'Within 60 days', '/pages/management/e201', 'fa-id-card', 'warning'],

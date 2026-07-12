@@ -193,6 +193,116 @@
         font-size: 1.1rem;
         flex-shrink: 0;
     }
+
+    /* ── Self-service hub: at-a-glance stats ─────────────────── */
+    .hub-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 14px;
+        margin-bottom: 20px;
+    }
+    .hub-stat {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-card);
+        padding: 15px 18px;
+        display: flex;
+        align-items: center;
+        gap: 13px;
+    }
+    .hub-stat .hs-ic {
+        width: 42px; height: 42px;
+        border-radius: 11px;
+        background: var(--teal-light);
+        color: var(--teal);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.05rem; flex-shrink: 0;
+    }
+    .hub-stat .num { font-size: 1.35rem; font-weight: 800; color: var(--slate); line-height: 1; }
+    .hub-stat .lbl {
+        font-size: .68rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: .4px; color: var(--muted); margin-top: 3px;
+    }
+
+    /* ── Self-service hub: quick actions ─────────────────────── */
+    .qa-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+        gap: 14px;
+    }
+    .qa-card {
+        display: flex; align-items: center; gap: 13px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        padding: 15px 17px;
+        text-decoration: none;
+        transition: transform .15s, box-shadow .15s, border-color .15s;
+        position: relative;
+    }
+    .qa-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--teal-mid);
+        box-shadow: 0 6px 18px rgba(0,128,128,.12);
+    }
+    .qa-ic {
+        width: 44px; height: 44px;
+        border-radius: 12px;
+        background: var(--teal-light);
+        color: var(--teal);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.15rem; flex-shrink: 0;
+    }
+    .qa-tt  { font-size: .9rem;  font-weight: 700; color: var(--slate); margin: 0; line-height: 1.15; }
+    .qa-sub { font-size: .72rem; color: var(--muted); margin: 2px 0 0; }
+    .qa-badge { position: absolute; top: 11px; right: 13px; }
+
+    /* ── Self-service hub: "Ask about your record" (no AI, keyword match) ── */
+    .ask-input-row { display: flex; gap: 10px; }
+    .ask-input {
+        flex: 1;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-input);
+        padding: 11px 14px;
+        font-size: .9rem;
+        color: var(--slate);
+    }
+    .ask-input:focus { outline: none; border-color: var(--teal-mid); box-shadow: 0 0 0 3px var(--teal-light); }
+    .ask-btn {
+        background: var(--teal); color: #fff; border: none;
+        border-radius: var(--radius-input); padding: 0 20px;
+        font-weight: 700; font-size: .85rem;
+    }
+    .ask-btn:hover { background: var(--teal-dark); }
+    .ask-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .ask-chip {
+        background: var(--bg); border: 1px solid var(--border);
+        border-radius: 50px; padding: 6px 14px;
+        font-size: .75rem; color: var(--slate); cursor: pointer;
+        transition: all .12s;
+    }
+    .ask-chip:hover { background: var(--teal-light); border-color: var(--teal-mid); color: var(--teal-dark); }
+    .ask-log { margin-top: 4px; }
+    .ask-q { display: flex; justify-content: flex-end; margin: 16px 0 8px; }
+    .ask-q span {
+        background: var(--teal); color: #fff; padding: 8px 14px;
+        border-radius: 14px 14px 2px 14px; font-size: .85rem; max-width: 80%;
+    }
+    .ask-a { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 4px; }
+    .ask-a .a-ic {
+        width: 30px; height: 30px; border-radius: 8px;
+        background: var(--teal-light); color: var(--teal);
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0; font-size: .8rem;
+    }
+    .ask-a .a-body {
+        background: var(--bg); border: 1px solid var(--border);
+        padding: 10px 14px; border-radius: 2px 14px 14px 14px;
+        font-size: .88rem; color: var(--slate); max-width: 85%;
+    }
+    .ask-a .a-body a { color: var(--teal); font-weight: 600; }
+    .ask-a .a-body b { color: var(--slate); }
 </style>
 
 <div class="e201-shell">
@@ -242,6 +352,305 @@
             </div>
         </div>
     </div>
+
+    {{-- ── Self-Service Hub ──────────────────────────────────────
+         Turns this 201 file into a personal workspace: an at-a-glance
+         strip plus quick actions to the things the logged-in employee
+         can do. Each action is gated by the same permission as its
+         sidebar item, so a link only shows when the employee can reach
+         it (My Notices / My COE are permission-less, always shown). --}}
+    @php
+        // Own unread active notices — mirrors the layout's badge computation.
+        $myUnreadNotices = 0;
+        if ($user->empID) {
+            $myUnreadNotices = \App\Models\Notice::where('employee_id', $user->empID)
+                ->where('status', 'active')->where('is_read', false)->count();
+        }
+        // Continuous years of service from the hire date (0 if not set).
+        $yearsOfService = $emp && $emp->empDateHired
+            ? round(\Carbon\Carbon::parse($emp->empDateHired)->floatDiffInYears(now()), 1)
+            : null;
+        $myDocCount = ($user->employmentDocuments ?? collect())->count();
+    @endphp
+
+    <div class="hub-stats">
+        <div class="hub-stat">
+            <div class="hs-ic"><i class="fa-solid fa-hourglass-half"></i></div>
+            <div>
+                <div class="num">{{ $yearsOfService !== null ? $yearsOfService : '--' }}<span style="font-size:.8rem;font-weight:700;color:var(--muted);"> yrs</span></div>
+                <div class="lbl">Years of Service</div>
+            </div>
+        </div>
+        <div class="hub-stat">
+            <div class="hs-ic"><i class="fa-solid fa-user-check"></i></div>
+            <div>
+                <div class="num" style="font-size:1.05rem;">{{ ($user->status ?? 0) == 1 ? 'Active' : 'Inactive' }}</div>
+                <div class="lbl">Employment Status</div>
+            </div>
+        </div>
+        <div class="hub-stat">
+            <div class="hs-ic"><i class="fa-solid fa-bell"></i></div>
+            <div>
+                <div class="num">{{ $myUnreadNotices }}</div>
+                <div class="lbl">Unread Notices</div>
+            </div>
+        </div>
+        @can('viewe201files')
+        <div class="hub-stat">
+            <div class="hs-ic"><i class="fa-solid fa-folder-open"></i></div>
+            <div>
+                <div class="num">{{ $myDocCount }}</div>
+                <div class="lbl">My Documents</div>
+            </div>
+        </div>
+        @endcan
+    </div>
+
+    <div class="sc">
+        <div class="sc-head">
+            <div class="sc-head-left">
+                <div class="sc-icon"><i class="fa-solid fa-bolt"></i></div>
+                <h5 class="sc-title">Quick Actions</h5>
+            </div>
+        </div>
+        <div class="sc-body">
+            <div class="qa-grid">
+                {{-- Permission-less self-service (always visible) --}}
+                <a class="qa-card" href="{{ route('notices.mine') }}">
+                    <div class="qa-ic"><i class="fa-solid fa-bell"></i></div>
+                    <div>
+                        <p class="qa-tt">My Notices</p>
+                        <p class="qa-sub">Memos &amp; disciplinary notices</p>
+                    </div>
+                    @if($myUnreadNotices > 0)
+                        <span class="qa-badge badge rounded-pill bg-danger">{{ $myUnreadNotices > 99 ? '99+' : $myUnreadNotices }}</span>
+                    @endif
+                </a>
+                <a class="qa-card" href="{{ route('coe.mine') }}">
+                    <div class="qa-ic"><i class="fa-solid fa-file-signature"></i></div>
+                    <div>
+                        <p class="qa-tt">My COE</p>
+                        <p class="qa-sub">Request a Certificate of Employment</p>
+                    </div>
+                </a>
+
+                {{-- Gated by the same permission as the sidebar item --}}
+                @can('leaveapplication')
+                <a class="qa-card" href="/pages/modules/leaveApplication">
+                    <div class="qa-ic"><i class="fa-solid fa-calendar-day"></i></div>
+                    <div>
+                        <p class="qa-tt">Leave Application</p>
+                        <p class="qa-sub">File and track your leave</p>
+                    </div>
+                </a>
+                @endcan
+                @can('overtime')
+                <a class="qa-card" href="/pages/modules/overtime">
+                    <div class="qa-ic"><i class="fa-solid fa-user-clock"></i></div>
+                    <div>
+                        <p class="qa-tt">Overtime</p>
+                        <p class="qa-sub">File an overtime request</p>
+                    </div>
+                </a>
+                @endcan
+                @can('obttracker')
+                <a class="qa-card" href="/pages/modules/obtTracker">
+                    <div class="qa-ic"><i class="fa-solid fa-map-location-dot"></i></div>
+                    <div>
+                        <p class="qa-tt">OB Tracker</p>
+                        <p class="qa-sub">Log official business</p>
+                    </div>
+                </a>
+                @endcan
+                @can('earlyout')
+                <a class="qa-card" href="/pages/modules/earlyout">
+                    <div class="qa-ic"><i class="fa-solid fa-door-open"></i></div>
+                    <div>
+                        <p class="qa-tt">Early Out</p>
+                        <p class="qa-sub">File an early-out request</p>
+                    </div>
+                </a>
+                @endcan
+                @can('kuboaccess')
+                <a class="qa-card" href="{{ route('kubo.feed') }}">
+                    <div class="qa-ic"><i class="fa-solid fa-users"></i></div>
+                    <div>
+                        <p class="qa-tt">KwHub</p>
+                        <p class="qa-sub">Company community feed</p>
+                    </div>
+                </a>
+                @endcan
+            </div>
+        </div>
+    </div>
+
+    {{-- ── Ask about your record (deterministic, NO AI) ──────────
+         A keyword-matched Q&A over the employee's OWN 201 data. All
+         facts are their own record (already shown in the tabs below),
+         serialized once into JS; matching + answering happen entirely
+         client-side — nothing is sent anywhere, no model is called. --}}
+    @php
+        $info = $user->employeeInformation ?? null;
+        $addr = collect([
+            $info->empAddStreet ?? null,
+            isset($info->empAddBrgyDesc) ? 'Brgy. '.$info->empAddBrgyDesc : null,
+            $info->empAddCityDesc ?? null,
+            $info->empProvDesc ?? null,
+            $info->empZipcode ?? null,
+        ])->filter()->implode(', ');
+
+        $askFacts = [
+            'name'        => trim(($user->fname ?? '').' '.($user->mname ?? '').' '.($user->lname ?? '').' '.($user->suffix ?? '')),
+            'empID'       => $emp->empID ?? null,
+            'email'       => $user->email ?? null,
+            'position'    => $emp->position->pos_desc ?? null,
+            'department'  => $emp->department->dep_name ?? null,
+            'company'     => $emp->company->comp_name ?? null,
+            'status'      => ($user->status ?? 0) == 1 ? 'Active' : 'Inactive',
+            'hired'       => ($emp && $emp->empDateHired) ? date('F d, Y', strtotime($emp->empDateHired)) : null,
+            'years'       => $yearsOfService,
+            'birthdate'   => (isset($info->empBdate) && $info->empBdate) ? date('F d, Y', strtotime($info->empBdate)) : null,
+            'gender'      => isset($info->gender) ? ($info->gender == 1 ? 'Male' : 'Female') : null,
+            'contact'     => trim(($info->empPContact ?? '').(isset($info->empHContact) ? ' / '.$info->empHContact : '')) ?: null,
+            'address'     => $addr ?: null,
+            'sss'         => $emp->empSSS ?? null,
+            'philhealth'  => $emp->empPhilhealth ?? null,
+            'pagibig'     => $emp->empPagibig ?? null,
+            'tin'         => $emp->empTIN ?? null,
+            'umid'        => $emp->empUMID ?? null,
+            'passport'    => $emp->empPassport ?? null,
+            'basic'       => isset($emp->empBasic) ? number_format($emp->empBasic, 2) : null,
+            'allowance'   => isset($emp->empAllowance) ? number_format($emp->empAllowance, 2) : null,
+            'hourly'      => isset($emp->empHrate) ? number_format($emp->empHrate, 2) : null,
+            'payrollType' => $emp->empPayrollType ?? null,
+            'unread'      => $myUnreadNotices,
+        ];
+        // Which self-service destinations this employee can actually reach —
+        // "how do I…" answers only link where the permission allows.
+        $askCan = [
+            'leave'    => auth()->user()?->can('leaveapplication') ?? false,
+            'overtime' => auth()->user()?->can('overtime') ?? false,
+            'ob'       => auth()->user()?->can('obttracker') ?? false,
+            'earlyout' => auth()->user()?->can('earlyout') ?? false,
+        ];
+    @endphp
+
+    <div class="sc">
+        <div class="sc-head">
+            <div class="sc-head-left">
+                <div class="sc-icon"><i class="fa-solid fa-circle-question"></i></div>
+                <h5 class="sc-title">Ask About Your Record</h5>
+            </div>
+            <span class="text-muted" style="font-size:.68rem;">Answers come from your own file — nothing is sent anywhere.</span>
+        </div>
+        <div class="sc-body">
+            <form id="askForm" class="ask-input-row" autocomplete="off">
+                <input type="text" id="askInput" class="ask-input" placeholder="e.g. How many years have I worked? What's my SSS number?">
+                <button type="submit" class="ask-btn"><i class="fa-solid fa-paper-plane me-1"></i> Ask</button>
+            </form>
+            <div class="ask-chips" id="askChips">
+                <span class="ask-chip">How many years have I worked?</span>
+                <span class="ask-chip">What is my SSS number?</span>
+                <span class="ask-chip">When was I hired?</span>
+                <span class="ask-chip">What is my position?</span>
+                <span class="ask-chip">How do I request leave?</span>
+                <span class="ask-chip">How do I get a COE?</span>
+            </div>
+            <div class="ask-log" id="askLog"></div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const F = @json($askFacts);
+            const CAN = @json($askCan);
+            const COE_URL = "{{ route('coe.mine') }}";
+            const NOTICES_URL = "{{ route('notices.mine') }}";
+            const NA = "That isn't on your file — please contact HR to have it updated.";
+
+            // Each intent: keyword groups (ALL words in a group must appear) → answer.
+            // First matching intent wins; order = priority.
+            const has = (t, ...ws) => ws.every(w => t.includes(w));
+            const val = (v, label) => v ? `Your <b>${label}</b> is <b>${v}</b>.` : NA;
+
+            const INTENTS = [
+                { m: t => has(t,'how') && (t.includes('leave')||t.includes('vacation')||t.includes('sick')) && !t.includes('credit'),
+                  a: () => CAN.leave
+                        ? `To file leave, open <a href="/pages/modules/leaveApplication">Leave Application</a> (also in Quick Actions above), pick the type and dates, and submit for approval.`
+                        : `Leave requests are filed through your supervisor/HR. Please coordinate with them to file your leave.` },
+                { m: t => has(t,'how') && (t.includes('overtime')||t.includes(' ot')),
+                  a: () => CAN.overtime
+                        ? `To file overtime, open <a href="/pages/modules/overtime">Overtime</a> in Quick Actions, then submit your OT request for approval.`
+                        : `Overtime is filed via HR/your supervisor. Please coordinate with them.` },
+                { m: t => has(t,'how') && (t.includes('coe')||has(t,'certificate','employment')),
+                  a: () => `Request a Certificate of Employment from <a href="${COE_URL}">My COE</a> in Quick Actions. Once HR approves it, a Download button appears there.` },
+                { m: t => has(t,'how') && t.includes('password'),
+                  a: () => `Use <b>Password Settings</b> under your profile menu (top-right avatar) to change your password.` },
+                { m: t => has(t,'how') && (t.includes('official business')||t.includes(' ob')),
+                  a: () => CAN.ob ? `Log official business in <a href="/pages/modules/obtTracker">OB Tracker</a> (Quick Actions).` : `Official business is logged via HR. Please coordinate with them.` },
+                { m: t => (t.includes('year')||t.includes('tenure')||t.includes('long')) && (t.includes('work')||t.includes('service')||t.includes('been')||t.includes('tenure')),
+                  a: () => F.years != null ? `You have <b>${F.years} year(s)</b> of service${F.hired ? `, since <b>${F.hired}</b>` : ''}.` : NA },
+                { m: t => t.includes('hire') || (t.includes('start') && t.includes('work')) || has(t,'when','join'),
+                  a: () => val(F.hired, 'date hired') },
+                { m: t => t.includes('sss'),        a: () => val(F.sss, 'SSS number') },
+                { m: t => t.includes('philhealth'), a: () => val(F.philhealth, 'PhilHealth number') },
+                { m: t => t.includes('pag') || t.includes('hdmf'), a: () => val(F.pagibig, 'Pag-IBIG number') },
+                { m: t => t.includes('tin') || has(t,'tax','number'), a: () => val(F.tin, 'TIN') },
+                { m: t => t.includes('umid'),       a: () => val(F.umid, 'UMID') },
+                { m: t => t.includes('passport'),   a: () => val(F.passport, 'passport number') },
+                { m: t => t.includes('salary') || t.includes('basic') || t.includes('pay') || t.includes('rate') || t.includes('allowance'),
+                  a: () => {
+                        const parts = [];
+                        if (F.basic)     parts.push(`Basic salary: <b>₱${F.basic}</b>`);
+                        if (F.allowance) parts.push(`Allowance: <b>₱${F.allowance}</b>`);
+                        if (F.hourly)    parts.push(`Hourly rate: <b>₱${F.hourly}</b>`);
+                        return parts.length ? parts.join('<br>') : NA;
+                  } },
+                { m: t => t.includes('position') || t.includes('title') || t.includes('role') || t.includes('job'),
+                  a: () => val(F.position, 'position') },
+                { m: t => t.includes('department') || t.includes('dept'), a: () => val(F.department, 'department') },
+                { m: t => t.includes('company'),    a: () => val(F.company, 'company') },
+                { m: t => t.includes('birth') || t.includes('bday') || t.includes('birthday'), a: () => val(F.birthdate, 'birth date') },
+                { m: t => t.includes('address') || t.includes('live'), a: () => val(F.address, 'address') },
+                { m: t => t.includes('contact') || t.includes('phone') || t.includes('mobile') || t.includes('number') && t.includes('my'),
+                  a: () => val(F.contact, 'contact number') },
+                { m: t => t.includes('email'),      a: () => val(F.email, 'email') },
+                { m: t => (t.includes('employee') && t.includes('id')) || t.includes('emp id') || t.includes('id number'),
+                  a: () => val(F.empID, 'employee ID') },
+                { m: t => t.includes('status') || t.includes('active') || t.includes('regular'),
+                  a: () => `Your employment status is <b>${F.status}</b>.` },
+                { m: t => t.includes('notice') || t.includes('memo'),
+                  a: () => `You have <b>${F.unread}</b> unread notice(s). Open <a href="${NOTICES_URL}">My Notices</a> to read them.` },
+            ];
+
+            const FALLBACK = `I can answer questions about <b>your own record</b> — years of service, date hired, SSS/PhilHealth/Pag-IBIG/TIN, position, department, salary, contact info, status — and how to request leave, overtime, or a COE. Try one of the suggestions above.`;
+
+            const log = document.getElementById('askLog');
+            function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+            function answer(q) {
+                const t = q.toLowerCase().trim();
+                if (!t) return;
+                let ansHtml = FALLBACK;
+                for (const it of INTENTS) { if (it.m(t)) { ansHtml = it.a(); break; } }
+                log.insertAdjacentHTML('afterbegin',
+                    `<div class="ask-q"><span>${esc(q)}</span></div>` +
+                    `<div class="ask-a"><div class="a-ic"><i class="fa-solid fa-circle-info"></i></div><div class="a-body">${ansHtml}</div></div>`);
+            }
+
+            document.getElementById('askForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                const inp = document.getElementById('askInput');
+                answer(inp.value);
+                inp.value = '';
+            });
+            document.getElementById('askChips').addEventListener('click', function (e) {
+                if (e.target.classList.contains('ask-chip')) {
+                    document.getElementById('askInput').value = e.target.textContent;
+                    answer(e.target.textContent);
+                }
+            });
+        })();
+    </script>
 
     {{-- Tabs --}}
     <ul class="nav nav-resume mb-4" id="resumeTab" role="tablist">
