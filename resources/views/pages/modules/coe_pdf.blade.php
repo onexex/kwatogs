@@ -38,6 +38,27 @@
             $logoUri  = 'data:image/' . $logoMime . ';base64,' . base64_encode((string) file_get_contents($logoFull));
         }
     }
+
+    // Fit the signature inside a fixed box without distortion. TCPDF has no
+    // object-fit/max-width, and setting both width+height would stretch the
+    // image — so we read the signature's real pixels and bind only the
+    // dimension that would otherwise overflow: wide signatures cap on width,
+    // tall/square ones cap on height. Either way it stays within the box and
+    // centers over the signatory line.
+    $sigBoxW = 185; // px
+    $sigBoxH = 58;  // px
+    $sigStyle = 'height:' . $sigBoxH . 'px;'; // safe fallback if pixels unreadable
+    if ($coe->signature_data && preg_match('#^data:image/[^;]+;base64,(.+)$#', $coe->signature_data, $sm)) {
+        $sigBin = base64_decode($sm[1], true);
+        if ($sigBin !== false) {
+            $sigDim = @getimagesizefromstring($sigBin);
+            if ($sigDim && $sigDim[0] > 0 && $sigDim[1] > 0) {
+                $sigStyle = ($sigDim[0] / $sigDim[1] > $sigBoxW / $sigBoxH)
+                    ? 'width:' . $sigBoxW . 'px;'
+                    : 'height:' . $sigBoxH . 'px;';
+            }
+        }
+    }
 @endphp
 {{-- Letterhead block: logo (if any) + company name + issuing department + divider rule --}}
 <table cellpadding="0" cellspacing="0" style="width:100%;">
@@ -103,13 +124,22 @@
 <table cellpadding="0" cellspacing="0" style="width:100%;">
     <tr>
         <td style="width:55%;">&nbsp;</td>
-        <td style="width:45%; text-align:center;">
-            @if ($coe->signature_data)
-                <img src="{{ $coe->signature_data }}" style="height:55px;" />
-            @else
-                <br><br>
-            @endif
-            <table cellpadding="0" cellspacing="0" style="width:100%; margin-top:-8px;">
+        <td style="width:45%;">
+            {{-- One vertical table: signature / line / name / title, each on its OWN
+                 full-width row. TCPDF renders <img> inline, so an image placed directly
+                 before the name table flows the name into the narrow leftover space
+                 beside the signature and wraps it ("SHERWI N P. LIBUIT"). Giving the
+                 signature its own row keeps every row at the full column width. --}}
+            <table cellpadding="0" cellspacing="0" style="width:100%;">
+                <tr><td style="text-align:center;">
+                    @if ($coe->signature_data)
+                        {{-- $sigStyle fits the signature into a fixed box (see @php above):
+                             wide signatures cap on width, tall ones on height. --}}
+                        <img src="{{ $coe->signature_data }}" style="{{ $sigStyle }}" />
+                    @else
+                        <br><br>
+                    @endif
+                </td></tr>
                 <tr><td style="border-top:1px solid #334155; font-size:1px; line-height:1px;">&nbsp;</td></tr>
                 <tr><td style="text-align:center; font-weight:bold; font-size:11pt; padding-top:3px;">{{ $coe->signatory_name ? strtoupper($coe->signatory_name) : 'AUTHORIZED SIGNATORY' }}</td></tr>
                 @if ($coe->signatory_title)

@@ -71,6 +71,20 @@ class CoeController extends Controller
         }
 
         $signatory = CoeSignatory::findOrFail($request->signatory_id);
+
+        // A certificate is signed by freezing the signatory's signature image at
+        // approval time. If the signatory has no usable signature on file, block
+        // approval — otherwise we'd mint a blank-signed COE that can't be re-signed
+        // later (the freeze is one-time).
+        $signatureUri = $signatory->signatureDataUri();
+        if (!$signatureUri) {
+            return response()->json([
+                'status' => 202,
+                'msg'    => "The selected signatory ({$signatory->name}) has no signature image on file. "
+                          . "Upload a signature under Settings → COE Signatories, then approve.",
+            ]);
+        }
+
         $includeSalary = (bool) $request->input('include_salary', false);
         $user = auth()->user();
 
@@ -82,7 +96,7 @@ class CoeController extends Controller
             // Freeze the chosen signatory's name/title/signature onto the certificate.
             'signatory_name'   => $signatory->name,
             'signatory_title'  => $signatory->title,
-            'signature_data'   => $signatory->signatureDataUri(),
+            'signature_data'   => $signatureUri,
             'reviewed_by'      => $user ? (trim(($user->fname ?? '') . ' ' . ($user->lname ?? '')) ?: ($user->name ?? 'HR')) : 'HR',
             'reviewed_at'      => Carbon::now(),
             'rejection_reason' => null,
@@ -178,6 +192,18 @@ class CoeController extends Controller
         }
 
         $signatory = CoeSignatory::findOrFail($request->signatory_id);
+
+        // Same guard as approve(): don't issue a certificate whose signatory has
+        // no signature image on file (would produce a blank-signed COE).
+        $signatureUri = $signatory->signatureDataUri();
+        if (!$signatureUri) {
+            return response()->json([
+                'status' => 202,
+                'msg'    => "The selected signatory ({$signatory->name}) has no signature image on file. "
+                          . "Upload a signature under Settings → COE Signatories, then issue.",
+            ]);
+        }
+
         $includeSalary = (bool) $request->input('include_salary', false);
         $user = auth()->user();
 
@@ -191,7 +217,7 @@ class CoeController extends Controller
             'certificate_no'  => $service->nextCertificateNo(),
             'signatory_name'  => $signatory->name,
             'signatory_title' => $signatory->title,
-            'signature_data'  => $signatory->signatureDataUri(),
+            'signature_data'  => $signatureUri,
             'reviewed_by'     => $user ? (trim(($user->fname ?? '') . ' ' . ($user->lname ?? '')) ?: ($user->name ?? 'HR')) : 'HR',
             'reviewed_at'     => Carbon::now(),
         ]);   // create → Auditable
