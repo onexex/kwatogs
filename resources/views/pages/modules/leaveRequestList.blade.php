@@ -137,6 +137,57 @@
         padding: 12px 16px;
     }
     .leavereq-table tbody tr:hover { background: var(--teal-light); }
+
+    /* ── Status pills ────────────────────────────────────────── */
+    .st-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 11px 4px 9px;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: .2px;
+        line-height: 1.4;
+        white-space: nowrap;
+        border: 1px solid transparent;
+    }
+    .st-pill .dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
+    .st-pill.is-hr      { background:#fff7ed; color:#9a3412; border-color:#fed7aa; }
+    .st-pill.is-hr .dot { background:#f97316; box-shadow:0 0 0 3px #f9731622; }
+    .st-pill.is-cfo      { background:#eff6ff; color:#1e40af; border-color:#bfdbfe; }
+    .st-pill.is-cfo .dot { background:#3b82f6; box-shadow:0 0 0 3px #3b82f622; }
+    .st-pill.is-approved      { background:#ecfdf5; color:#065f46; border-color:#a7f3d0; }
+    .st-pill.is-approved .dot { background:#10b981; box-shadow:0 0 0 3px #10b98122; }
+    .st-pill.is-rejected      { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
+    .st-pill.is-rejected .dot { background:#ef4444; box-shadow:0 0 0 3px #ef444422; }
+
+    /* ── Action buttons ──────────────────────────────────────── */
+    .otreq-actions { display:inline-flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; }
+    .act-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: none;
+        border-radius: 8px;
+        padding: 9px 18px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: .3px;
+        line-height: 1.4;
+        color: #fff;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all .2s;
+    }
+    .act-btn:active { transform: translateY(0); }
+    .act-btn:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+    .act-approve       { background: var(--success); box-shadow: 0 4px 14px rgba(16,185,129,.25); }
+    .act-approve:hover { background: #059669; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16,185,129,.35); color:#fff; }
+    .act-confirm       { background: var(--teal); box-shadow: 0 4px 14px rgba(0,128,128,.25); }
+    .act-confirm:hover { background: var(--teal-dark); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,128,128,.35); color:#fff; }
+    .act-reject        { background: var(--danger); box-shadow: 0 4px 14px rgba(239,68,68,.25); }
+    .act-reject:hover  { background: #dc2626; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(239,68,68,.35); color:#fff; }
 </style>
 
 <div class="leavereq-shell">
@@ -166,6 +217,7 @@
                     <thead>
                         <tr>
                             <th class="ps-4">Employee</th>
+                            <th>Department</th>
                             <th>Leave Type</th>
                             <th>Filing Date</th>
                             <th>Date From</th>
