@@ -17,51 +17,52 @@
                 let status = '';
 
                 if (row.status === 'APPROVED') {
-                    status = `<span class="badge bg-success  p-2">APPROVED</span>`;
+                    status = `<span class="st-pill is-cfo"><span class="dot"></span><i class="fa-solid fa-user-check"></i> Verified by Supervisor</span>`;
                 } else if (row.status === 'APPROVEDBYCFO') {
-                    status = `<span class="badge bg-success  p-2">APPROVED BY CFO</span>`;
+                    status = `<span class="st-pill is-approved"><span class="dot"></span><i class="fa-solid fa-circle-check"></i> Approved by CFO</span>`;
                 } else if (row.status === 'DISAPPROVED') {
-                    status = `<span class="badge bg-danger  p-2">DISAPPROVED</span>`;
+                    status = `<span class="st-pill is-rejected"><span class="dot"></span><i class="fa-solid fa-circle-xmark"></i> Disapproved</span>`;
                 } else if (row.status === 'FORAPPROVAL') {
-                    status = `<span class="badge bg-warning text-dark p-2">FOR APPROVAL</span>`;
+                    status = `<span class="st-pill is-hr"><span class="dot"></span><i class="fa-regular fa-clock"></i> Pending HR Approval</span>`;
                 }
 
                 if (window.userPermissions.includes("approveovertime") && row.status === 'FORAPPROVAL') {
                     actionButtons += `
-                            <button class="btn btn-sm btn-success ms-1 btnApproveLeave" data-id="${row.id}" id="btnApproveLeave">
-                                APPROVE
+                            <button class="act-btn act-approve btnApproveLeave" data-id="${row.id}" title="Approve request">
+                                <i class="fa-solid fa-check"></i> Approve
                             </button>`;
                     actionButtons += `
-                            <button class="btn btn-sm btn-danger bg-danger text-white ms-1 btnDisapproveLeave" data-id="${row.id}" id="btnDisapproveLeave">
-                                DISAPPROVE
+                            <button class="act-btn act-reject btnDisapproveLeave" data-id="${row.id}" title="Disapprove request">
+                                <i class="fa-solid fa-xmark"></i> Disapprove
                             </button>`;
                 }
 
                 if (window.userPermissions.includes("approvecfoovertime") && row.status === 'APPROVED') {
                     actionButtons += `
-                            <button class="btn btn-sm btn-primary ms-1 btnConfirmLeave" data-id="${row.id}" id="btnConfirmLeave">
-                                CONFIRM
+                            <button class="act-btn act-confirm btnConfirmLeave" data-id="${row.id}" title="Confirm as CFO">
+                                <i class="fa-solid fa-circle-check"></i> Confirm
                             </button>`;
                     actionButtons += `
-                            <button class="btn btn-sm btn-danger bg-danger text-white ms-1 btnCfoDisapprove" data-id="${row.id}" id="btnCfoDisapprove">
-                                DISAPPROVE
+                            <button class="act-btn act-reject btnCfoDisapprove" data-id="${row.id}" title="Disapprove request">
+                                <i class="fa-solid fa-xmark"></i> Disapprove
                             </button>`;
                 }
                 htmlData += "<tr>"+
                 // "<td>" + date("F j, Y", row.obFD )+ "</td>" +
                 "<td class='text-capitalize'>" + row.employee_name + "</td>" +
+                "<td>" + row.department + "</td>" +
                 "<td>" + row.fillingDate + "</td>" +
                 "<td>" + row.date_from + "</td>" +
                 "<td>" + row.date_to + "</td>" +
                 "<td>" + row.days + "</td>" +
                 "<td>" + row.reason + "</td>" +
                 "<td>" + status + "</td>" +
-                "<td>" + actionButtons + "</td>";
+                "<td class='text-end'>" + (actionButtons ? "<div class='otreq-actions'>" + actionButtons + "</div>" : "<span class='text-muted'>—</span>") + "</td>";
                 
                 htmlData += "</tr>";
             })
             if (!rows.length) {
-                htmlData = '<tr><td colspan="8" class="text-center text-muted py-3">No records found.</td></tr>';
+                htmlData = '<tr><td colspan="9" class="text-center text-muted py-3">No records found.</td></tr>';
             }
             $("#tblOvertimeApp").empty().append(htmlData);
             renderOvertimePagination(lastPage, otCurrentPage);

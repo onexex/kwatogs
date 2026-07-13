@@ -58,6 +58,7 @@ class LeaveRequestContoller extends Controller
                     $leave->employee->user->lname
                 ),
                 'id' => $leave->id,
+                'department' => optional($leave->employee->department)->dep_name ?? '—',
                 'leave_type' => $leave->leaveType->type_leave,
                 'fillingDate' => Carbon::parse($leave->created_at)->format('M d, Y'),
                 'date_from' => Carbon::parse($leave->start_date)->format('M d, Y'),

@@ -51,6 +51,7 @@ class OvertimeRequestController extends Controller
                     $overtime->employee->user->lname
                 ),
                 'id' => $overtime->id,
+                'department' => optional($overtime->employee->department)->dep_name ?? '—',
                 'fillingDate' => Carbon::parse($overtime->created_at)->format('M d, Y h:i A'),
                 'date_from' => Carbon::parse($overtime->date_from . ' ' . $overtime->time_in)->format('M d, Y h:i A'),
                 'date_to' => Carbon::parse($overtime->date_to . ' ' . $overtime->time_out)->format('M d, Y h:i A'),
