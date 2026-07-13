@@ -18,6 +18,8 @@
 
                 if (row.status === 'APPROVED') {
                     status = `<span class="badge bg-success  p-2">APPROVED</span>`;
+                } else if (row.status === 'APPROVEDBYCFO') {
+                    status = `<span class="badge bg-success  p-2">APPROVED BY CFO</span>`;
                 } else if (row.status === 'DISAPPROVED') {
                     status = `<span class="badge bg-danger  p-2">DISAPPROVED</span>`;
                 } else if (row.status === 'FORAPPROVAL') {
@@ -39,6 +41,10 @@
                     actionButtons += `
                             <button class="btn btn-sm btn-primary ms-1 btnConfirmLeave" data-id="${row.id}" id="btnConfirmLeave">
                                 CONFIRM
+                            </button>`;
+                    actionButtons += `
+                            <button class="btn btn-sm btn-danger bg-danger text-white ms-1 btnCfoDisapprove" data-id="${row.id}" id="btnCfoDisapprove">
+                                DISAPPROVE
                             </button>`;
                 }
                 htmlData += "<tr>"+
@@ -173,6 +179,56 @@
                         })
                         .catch(function (error) {
                             console.log(error);
+                        });
+                    }
+                })
+            }
+
+            const btnCfoDisapprove = e.target.closest('.btnCfoDisapprove');
+
+            if (btnCfoDisapprove) {
+                const id = btnCfoDisapprove.dataset.id;
+                Swal.fire({
+                    title: 'DisApprove Overtime Request',
+                    text: 'Are you sure you want to disapprove this overtime request?',
+                    icon: 'question',
+                    input: 'textarea',
+                    inputLabel: 'Disapproval Remarks',
+                    inputPlaceholder: 'Enter remarks for disapproval...',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yes, Disapprove',
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d',
+                    reverseButtons: true,
+                    customClass: { confirmButton: 'rounded-pill', cancelButton: 'rounded-pill' },
+                    inputValidator: (value) => {
+                        if (!value || !value.trim()) {
+                            return 'Please enter remarks for disapproval!';
+                        }
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        axios.post('/overtimerequests/updateStatus', {
+                            leave_id: id,
+                            status: 'DISAPPROVED',
+                            remarks: result.value
+                        })
+                        .then(function (response) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success!',
+                                text: response.data.message,
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                            loadOvertime()
+                        })
+                        .catch(function (error) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: error?.response?.data?.message || 'Something went wrong.'
+                            });
                         });
                     }
                 })

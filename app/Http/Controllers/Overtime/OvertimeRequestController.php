@@ -67,6 +67,6 @@ class OvertimeRequestController extends Controller
     {
         $overtimeStatus = $this->service->updateStatus($request->leave_id, $request->status, $request->remarks);
 
-        return response()->json($overtimeStatus);
+        return response()->json($overtimeStatus, $overtimeStatus['status']);
     }
 }
