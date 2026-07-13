@@ -79,7 +79,7 @@
                 <thead>
                     <tr>
                         <th>Employee</th><th>Purpose</th><th>Copies</th><th>Needed</th>
-                        <th>Status</th><th>Reviewed by</th><th class="text-end pe-4">Actions</th>
+                        <th>Status</th><th>Reviewed by</th><th class="text-end pe-4">Requested Data</th>
                     </tr>
                 </thead>
                 <tbody id="tblCoe">
