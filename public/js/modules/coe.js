@@ -51,7 +51,8 @@ $(document).ready(function () {
                    '<button class="btn-mini warn btn-reject" data-id="' + r.id + '"><i class="fa-solid fa-xmark"></i> Reject</button>';
         }
         if (r.status === 'approved') {
-            return '<a class="btn-mini dl" href="/coe/' + r.id + '/pdf"><i class="fa-solid fa-download"></i> PDF</a>';
+            return '<button class="btn-mini dl btn-preview me-1" data-id="' + r.id + '" data-cert="' + esc(r.certificate_no || '') + '"><i class="fa-solid fa-eye"></i> Preview</button>' +
+                   '<a class="btn-mini dl" href="/coe/' + r.id + '/pdf"><i class="fa-solid fa-download"></i> PDF</a>';
         }
         return '<span class="text-muted" style="font-size:.74rem;">' + esc(r.rejection_reason || '—') + '</span>';
     }
@@ -205,6 +206,20 @@ $(document).ready(function () {
             }
         }).catch(function () { toast('Error issuing COE.', 'error'); })
           .then(function () { $btn.prop('disabled', false); });
+    });
+
+    /* ── Preview (inline PDF in a modal) ── */
+    $(document).on('click', '.btn-preview', function () {
+        var id = $(this).data('id');
+        var cert = $(this).data('cert');
+        $('#coePreviewTitle').text(cert ? 'Preview — ' + cert : 'Certificate Preview');
+        $('#coePreviewDownload').attr('href', '/coe/' + id + '/pdf');
+        $('#coePreviewFrame').attr('src', '/coe/' + id + '/pdf?preview=1');
+        new bootstrap.Modal(document.getElementById('mdlPreview')).show();
+    });
+    // Release the embedded PDF when the modal closes.
+    $(document).on('hidden.bs.modal', '#mdlPreview', function () {
+        $('#coePreviewFrame').attr('src', 'about:blank');
     });
 
     /* ── Filters ── */

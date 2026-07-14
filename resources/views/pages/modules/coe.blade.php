@@ -187,5 +187,25 @@
     </div>
 </div>
 
+{{-- Preview modal — inline PDF render before downloading --}}
+<div class="modal fade" id="mdlPreview" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content" style="border:none;border-radius:14px;">
+            <div class="modal-header" style="border-bottom:1px solid var(--border);">
+                <h6 class="modal-title fw-bold" style="color:var(--slate);" id="coePreviewTitle">Certificate Preview</h6>
+                <div class="ms-auto d-flex gap-2 align-items-center">
+                    <a href="#" id="coePreviewDownload" class="btn" style="background:var(--teal);color:#fff;font-weight:700;border:none;border-radius:8px;padding:6px 14px;font-size:.82rem;">
+                        <i class="fa-solid fa-download me-1"></i> Download
+                    </a>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+            </div>
+            <div class="modal-body p-0">
+                <iframe id="coePreviewFrame" src="about:blank" title="COE Preview" style="width:100%;height:78vh;border:none;background:#525659;"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="{{ asset('js/modules/coe.js') }}" defer></script>
 @endsection
