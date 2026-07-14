@@ -287,8 +287,12 @@ class CoeController extends Controller
 
     /* ─────────────────────────── PDF ─────────────────────────── */
 
-    /** Download the certificate. Allowed for the owning employee or a COE manager. */
-    public function pdf(CoeRequest $coe, CoePdfService $pdf)
+    /**
+     * Render the certificate. Allowed for the owning employee or a COE manager.
+     * Pass ?preview=1 to display the PDF inline in the browser (for the preview
+     * modal); otherwise it downloads as an attachment.
+     */
+    public function pdf(Request $request, CoeRequest $coe, CoePdfService $pdf)
     {
         $user = auth()->user();
         $isOwner   = $user && $user->empID === $coe->employee_id;
@@ -299,10 +303,11 @@ class CoeController extends Controller
 
         $bytes    = $pdf->generate($coe);
         $filename = ($coe->certificate_no ?: 'COE-' . $coe->employee_id) . '.pdf';
+        $inline   = $request->boolean('preview');
 
         return response($bytes, 200, [
             'Content-Type'        => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => ($inline ? 'inline' : 'attachment') . '; filename="' . $filename . '"',
         ]);
     }
 }

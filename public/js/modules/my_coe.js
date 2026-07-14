@@ -17,7 +17,10 @@ $(document).ready(function () {
     function cardHtml(r) {
         var actions = '';
         if (r.status === 'approved') {
-            actions = '<a class="btn btn-teal btn-sm mt-2" href="/coe/' + r.id + '/pdf"><i class="fa-solid fa-download me-1"></i> Download PDF</a>';
+            actions = '<div class="mt-2 d-flex gap-2 flex-wrap">' +
+                '<button class="btn btn-outline-teal btn-sm btn-preview" data-id="' + r.id + '" data-cert="' + esc(r.certificate_no || '') + '"><i class="fa-solid fa-eye me-1"></i> Preview</button>' +
+                '<a class="btn btn-teal btn-sm" href="/coe/' + r.id + '/pdf"><i class="fa-solid fa-download me-1"></i> Download PDF</a>' +
+            '</div>';
         } else if (r.status === 'rejected' && r.rejection_reason) {
             actions = '<div class="cc-meta" style="color:var(--danger);margin-top:6px;"><i class="fa-solid fa-circle-info me-1"></i>Reason: ' + esc(r.rejection_reason) + '</div>';
         }
@@ -47,6 +50,20 @@ $(document).ready(function () {
             $('#myCoeList').html('<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><div>Could not load your requests.</div></div>');
         });
     }
+
+    /* ── Preview (inline PDF in a modal) ── */
+    $(document).on('click', '.btn-preview', function () {
+        var id = $(this).data('id');
+        var cert = $(this).data('cert');
+        $('#coePreviewTitle').text(cert ? 'Preview — ' + cert : 'Certificate Preview');
+        $('#coePreviewDownload').attr('href', '/coe/' + id + '/pdf');
+        $('#coePreviewFrame').attr('src', '/coe/' + id + '/pdf?preview=1');
+        new bootstrap.Modal(document.getElementById('mdlPreview')).show();
+    });
+    // Release the embedded PDF when the modal closes.
+    $(document).on('hidden.bs.modal', '#mdlPreview', function () {
+        $('#coePreviewFrame').attr('src', 'about:blank');
+    });
 
     $(document).on('click', '#btnRequestCoe', function () {
         if ($(this).is(':disabled')) return;
