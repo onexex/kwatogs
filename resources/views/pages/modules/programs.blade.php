@@ -14,55 +14,71 @@
 
     .prog-shell { background:var(--bg); min-height:100vh; padding:24px 28px 60px; margin:-1.5rem -1.5rem 0; }
 
-    /* Top header */
-    .prog-topbar {
-        background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-card);
-        box-shadow:var(--shadow-card); padding:16px 22px; margin-bottom:20px;
-        display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
-    }
+    /* Topbar */
+    .prog-topbar { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-card); box-shadow:var(--shadow-card); padding:16px 22px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; }
     .prog-topbar .page-title { font-size:1.1rem; font-weight:700; color:var(--slate); margin:0; letter-spacing:-.2px; }
     .prog-topbar .page-sub { font-size:.78rem; color:var(--muted); margin:2px 0 0; }
-
-    .btn-teal {
-        background:var(--teal); color:#fff; border:none; border-radius:8px; padding:10px 20px;
-        font-size:.82rem; font-weight:700; letter-spacing:.3px; cursor:pointer;
-        box-shadow:0 4px 14px rgba(0,128,128,.25); transition:all .2s;
-        display:inline-flex; align-items:center; gap:8px;
-    }
+    .btn-teal { background:var(--teal); color:#fff; border:none; border-radius:8px; padding:10px 20px; font-size:.82rem; font-weight:700; letter-spacing:.3px; cursor:pointer; box-shadow:0 4px 14px rgba(0,128,128,.25); transition:all .2s; display:inline-flex; align-items:center; gap:8px; }
     .btn-teal:hover { background:var(--teal-dark); transform:translateY(-1px); color:#fff; }
 
-    /* Stat cards */
-    .prog-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px; }
-    @media (max-width:900px){ .prog-stats{ grid-template-columns:repeat(2,1fr); } }
-    .stat {
-        background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-card);
-        box-shadow:var(--shadow-card); padding:16px 18px; display:flex; align-items:center; gap:14px;
-    }
-    .stat-ic { width:42px; height:42px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; }
-    .stat-ic.t { background:var(--teal-light); color:var(--teal); }
-    .stat-ic.w { background:#fef3c7; color:#b45309; }
-    .stat-ic.g { background:#dcfce7; color:#15803d; }
-    .stat-ic.b { background:#e0e7ff; color:#4338ca; }
-    .stat .num { font-size:1.4rem; font-weight:800; color:var(--slate); line-height:1; }
-    .stat .lbl { font-size:.7rem; font-weight:700; color:var(--slate-light); text-transform:uppercase; letter-spacing:.4px; margin-top:4px; }
+    /* Compact stat chips (topbar) */
+    .prog-stats { display:flex; gap:10px; flex-wrap:wrap; }
+    .prog-stat { display:flex; align-items:center; gap:9px; background:#fafbfc; border:1px solid var(--border); border-radius:10px; padding:8px 14px; }
+    .prog-stat .ic { width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:.8rem; flex-shrink:0; }
+    .prog-stat .ic.t { background:var(--teal-light); color:var(--teal); }
+    .prog-stat .ic.w { background:#fef3c7; color:#b45309; }
+    .prog-stat .ic.g { background:#dcfce7; color:#15803d; }
+    .prog-stat .ic.b { background:#e0e7ff; color:#4338ca; }
+    .prog-stat .n { font-size:1.05rem; font-weight:800; color:var(--slate); line-height:1; }
+    .prog-stat .l { font-size:.64rem; font-weight:700; color:var(--slate-light); text-transform:uppercase; letter-spacing:.4px; margin-top:2px; }
 
-    /* Section card */
-    .sc { background:var(--surface); border-radius:var(--radius-card); border:1px solid var(--border); box-shadow:var(--shadow-card); margin-bottom:20px; overflow:hidden; }
-    .sc-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 22px; border-bottom:1px solid var(--border); background:linear-gradient(to right,#fafcff,#f8fbfa); flex-wrap:wrap; }
-    .sc-head-left { display:flex; align-items:center; gap:10px; }
-    .sc-icon { width:30px; height:30px; border-radius:8px; background:var(--teal-light); color:var(--teal); display:flex; align-items:center; justify-content:center; font-size:.78rem; flex-shrink:0; }
-    .sc-title { font-size:.78rem; font-weight:700; color:var(--slate); text-transform:uppercase; letter-spacing:.5px; margin:0; }
-
-    /* Filter pills */
-    .pill { border:1.5px solid var(--border); background:var(--surface); color:var(--slate-light); border-radius:20px; padding:5px 14px; font-size:.74rem; font-weight:700; cursor:pointer; transition:all .15s; }
+    /* ── Workspace: milestone rail + detail pane ── */
+    .prog-workspace { display:grid; grid-template-columns:340px 1fr; gap:16px; align-items:start; }
+    @media (max-width:900px){ .prog-workspace { grid-template-columns:1fr; } }
+    .prog-pane { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-card); box-shadow:var(--shadow-card); overflow:hidden; }
+    .prog-list-pane { display:flex; flex-direction:column; max-height:calc(100vh - 190px); }
+    .prog-list-head { padding:12px 14px; border-bottom:1px solid var(--border); background:linear-gradient(to right,#fafcff,#f8fbfa); }
+    .prog-pills { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+    .pill { border:1.5px solid var(--border); background:var(--surface); color:var(--slate-light); border-radius:20px; padding:5px 12px; font-size:.72rem; font-weight:700; cursor:pointer; transition:all .15s; }
+    .pill:hover { border-color:var(--teal-mid); }
     .pill.active { background:var(--teal); color:#fff; border-color:var(--teal); }
+    .pill .pc { background:rgba(0,0,0,.12); border-radius:10px; padding:0 7px; margin-left:5px; font-size:.66rem; }
+    .pill.active .pc { background:rgba(255,255,255,.25); }
+    .prog-search { width:100%; border:1.5px solid var(--border); border-radius:8px; padding:8px 12px; font-size:.82rem; color:var(--slate); background:#fafbfc; }
+    .prog-search:focus { border-color:var(--teal); box-shadow:0 0 0 3px rgba(0,128,128,.1); background:#fff; outline:none; }
+    .prog-list { overflow-y:auto; flex:1; }
 
-    /* Tables */
-    .prog-table { width:100%; margin:0; }
-    .prog-table thead th { position:sticky; top:0; z-index:10; background:var(--surface); font-size:.7rem; font-weight:700; color:var(--slate-light); text-transform:uppercase; letter-spacing:.4px; border-bottom:2px solid var(--border); white-space:nowrap; padding:12px 16px; }
-    .prog-table tbody td { font-size:.83rem; color:var(--slate); vertical-align:middle; padding:12px 16px; border-bottom:1px solid var(--border); }
-    .prog-table tbody tr:hover { background:var(--teal-light); }
-    .empty-row td { text-align:center; color:var(--muted); padding:28px 16px; font-size:.85rem; }
+    /* Milestone list rows */
+    .prow { display:flex; gap:11px; padding:13px 15px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .12s; border-left:3px solid transparent; }
+    .prow:hover { background:var(--teal-light); }
+    .prow.active { background:var(--teal-light); border-left-color:var(--teal); }
+    .prow.inactive { opacity:.62; }
+    .prow .dot { width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:.82rem; flex-shrink:0; background:var(--teal-light); color:var(--teal); }
+    .prow .rmain { min-width:0; flex:1; }
+    .prow .rtop { display:flex; align-items:center; gap:6px; }
+    .prow .rname { font-size:.83rem; font-weight:700; color:var(--slate); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0; }
+    .prow .ryrs { font-size:.66rem; color:var(--muted); flex-shrink:0; }
+    .prow .rmeta { font-size:.7rem; color:var(--muted); margin-top:4px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+    .mini-tag { display:inline-flex; align-items:center; gap:3px; border-radius:6px; padding:1px 7px; font-size:.64rem; font-weight:700; }
+    .t-pend { background:#fef3c7; color:#b45309; } .t-grant { background:#dcfce7; color:#15803d; } .t-off { background:#f1f5f9; color:#64748b; }
+    .list-empty { text-align:center; padding:50px 20px; color:var(--muted); }
+    .list-empty i { font-size:2rem; color:var(--teal-light); margin-bottom:10px; display:block; }
+
+    /* Detail pane */
+    .prog-detail-pane { min-height:calc(100vh - 190px); display:flex; flex-direction:column; }
+    .pd-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; min-height:420px; text-align:center; color:var(--muted); padding:30px; }
+    .pd-empty i { font-size:2.8rem; color:var(--teal-light); margin-bottom:14px; }
+    .pd-head { padding:22px 26px 18px; border-bottom:1px solid var(--border); }
+    .pd-badges { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; align-items:center; }
+    .pd-title { font-size:1.25rem; font-weight:800; color:var(--slate); margin:0; line-height:1.3; }
+    .pd-desc { font-size:.82rem; color:var(--slate-light); margin-top:8px; }
+    .pd-actions { margin-left:auto; display:flex; gap:8px; }
+    .pd-benefits { padding:18px 26px; border-bottom:1px solid var(--border); }
+    .pd-sec-h { font-size:.7rem; font-weight:700; color:var(--slate-light); text-transform:uppercase; letter-spacing:.5px; margin:0 0 10px; display:flex; align-items:center; gap:8px; }
+    .pd-sec-h .cnt { background:var(--teal-light); color:var(--teal-dark); border-radius:10px; padding:1px 8px; font-size:.66rem; }
+
+    .pd-body { padding:18px 26px; }
+    .pd-recip-tools { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
 
     /* Chips / badges */
     .chip { display:inline-block; background:var(--teal-light); color:var(--teal-dark); border-radius:14px; padding:3px 10px; font-size:.72rem; font-weight:600; margin:2px 3px 2px 0; }
@@ -72,7 +88,14 @@
     .badge-inactive { background:#f1f5f9; color:#64748b; }
     .tenure-pill { background:#eef2ff; color:#4338ca; border-radius:14px; padding:3px 10px; font-size:.72rem; font-weight:700; }
 
-    .btn-mini { border:1.5px solid var(--border); background:var(--surface); border-radius:8px; padding:5px 11px; font-size:.74rem; font-weight:700; cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:5px; }
+    /* Tables */
+    .prog-table { width:100%; margin:0; }
+    .prog-table thead th { position:sticky; top:0; z-index:10; background:var(--surface); font-size:.7rem; font-weight:700; color:var(--slate-light); text-transform:uppercase; letter-spacing:.4px; border-bottom:2px solid var(--border); white-space:nowrap; padding:11px 14px; }
+    .prog-table tbody td { font-size:.83rem; color:var(--slate); vertical-align:middle; padding:11px 14px; border-bottom:1px solid var(--border); }
+    .prog-table tbody tr:hover { background:var(--teal-light); }
+    .empty-row td { text-align:center; color:var(--muted); padding:24px 16px; font-size:.85rem; }
+
+    .btn-mini { border:1.5px solid var(--border); background:var(--surface); border-radius:8px; padding:5px 11px; font-size:.74rem; font-weight:700; cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:5px; color:var(--slate); }
     .btn-mini.grant { color:var(--success); }
     .btn-mini.grant:hover { background:#f0fdf4; border-color:var(--success); }
     .btn-mini.revoke { color:var(--slate-light); }
@@ -105,107 +128,42 @@
 
 <div class="prog-shell">
 
-    {{-- Header --}}
+    {{-- Topbar --}}
     <div class="prog-topbar">
         <div>
-            <p class="page-title">Programs &mdash; Tenure Milestones</p>
-            <p class="page-sub">Define years-of-service milestones and the benefits employees earn (e.g. 2 years &rarr; bigas). Eligibility is computed from each employee's hire date.</p>
+            <p class="page-title"><i class="fa-solid fa-award me-2" style="color:var(--teal);"></i> Programs &mdash; Tenure Milestones</p>
+            <p class="page-sub">Define years-of-service milestones and the benefits employees earn. Eligibility is computed from each employee's hire date.</p>
         </div>
-        <button class="btn-teal" id="btnAddProgram"><i class="fa-solid fa-plus"></i> Add Milestone</button>
-    </div>
-
-    {{-- Stat cards --}}
-    <div class="prog-stats">
-        <div class="stat"><div class="stat-ic t"><i class="fa-solid fa-award"></i></div><div><div class="num" id="statPrograms">0</div><div class="lbl">Active Milestones</div></div></div>
-        <div class="stat"><div class="stat-ic w"><i class="fa-solid fa-hourglass-half"></i></div><div><div class="num" id="statPending">0</div><div class="lbl">Pending Grants</div></div></div>
-        <div class="stat"><div class="stat-ic g"><i class="fa-solid fa-circle-check"></i></div><div><div class="num" id="statGranted">0</div><div class="lbl">Granted</div></div></div>
-        <div class="stat"><div class="stat-ic b"><i class="fa-solid fa-calendar-day"></i></div><div><div class="num" id="statUpcoming">0</div><div class="lbl">Upcoming (60d)</div></div></div>
-    </div>
-
-    {{-- Reached milestones --}}
-    <div class="sc">
-        <div class="sc-head">
-            <div class="sc-head-left">
-                <div class="sc-icon"><i class="fa-solid fa-trophy"></i></div>
-                <h5 class="sc-title">Milestone Recipients</h5>
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+            <div class="prog-stats">
+                <div class="prog-stat"><div class="ic t"><i class="fa-solid fa-award"></i></div><div><div class="n" id="statPrograms">0</div><div class="l">Active</div></div></div>
+                <div class="prog-stat"><div class="ic w"><i class="fa-solid fa-hourglass-half"></i></div><div><div class="n" id="statPending">0</div><div class="l">Pending</div></div></div>
+                <div class="prog-stat"><div class="ic g"><i class="fa-solid fa-circle-check"></i></div><div><div class="n" id="statGranted">0</div><div class="l">Granted</div></div></div>
+                <div class="prog-stat"><div class="ic b"><i class="fa-solid fa-calendar-day"></i></div><div><div class="n" id="statUpcoming">0</div><div class="l">Upcoming</div></div></div>
             </div>
-            <div class="d-flex gap-2">
-                <button class="pill active" data-filter="all">All</button>
-                <button class="pill" data-filter="pending">Pending</button>
-                <button class="pill" data-filter="granted">Granted</button>
-            </div>
-        </div>
-        <div class="table-responsive" style="max-height:60vh; overflow-y:auto;">
-            <table class="prog-table">
-                <thead>
-                    <tr>
-                        <th>Employee</th>
-                        <th>Department</th>
-                        <th>Tenure</th>
-                        <th>Milestone</th>
-                        <th>Benefits</th>
-                        <th>Status</th>
-                        <th class="text-end pe-4">Action</th>
-                    </tr>
-                </thead>
-                <tbody id="tblReached">
-                    <tr class="empty-row"><td colspan="7">Loading&hellip;</td></tr>
-                </tbody>
-            </table>
+            <button class="btn-teal" id="btnAddProgram"><i class="fa-solid fa-plus"></i> Add Milestone</button>
         </div>
     </div>
 
-    {{-- Upcoming anniversaries --}}
-    <div class="sc">
-        <div class="sc-head">
-            <div class="sc-head-left">
-                <div class="sc-icon"><i class="fa-solid fa-calendar-day"></i></div>
-                <h5 class="sc-title">Upcoming Anniversaries (next 60 days)</h5>
+    {{-- Workspace: milestone rail + detail pane --}}
+    <div class="prog-workspace">
+        <aside class="prog-pane prog-list-pane">
+            <div class="prog-list-head">
+                <div class="prog-pills">
+                    <button class="pill active" data-mfilter="all">All <span class="pc" id="cAll">0</span></button>
+                    <button class="pill" data-mfilter="active">Active <span class="pc" id="cActive">0</span></button>
+                    <button class="pill" data-mfilter="inactive">Inactive <span class="pc" id="cInactive">0</span></button>
+                </div>
+                <input type="text" class="prog-search" id="progSearch" placeholder="Search milestone…">
             </div>
-        </div>
-        <div class="table-responsive" style="max-height:45vh; overflow-y:auto;">
-            <table class="prog-table">
-                <thead>
-                    <tr>
-                        <th>Employee</th>
-                        <th>Department</th>
-                        <th>Current Tenure</th>
-                        <th>Reaches</th>
-                        <th>Benefits Due</th>
-                        <th>When</th>
-                    </tr>
-                </thead>
-                <tbody id="tblUpcoming">
-                    <tr class="empty-row"><td colspan="6">Loading&hellip;</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
+            <div class="prog-list" id="programList">
+                <div class="list-empty"><i class="fa-solid fa-spinner fa-spin"></i>Loading…</div>
+            </div>
+        </aside>
 
-    {{-- Milestone configuration --}}
-    <div class="sc">
-        <div class="sc-head">
-            <div class="sc-head-left">
-                <div class="sc-icon"><i class="fa-solid fa-list-check"></i></div>
-                <h5 class="sc-title">Milestone Programs</h5>
-            </div>
-        </div>
-        <div class="table-responsive" style="max-height:55vh; overflow-y:auto;">
-            <table class="prog-table">
-                <thead>
-                    <tr>
-                        <th>Milestone</th>
-                        <th>Years Required</th>
-                        <th>Benefits</th>
-                        <th>Status</th>
-                        <th class="text-end pe-4">Action</th>
-                    </tr>
-                </thead>
-                <tbody id="tblPrograms">
-                    <tr class="empty-row"><td colspan="5">Loading&hellip;</td></tr>
-                </tbody>
-            </table>
-        </div>
+        <section class="prog-pane prog-detail-pane" id="programDetail">
+            <div class="pd-empty"><i class="fa-solid fa-trophy"></i><div>Select a milestone to view its recipients and upcoming anniversaries.</div></div>
+        </section>
     </div>
 </div>
 
@@ -255,5 +213,5 @@
     </div>
 </div>
 
-<script src="{{ asset('js/modules/programs.js') }}" defer></script>
+<script src="{{ asset('js/modules/programs.js') }}?v={{ @filemtime(public_path('js/modules/programs.js')) ?: time() }}" defer></script>
 @endsection

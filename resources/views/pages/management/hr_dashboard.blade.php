@@ -522,6 +522,16 @@
                     <div class="att"><div class="v" style="color:var(--danger);">{{ $d['ntcStats']['overCount'] }}</div><div class="l">Suspension Recs</div></div>
                     <div class="att"><div class="v" style="color:var(--warning);">{{ $d['ntcStats']['atRiskCount'] }}</div><div class="l">At Risk ({{ $d['ntcStats']['warn'] }}+)</div></div>
                 </div>
+                {{-- Notice to Explain: explanations submitted, awaiting HR decision --}}
+                @if(($d['ntcStats']['nteToReview'] ?? 0) > 0)
+                    <a href="/pages/modules/notices" class="alert-row" style="text-decoration:none;background:#e0e7ff;border-radius:8px;padding:8px 12px;margin-bottom:8px;">
+                        <span class="nm" style="color:#4338ca;"><i class="fa fa-file-pen me-1"></i>NTE explanations to review</span>
+                        <span class="meta" style="color:#4338ca;font-weight:800;">{{ $d['ntcStats']['nteToReview'] }}</span>
+                    </a>
+                @endif
+                @if(($d['ntcStats']['nteAwaiting'] ?? 0) > 0)
+                    <div class="alert-row"><span class="nm text-muted"><i class="fa fa-hourglass-half me-1"></i>NTE awaiting employee response</span><span class="meta text-muted">{{ $d['ntcStats']['nteAwaiting'] }}</span></div>
+                @endif
                 @if(!empty($d['ntcAtRisk']))
                     <div class="lgnd mb-2"><i class="fa fa-user-clock text-warning"></i> <b>Approaching the limit</b></div>
                     @foreach($d['ntcAtRisk'] as $r)

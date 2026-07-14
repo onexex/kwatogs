@@ -106,6 +106,7 @@ class TenureProgramService
                             'name'        => $emp->name,
                             'dept'        => $emp->dept,
                             'tenure'      => $tenure,
+                            'program_id'  => $p->id,
                             'program'     => $p->title,
                             'years'       => (float) $p->years_required,
                             'benefits'    => $benefits,

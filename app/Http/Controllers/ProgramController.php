@@ -82,6 +82,7 @@ class ProgramController extends Controller
 
         return response()->json([
             'status' => 200,
+            'id'     => $program->id,
             'msg'    => $request->filled('id') ? 'Program updated.' : 'Program created.',
         ]);
     }

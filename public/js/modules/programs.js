@@ -1,6 +1,7 @@
-/* Programs Management — tenure-milestone benefits.
- * Drives the milestone config table, the eligibility/grant tables, and the
- * add/edit modal. Uses jQuery + axios + SweetAlert2 (all loaded globally). */
+/* Programs Management — tenure-milestone benefits (workspace layout).
+ * Left rail lists milestone programs; the right pane shows the selected
+ * milestone's benefits, recipients (grant/revoke), and upcoming anniversaries.
+ * Uses jQuery + axios + SweetAlert2 (all loaded globally). */
 $(document).ready(function () {
 
     // Ensure CSRF header is present for axios POSTs (defensive).
@@ -9,12 +10,15 @@ $(document).ready(function () {
         axios.defaults.headers.common['X-CSRF-TOKEN'] = csrf.getAttribute('content');
     }
 
-    var reachedData = [];
-    var currentFilter = 'all';
+    var PROGRAMS = [];      // milestone config (id, title, years_required, description, is_active, benefits[])
+    var REACHED  = [];      // recipients who reached a milestone (program_id, status, …)
+    var UPCOMING = [];      // upcoming anniversaries (program_id, …)
+    var selectedId = null;  // currently open milestone
+    var mFilter = 'all';    // rail filter: all | active | inactive
+    var recipFilter = 'all';// detail recipients filter: all | pending | granted
+    var search = '';
 
-    function esc(s) {
-        return $('<div>').text(s == null ? '' : s).html();
-    }
+    function esc(s) { return $('<div>').text(s == null ? '' : s).html(); }
 
     function toast(title, icon) {
         if (window.Swal) {
@@ -27,114 +31,214 @@ $(document).ready(function () {
         return list.map(function (b) { return '<span class="chip">' + esc(b) + '</span>'; }).join('');
     }
 
-    /* ── Eligibility (reached + upcoming + stats) ─────────────────────── */
-    function loadEligibility() {
-        axios.get('/programs/eligibility').then(function (res) {
-            var d = res.data.data;
-            $('#statPrograms').text(d.stats.programs);
-            $('#statPending').text(d.stats.pendingCount);
-            $('#statGranted').text(d.stats.grantedCount);
-            $('#statUpcoming').text(d.stats.upcomingCount);
+    /* ── Data loading ────────────────────────────────────────────────── */
+    function loadAll() {
+        return Promise.all([
+            axios.get('/programs/list'),
+            axios.get('/programs/eligibility')
+        ]).then(function (res) {
+            PROGRAMS = res[0].data.data || [];
 
-            reachedData = d.reached || [];
-            renderReached();
-            renderUpcoming(d.upcoming || []);
+            var d = res[1].data.data || {};
+            REACHED  = d.reached || [];
+            UPCOMING = d.upcoming || [];
+            var s = d.stats || {};
+            $('#statPrograms').text(s.programs || 0);
+            $('#statPending').text(s.pendingCount || 0);
+            $('#statGranted').text(s.grantedCount || 0);
+            $('#statUpcoming').text(s.upcomingCount || 0);
+
+            // keep the same milestone open across refreshes when possible
+            if (selectedId && !PROGRAMS.some(function (p) { return p.id == selectedId; })) {
+                selectedId = null;
+            }
+            renderRail();
+            renderDetail();
         }).catch(function () {
-            $('#tblReached').html('<tr class="empty-row"><td colspan="7">Failed to load eligibility.</td></tr>');
+            $('#programList').html('<div class="list-empty"><i class="fa-solid fa-triangle-exclamation"></i>Failed to load milestones.</div>');
         });
     }
 
-    function renderReached() {
-        var rows = reachedData.filter(function (r) {
-            return currentFilter === 'all' || r.status === currentFilter;
+    // Recipient counts per program, for the rail meta line.
+    function recipCounts(programId) {
+        var pend = 0, grant = 0;
+        REACHED.forEach(function (r) {
+            if (r.program_id != programId) return;
+            r.status === 'granted' ? grant++ : pend++;
+        });
+        return { pending: pend, granted: grant };
+    }
+
+    /* ── Left rail: milestone list ───────────────────────────────────── */
+    function renderRail() {
+        var active = PROGRAMS.filter(function (p) { return p.is_active; }).length;
+        $('#cAll').text(PROGRAMS.length);
+        $('#cActive').text(active);
+        $('#cInactive').text(PROGRAMS.length - active);
+
+        var rows = PROGRAMS.filter(function (p) {
+            if (mFilter === 'active' && !p.is_active) return false;
+            if (mFilter === 'inactive' && p.is_active) return false;
+            if (search) {
+                var hay = (p.title + ' ' + (p.description || '')).toLowerCase();
+                if (hay.indexOf(search) === -1) return false;
+            }
+            return true;
         });
 
         if (!rows.length) {
-            $('#tblReached').html('<tr class="empty-row"><td colspan="7">No employees in this view yet.</td></tr>');
+            $('#programList').html('<div class="list-empty"><i class="fa-solid fa-award"></i>' +
+                (PROGRAMS.length ? 'No milestones match your filter.' : 'No milestones yet. Click <strong>Add Milestone</strong>.') + '</div>');
             return;
         }
 
-        var html = rows.map(function (r) {
-            var statusBadge = r.status === 'granted'
+        var html = rows.map(function (p) {
+            var c = recipCounts(p.id);
+            var meta = [];
+            meta.push('<span class="mini-tag t-off"><i class="fa-solid fa-gift"></i>' + (p.benefits || []).length + '</span>');
+            if (c.pending) meta.push('<span class="mini-tag t-pend">' + c.pending + ' pending</span>');
+            if (c.granted) meta.push('<span class="mini-tag t-grant">' + c.granted + ' granted</span>');
+            if (!p.is_active) meta.push('<span class="mini-tag t-off">Inactive</span>');
+
+            return '<div class="prow' + (p.id == selectedId ? ' active' : '') + (p.is_active ? '' : ' inactive') + '" data-id="' + p.id + '">' +
+                '<div class="dot"><i class="fa-solid fa-medal"></i></div>' +
+                '<div class="rmain">' +
+                    '<div class="rtop"><span class="rname">' + esc(p.title) + '</span>' +
+                        '<span class="ryrs">' + parseFloat(p.years_required) + ' yrs</span></div>' +
+                    '<div class="rmeta">' + meta.join('') + '</div>' +
+                '</div>' +
+            '</div>';
+        }).join('');
+        $('#programList').html(html);
+    }
+
+    /* ── Right pane: selected milestone detail ───────────────────────── */
+    function renderDetail() {
+        if (!selectedId) {
+            $('#programDetail').html('<div class="pd-empty"><i class="fa-solid fa-trophy"></i><div>Select a milestone to view its recipients and upcoming anniversaries.</div></div>');
+            return;
+        }
+        var p = PROGRAMS.find(function (x) { return x.id == selectedId; });
+        if (!p) { selectedId = null; renderDetail(); return; }
+
+        var benefits = (p.benefits || []).map(function (b) {
+            return '<span class="chip">' + esc(b.name) + (b.description ? ' (' + esc(b.description) + ')' : '') + '</span>';
+        }).join('') || '<span class="text-muted small">No benefits defined.</span>';
+
+        var statusBadge = p.is_active
+            ? '<span class="badge-soft badge-granted"><i class="fa-solid fa-circle-check me-1"></i>Active</span>'
+            : '<span class="badge-soft badge-inactive">Inactive</span>';
+
+        // Recipients for this milestone.
+        var recips = REACHED.filter(function (r) { return r.program_id == p.id; });
+        var pend = recips.filter(function (r) { return r.status !== 'granted'; }).length;
+        var grant = recips.filter(function (r) { return r.status === 'granted'; }).length;
+
+        var shown = recips.filter(function (r) {
+            return recipFilter === 'all' || r.status === recipFilter;
+        });
+
+        var recipRows = shown.length ? shown.map(function (r) {
+            var badge = r.status === 'granted'
                 ? '<span class="badge-soft badge-granted"><i class="fa-solid fa-check me-1"></i>Granted</span>'
                 : '<span class="badge-soft badge-pending"><i class="fa-solid fa-hourglass-half me-1"></i>Pending</span>';
-
             var grantedMeta = r.status === 'granted' && r.granted_at
                 ? '<div class="text-muted" style="font-size:.68rem;margin-top:3px;">' + esc(r.granted_at) + (r.granted_by ? ' &middot; ' + esc(r.granted_by) : '') + '</div>'
                 : '';
-
             var action = r.status === 'granted'
                 ? '<button class="btn-mini revoke btn-revoke" data-program="' + r.program_id + '" data-emp="' + esc(r.employee_id) + '"><i class="fa-solid fa-rotate-left"></i> Revert</button>'
                 : '<button class="btn-mini grant btn-grant" data-program="' + r.program_id + '" data-emp="' + esc(r.employee_id) + '" data-name="' + esc(r.name) + '" data-program-name="' + esc(r.program) + '"><i class="fa-solid fa-gift"></i> Mark Granted</button>';
-
             return '<tr>' +
                 '<td><strong>' + esc(r.name) + '</strong><div class="text-muted" style="font-size:.68rem;">' + esc(r.employee_id) + '</div></td>' +
                 '<td>' + esc(r.dept) + '</td>' +
                 '<td><span class="tenure-pill">' + r.tenure.toFixed(2) + ' yrs</span></td>' +
-                '<td>' + esc(r.program) + '<div class="text-muted" style="font-size:.68rem;">' + r.years + ' yr threshold</div></td>' +
-                '<td>' + benefitChips(r.benefits) + '</td>' +
-                '<td>' + statusBadge + grantedMeta + '</td>' +
-                '<td class="text-end pe-4">' + action + '</td>' +
-                '</tr>';
-        }).join('');
+                '<td>' + badge + grantedMeta + '</td>' +
+                '<td class="text-end">' + action + '</td>' +
+            '</tr>';
+        }).join('') : '<tr class="empty-row"><td colspan="5">No employees in this view yet.</td></tr>';
 
-        $('#tblReached').html(html);
-    }
-
-    function renderUpcoming(list) {
-        if (!list.length) {
-            $('#tblUpcoming').html('<tr class="empty-row"><td colspan="6">No upcoming anniversaries in the next 60 days.</td></tr>');
-            return;
-        }
-        var html = list.map(function (r) {
+        // Upcoming anniversaries for this milestone.
+        var up = UPCOMING.filter(function (r) { return r.program_id == p.id; });
+        var upRows = up.length ? up.map(function (r) {
             return '<tr>' +
                 '<td><strong>' + esc(r.name) + '</strong><div class="text-muted" style="font-size:.68rem;">' + esc(r.employee_id) + '</div></td>' +
                 '<td>' + esc(r.dept) + '</td>' +
                 '<td><span class="tenure-pill">' + r.tenure.toFixed(2) + ' yrs</span></td>' +
-                '<td>' + esc(r.program) + '<div class="text-muted" style="font-size:.68rem;">' + r.years + ' yr threshold</div></td>' +
-                '<td>' + benefitChips(r.benefits) + '</td>' +
-                '<td><span class="badge-soft badge-pending">in ' + r.days + ' day' + (r.days === 1 ? '' : 's') + '</span><div class="text-muted" style="font-size:.68rem;margin-top:3px;">' + esc(r.date) + '</div></td>' +
-                '</tr>';
-        }).join('');
-        $('#tblUpcoming').html(html);
-    }
+                '<td><span class="badge-soft badge-pending">in ' + r.days + ' day' + (r.days === 1 ? '' : 's') + '</span>' +
+                    '<div class="text-muted" style="font-size:.68rem;margin-top:3px;">' + esc(r.date) + '</div></td>' +
+            '</tr>';
+        }).join('') : '<tr class="empty-row"><td colspan="4">No upcoming anniversaries in the next 60 days.</td></tr>';
 
-    /* ── Milestone config table ──────────────────────────────────────── */
-    function loadPrograms() {
-        axios.get('/programs/list').then(function (res) {
-            var list = res.data.data || [];
-            if (!list.length) {
-                $('#tblPrograms').html('<tr class="empty-row"><td colspan="5">No milestones yet. Click <strong>Add Milestone</strong> to create one.</td></tr>');
-                return;
-            }
-            var html = list.map(function (p) {
-                var benefits = (p.benefits || []).map(function (b) {
-                    return '<span class="chip">' + esc(b.name) + (b.description ? ' (' + esc(b.description) + ')' : '') + '</span>';
-                }).join('') || '<span class="text-muted small">&mdash;</span>';
-
-                var status = p.is_active
-                    ? '<span class="badge-soft badge-granted">Active</span>'
-                    : '<span class="badge-soft badge-inactive">Inactive</span>';
-
-                return '<tr>' +
-                    '<td><strong>' + esc(p.title) + '</strong>' + (p.description ? '<div class="text-muted" style="font-size:.68rem;">' + esc(p.description) + '</div>' : '') + '</td>' +
-                    '<td><span class="tenure-pill">' + parseFloat(p.years_required) + ' yrs</span></td>' +
-                    '<td>' + benefits + '</td>' +
-                    '<td>' + status + '</td>' +
-                    '<td class="text-end pe-4">' +
-                        '<button class="btn-mini edit btn-edit me-1" data-id="' + p.id + '"><i class="fa-solid fa-pencil"></i></button>' +
+        var html =
+            '<div class="pd-head">' +
+                '<div class="pd-badges">' +
+                    statusBadge +
+                    '<span class="tenure-pill">' + parseFloat(p.years_required) + ' yr threshold</span>' +
+                    '<div class="pd-actions">' +
+                        '<button class="btn-mini edit btn-edit" data-id="' + p.id + '"><i class="fa-solid fa-pencil"></i> Edit</button>' +
                         '<button class="btn-mini del btn-del" data-id="' + p.id + '" data-title="' + esc(p.title) + '"><i class="fa-solid fa-trash"></i></button>' +
-                    '</td>' +
-                    '</tr>';
-            }).join('');
-            $('#tblPrograms').html(html);
+                    '</div>' +
+                '</div>' +
+                '<h3 class="pd-title">' + esc(p.title) + '</h3>' +
+                (p.description ? '<div class="pd-desc">' + esc(p.description) + '</div>' : '') +
+            '</div>' +
 
-            // cache for edit
-            window.__programs = list;
-        }).catch(function () {
-            $('#tblPrograms').html('<tr class="empty-row"><td colspan="5">Failed to load milestones.</td></tr>');
-        });
+            '<div class="pd-benefits">' +
+                '<div class="pd-sec-h"><i class="fa-solid fa-gift"></i> Benefits <span class="cnt">' + (p.benefits || []).length + '</span></div>' +
+                benefits +
+            '</div>' +
+
+            '<div class="pd-body">' +
+                '<div class="pd-recip-tools">' +
+                    '<div class="pd-sec-h" style="margin:0;"><i class="fa-solid fa-users"></i> Milestone Recipients <span class="cnt">' + recips.length + '</span></div>' +
+                    '<div class="prog-pills">' +
+                        '<button class="pill rpill' + (recipFilter === 'all' ? ' active' : '') + '" data-rfilter="all">All <span class="pc">' + recips.length + '</span></button>' +
+                        '<button class="pill rpill' + (recipFilter === 'pending' ? ' active' : '') + '" data-rfilter="pending">Pending <span class="pc">' + pend + '</span></button>' +
+                        '<button class="pill rpill' + (recipFilter === 'granted' ? ' active' : '') + '" data-rfilter="granted">Granted <span class="pc">' + grant + '</span></button>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="table-responsive" style="border:1px solid var(--border); border-radius:10px; overflow:hidden;">' +
+                    '<table class="prog-table"><thead><tr>' +
+                        '<th>Employee</th><th>Department</th><th>Tenure</th><th>Status</th><th class="text-end">Action</th>' +
+                    '</tr></thead><tbody>' + recipRows + '</tbody></table>' +
+                '</div>' +
+
+                '<div class="pd-sec-h" style="margin:22px 0 10px;"><i class="fa-solid fa-calendar-day"></i> Upcoming Anniversaries <span class="cnt">' + up.length + '</span></div>' +
+                '<div class="table-responsive" style="border:1px solid var(--border); border-radius:10px; overflow:hidden;">' +
+                    '<table class="prog-table"><thead><tr>' +
+                        '<th>Employee</th><th>Department</th><th>Current Tenure</th><th>When</th>' +
+                    '</tr></thead><tbody>' + upRows + '</tbody></table>' +
+                '</div>' +
+            '</div>';
+
+        $('#programDetail').html(html);
     }
+
+    /* ── Rail interactions ───────────────────────────────────────────── */
+    $(document).on('click', '.prow', function () {
+        selectedId = $(this).data('id');
+        recipFilter = 'all';
+        renderRail();
+        renderDetail();
+    });
+
+    $(document).on('click', '.pill[data-mfilter]', function () {
+        $('.pill[data-mfilter]').removeClass('active');
+        $(this).addClass('active');
+        mFilter = $(this).data('mfilter');
+        renderRail();
+    });
+
+    $(document).on('input', '#progSearch', function () {
+        search = $(this).val().trim().toLowerCase();
+        renderRail();
+    });
+
+    // Detail recipient filter (re-rendered each time detail paints).
+    $(document).on('click', '.rpill', function () {
+        recipFilter = $(this).data('rfilter');
+        renderDetail();
+    });
 
     /* ── Modal: benefit rows ─────────────────────────────────────────── */
     function benefitRow(name, desc) {
@@ -175,7 +279,7 @@ $(document).ready(function () {
 
     $(document).on('click', '.btn-edit', function () {
         var id = $(this).data('id');
-        var p = (window.__programs || []).find(function (x) { return x.id == id; });
+        var p = PROGRAMS.find(function (x) { return x.id == id; });
         if (!p) return;
         resetModal();
         $('#mdlTitle').text('Edit Milestone');
@@ -219,8 +323,8 @@ $(document).ready(function () {
             if (res.data.status === 200) {
                 bootstrap.Modal.getInstance(document.getElementById('mdlProgram')).hide();
                 toast(res.data.msg, 'success');
-                loadPrograms();
-                loadEligibility();
+                if (res.data.id) selectedId = res.data.id;
+                loadAll();
             } else {
                 toast(res.data.msg || 'Error saving.', 'error');
             }
@@ -244,8 +348,8 @@ $(document).ready(function () {
             if (!r.isConfirmed) return;
             axios.post('/programs/delete', { id: id }).then(function (res) {
                 toast(res.data.msg, res.data.status === 200 ? 'success' : 'error');
-                loadPrograms();
-                loadEligibility();
+                if (id == selectedId) selectedId = null;
+                loadAll();
             });
         });
     });
@@ -266,7 +370,7 @@ $(document).ready(function () {
             if (!r.isConfirmed) return;
             axios.post('/programs/grant', { program_id: program, employee_id: emp, note: r.value || '' }).then(function (res) {
                 toast(res.data.msg, 'success');
-                loadEligibility();
+                loadAll();
             });
         });
     });
@@ -283,20 +387,11 @@ $(document).ready(function () {
             if (!r.isConfirmed) return;
             axios.post('/programs/revoke', { program_id: program, employee_id: emp }).then(function (res) {
                 toast(res.data.msg, 'success');
-                loadEligibility();
+                loadAll();
             });
         });
     });
 
-    /* ── Filter pills ────────────────────────────────────────────────── */
-    $(document).on('click', '.pill', function () {
-        $('.pill').removeClass('active');
-        $(this).addClass('active');
-        currentFilter = $(this).data('filter');
-        renderReached();
-    });
-
     // Initial load
-    loadPrograms();
-    loadEligibility();
+    loadAll();
 });

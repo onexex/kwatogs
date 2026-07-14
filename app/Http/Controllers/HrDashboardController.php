@@ -627,6 +627,7 @@ class HrDashboardController extends Controller
         $over        = collect($nd['over'] ?? [])->count();
         $atRisk      = collect($nd['atRisk'] ?? [])->count();
         $pendingRecs = (int) ($nd['stats']['pendingRecs'] ?? 0);
+        $nteToReview = (int) ($nd['stats']['nteToReview'] ?? 0);
 
         $coePending = (int) ($coe->dashboard()['stats']['pending'] ?? 0);
 
@@ -641,6 +642,7 @@ class HrDashboardController extends Controller
             ['urgent', 'noticemanagement', $over, 'Over suspension threshold', 'Disciplinary notices', '/pages/modules/notices', 'fa-triangle-exclamation', 'danger'],
             ['urgent', 'noticemanagement', $atRisk, 'At-risk employees', 'Approaching threshold', '/pages/modules/notices', 'fa-circle-exclamation', 'danger'],
             ['urgent', 'noticemanagement', $pendingRecs, 'Suspension recommendations', 'Pending your decision', '/pages/modules/notices', 'fa-gavel', 'danger'],
+            ['urgent', 'noticemanagement', $nteToReview, 'NTE explanations to review', 'Notice to Explain responses', '/pages/modules/notices', 'fa-file-pen', 'danger'],
             ['approvals', 'pendingleaverequests', $leave, 'Leave requests to approve', 'Leave Requests', '/pages/modules/leaverequests', 'fa-calendar-xmark', 'info'],
             ['approvals', 'pendingovertimerequests', $ot, 'Overtime requests', 'Overtime', '/pages/modules/overtimerequests', 'fa-clock', 'info'],
             ['approvals', 'approveschedulechange', $sched, 'Schedule change requests', 'Schedule Requests', '/pages/modules/schedulerequests', 'fa-calendar-day', 'info'],

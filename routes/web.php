@@ -65,6 +65,7 @@ use App\Http\Controllers\Profile\ProfileController;
 use App\Http\Controllers\registerCtrl;
 use App\Http\Controllers\relationshipCtrl;
 use App\Http\Controllers\reportAttendanceCtrl;
+use App\Http\Controllers\HandbookController;
 use App\Http\Controllers\SummaryLogsController;
 use App\Http\Controllers\Reports\EmployeeInformationReportController;
 use App\Http\Controllers\Reports\OvertimeReportController;
@@ -644,9 +645,37 @@ Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip
     Route::post('/notices/delete', [NoticeController::class, 'delete'])->middleware('can:noticemanagement');
     Route::get('/notices/recommendations', [NoticeController::class, 'recommendations'])->middleware('can:noticemanagement');
     Route::post('/notices/recommendation/resolve', [NoticeController::class, 'resolveRecommendation'])->middleware('can:noticemanagement');
+    // Notice to Explain — HR records a decision on the employee's explanation.
+    Route::post('/notices/{notice}/review', [NoticeController::class, 'reviewResponse'])->middleware('can:noticemanagement');
     // Employee-facing: every authenticated employee can see their own notices.
     Route::get('pages/modules/mynotices', [NoticeController::class, 'mine'])->name('notices.mine');
     Route::get('/mynotices/list', [NoticeController::class, 'myList'])->name('notices.mine.list');
+    // Signed-memo preview stream (inline, no download). Owner OR HR manager only
+    // — authorization is enforced inside streamMemo(), not by route middleware.
+    Route::get('/notices/{notice}/memo', [NoticeController::class, 'streamMemo'])->name('notices.memo');
+    // Explicit acknowledgement of receipt (disciplinary notices) — owner-only, enforced in acknowledge().
+    Route::post('/mynotices/{notice}/acknowledge', [NoticeController::class, 'acknowledge'])->name('notices.acknowledge');
+    // Notice to Explain — employee submits their explanation; both sides can view the evidence file.
+    Route::post('/mynotices/{notice}/respond', [NoticeController::class, 'respond'])->name('notices.respond');
+    Route::get('/notices/{notice}/response-doc', [NoticeController::class, 'streamResponseDoc'])->name('notices.responsedoc');
+
+    // Employee Handbook — HR admin side (gated) + employee "My Handbook" (auth-only)
+    Route::get('pages/modules/handbook', [HandbookController::class, 'index'])->name('handbook.index')->middleware('can:handbookmanagement');
+    Route::get('/handbook/list', [HandbookController::class, 'list'])->middleware('can:handbookmanagement');
+    Route::post('/handbook/save', [HandbookController::class, 'save'])->middleware('can:handbookmanagement');
+    // Single-PDF handbook (master doc): upload/replace + remove.
+    Route::post('/handbook/master/save', [HandbookController::class, 'saveMaster'])->middleware('can:handbookmanagement');
+    Route::post('/handbook/master/delete', [HandbookController::class, 'deleteMaster'])->middleware('can:handbookmanagement');
+    Route::post('/handbook/reorder', [HandbookController::class, 'reorder'])->middleware('can:handbookmanagement');
+    Route::post('/handbook/delete', [HandbookController::class, 'delete'])->middleware('can:handbookmanagement');
+    Route::get('/handbook/acknowledgements', [HandbookController::class, 'acknowledgements'])->middleware('can:handbookmanagement');
+    // Employee-facing: every authenticated employee can read the handbook.
+    Route::get('pages/modules/myhandbook', [HandbookController::class, 'mine'])->name('handbook.mine');
+    Route::get('/myhandbook/list', [HandbookController::class, 'myList'])->name('handbook.mine.list');
+    Route::post('/myhandbook/{section}/acknowledge', [HandbookController::class, 'acknowledge'])->name('handbook.acknowledge');
+    // Supporting-document stream (inline, no download). Any authenticated user;
+    // authorization is enforced inside streamAttachment(), not by route middleware.
+    Route::get('/handbook/{section}/doc', [HandbookController::class, 'streamAttachment'])->name('handbook.doc');
 
     // Summary Logs Management — back-door editor over computed attendance summaries
     // (Duration/Deductions/Late/Undertime/Night Diff/Passout/Over Break); edits are audit-logged.

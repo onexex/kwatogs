@@ -11,45 +11,43 @@
         --shadow-card:0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
     }
     .ntc-shell { background:var(--bg); min-height:100vh; padding:24px 28px 60px; margin:-1.5rem -1.5rem 0; }
-    .ntc-topbar { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-card); box-shadow:var(--shadow-card); padding:16px 22px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; }
+    .ntc-topbar { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-card); box-shadow:var(--shadow-card); padding:16px 22px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; }
     .ntc-topbar .page-title { font-size:1.1rem; font-weight:700; color:var(--slate); margin:0; }
     .ntc-topbar .page-sub { font-size:.78rem; color:var(--muted); margin:2px 0 0; }
     .btn-teal { background:var(--teal); color:#fff; border:none; border-radius:8px; padding:10px 20px; font-size:.82rem; font-weight:700; cursor:pointer; box-shadow:0 4px 14px rgba(0,128,128,.25); transition:all .2s; display:inline-flex; align-items:center; gap:8px; }
     .btn-teal:hover { background:var(--teal-dark); transform:translateY(-1px); color:#fff; }
 
+    /* Compact stat chips (topbar) */
+    .ntc-stats { display:flex; gap:10px; flex-wrap:wrap; }
+    .ntc-stat { display:flex; align-items:center; gap:9px; background:#fafbfc; border:1px solid var(--border); border-radius:10px; padding:8px 14px; }
+    .ntc-stat .ic { width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:.8rem; flex-shrink:0; }
+    .ntc-stat .ic.t{ background:var(--teal-light); color:var(--teal);} .ntc-stat .ic.w{ background:#fef3c7; color:#b45309;} .ntc-stat .ic.d{ background:#fee2e2; color:#b91c1c;} .ntc-stat .ic.b{ background:#e0e7ff; color:#4338ca;}
+    .ntc-stat .n { font-size:1.05rem; font-weight:800; color:var(--slate); line-height:1; }
+    .ntc-stat .l { font-size:.64rem; font-weight:700; color:var(--slate-light); text-transform:uppercase; letter-spacing:.4px; margin-top:2px; }
+
     /* Alert flash */
-    .flash-alert { background:linear-gradient(135deg,#fee2e2,#fff1f2); border:1px solid #fca5a5; border-left:5px solid var(--danger); border-radius:var(--radius-card); padding:16px 20px; margin-bottom:20px; box-shadow:var(--shadow-card); }
+    .flash-alert { background:linear-gradient(135deg,#fee2e2,#fff1f2); border:1px solid #fca5a5; border-left:5px solid var(--danger); border-radius:var(--radius-card); padding:16px 20px; margin-bottom:16px; box-shadow:var(--shadow-card); }
     .flash-alert .fa-title { color:#b91c1c; font-weight:800; font-size:.9rem; display:flex; align-items:center; gap:9px; }
     .flash-alert .names { margin-top:8px; display:flex; flex-wrap:wrap; gap:8px; }
     .flash-name { background:#fff; border:1px solid #fca5a5; color:#b91c1c; border-radius:20px; padding:5px 12px; font-size:.78rem; font-weight:700; }
     .flash-name .n { background:#b91c1c; color:#fff; border-radius:10px; padding:1px 7px; margin-left:6px; font-size:.68rem; }
 
-    .ntc-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px; }
-    @media (max-width:900px){ .ntc-stats{ grid-template-columns:repeat(2,1fr); } }
-    .stat { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-card); box-shadow:var(--shadow-card); padding:16px 18px; display:flex; align-items:center; gap:14px; }
-    .stat-ic { width:42px; height:42px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1rem; flex-shrink:0; }
-    .stat-ic.t{ background:var(--teal-light); color:var(--teal);} .stat-ic.w{ background:#fef3c7; color:#b45309;} .stat-ic.d{ background:#fee2e2; color:#b91c1c;} .stat-ic.b{ background:#e0e7ff; color:#4338ca;}
-    .stat .num { font-size:1.4rem; font-weight:800; color:var(--slate); line-height:1; }
-    .stat .lbl { font-size:.7rem; font-weight:700; color:var(--slate-light); text-transform:uppercase; letter-spacing:.4px; margin-top:4px; }
-
-    .sc { background:var(--surface); border-radius:var(--radius-card); border:1px solid var(--border); box-shadow:var(--shadow-card); margin-bottom:20px; overflow:hidden; }
-    .sc-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 22px; border-bottom:1px solid var(--border); background:linear-gradient(to right,#fafcff,#f8fbfa); flex-wrap:wrap; }
+    .sc { background:var(--surface); border-radius:var(--radius-card); border:1px solid var(--border); box-shadow:var(--shadow-card); margin-bottom:16px; overflow:hidden; }
+    .sc-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 20px; border-bottom:1px solid var(--border); background:linear-gradient(to right,#fafcff,#f8fbfa); flex-wrap:wrap; cursor:pointer; }
     .sc-head-left { display:flex; align-items:center; gap:10px; }
-    .sc-icon { width:30px; height:30px; border-radius:8px; background:var(--teal-light); color:var(--teal); display:flex; align-items:center; justify-content:center; font-size:.78rem; flex-shrink:0; }
+    .sc-icon { width:30px; height:30px; border-radius:8px; background:#fee2e2; color:#b91c1c; display:flex; align-items:center; justify-content:center; font-size:.78rem; flex-shrink:0; }
     .sc-title { font-size:.78rem; font-weight:700; color:var(--slate); text-transform:uppercase; letter-spacing:.5px; margin:0; }
+    .sc-title .cnt { background:#fee2e2; color:#b91c1c; border-radius:10px; padding:1px 8px; margin-left:6px; font-size:.68rem; }
+    .sc-caret { color:var(--muted); transition:transform .2s; }
+    .sc.collapsed .sc-caret { transform:rotate(-90deg); }
+    .sc.collapsed #recList { display:none; }
 
-    .ntc-table { width:100%; margin:0; }
-    .ntc-table thead th { position:sticky; top:0; z-index:10; background:var(--surface); font-size:.7rem; font-weight:700; color:var(--slate-light); text-transform:uppercase; letter-spacing:.4px; border-bottom:2px solid var(--border); white-space:nowrap; padding:12px 16px; }
-    .ntc-table tbody td { font-size:.83rem; color:var(--slate); vertical-align:middle; padding:12px 16px; border-bottom:1px solid var(--border); }
-    .ntc-table tbody tr:hover { background:var(--teal-light); }
-    .empty-row td { text-align:center; color:var(--muted); padding:28px 16px; font-size:.85rem; }
-
-    .badge-soft { display:inline-block; border-radius:20px; padding:4px 12px; font-size:.72rem; font-weight:700; }
+    .badge-soft { display:inline-block; border-radius:20px; padding:4px 12px; font-size:.72rem; font-weight:700; white-space:nowrap; }
     .b-memo { background:#e0e7ff; color:#4338ca; } .b-disc { background:#fee2e2; color:#b91c1c; }
     .b-active { background:#dcfce7; color:#15803d; } .b-void { background:#f1f5f9; color:#64748b; }
     .b-cat { background:#fef3c7; color:#b45309; }
 
-    .btn-mini { border:1.5px solid var(--border); background:var(--surface); border-radius:8px; padding:5px 11px; font-size:.74rem; font-weight:700; cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:5px; }
+    .btn-mini { border:1.5px solid var(--border); background:var(--surface); border-radius:8px; padding:5px 11px; font-size:.74rem; font-weight:700; cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:5px; color:var(--slate); }
     .btn-mini.edit:hover { background:var(--teal-light); border-color:var(--teal-mid); }
     .btn-mini.del { color:var(--danger); } .btn-mini.del:hover { background:#fff5f5; border-color:var(--danger); }
     .btn-mini.ok { color:var(--success); } .btn-mini.ok:hover { background:#f0fdf4; border-color:var(--success); }
@@ -60,6 +58,87 @@
     .rec-row .who { font-weight:700; color:var(--slate); }
     .rec-row .why { font-size:.76rem; color:var(--slate-light); margin-top:3px; max-width:560px; }
 
+    /* ── Workspace: list rail + reading pane ── */
+    .ntc-workspace { display:grid; grid-template-columns:360px 1fr; gap:16px; align-items:start; }
+    @media (max-width:900px){ .ntc-workspace { grid-template-columns:1fr; } }
+    .ntc-pane { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-card); box-shadow:var(--shadow-card); overflow:hidden; }
+    .ntc-list-pane { display:flex; flex-direction:column; max-height:calc(100vh - 210px); }
+    .ntc-list-head { padding:12px 14px; border-bottom:1px solid var(--border); background:linear-gradient(to right,#fafcff,#f8fbfa); }
+    .ntc-pills { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+    .pill { border:1.5px solid var(--border); background:var(--surface); color:var(--slate-light); border-radius:20px; padding:5px 12px; font-size:.72rem; font-weight:700; cursor:pointer; transition:all .15s; }
+    .pill:hover { border-color:var(--teal-mid); }
+    .pill.active { background:var(--teal); color:#fff; border-color:var(--teal); }
+    .pill .pc { background:rgba(0,0,0,.12); border-radius:10px; padding:0 7px; margin-left:5px; font-size:.66rem; }
+    .pill.active .pc { background:rgba(255,255,255,.25); }
+    .list-tools { display:flex; gap:8px; }
+    .ntc-search { flex:1; border:1.5px solid var(--border); border-radius:8px; padding:8px 12px; font-size:.82rem; color:var(--slate); background:#fafbfc; }
+    .ntc-search:focus { border-color:var(--teal); box-shadow:0 0 0 3px rgba(0,128,128,.1); background:#fff; outline:none; }
+    .ntc-statusfilter { border:1.5px solid var(--border); border-radius:8px; padding:8px 10px; font-size:.78rem; color:var(--slate); background:#fafbfc; flex:0 0 auto; }
+    .ntc-statusfilter:focus { border-color:var(--teal); outline:none; }
+    .ntc-list { overflow-y:auto; flex:1; }
+
+    /* List rows */
+    .nrow { display:flex; gap:11px; padding:13px 15px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .12s; border-left:3px solid transparent; }
+    .nrow:hover { background:var(--teal-light); }
+    .nrow.active { background:var(--teal-light); border-left-color:var(--teal); }
+    .nrow.voided { opacity:.62; }
+    .nrow .dot { width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:.82rem; flex-shrink:0; }
+    .nrow.memo .dot { background:var(--teal-light); color:var(--teal); } .nrow.disc .dot { background:#fee2e2; color:#b91c1c; }
+    .nrow .rmain { min-width:0; flex:1; }
+    .nrow .rtop { display:flex; align-items:center; gap:6px; }
+    .nrow .rname { font-size:.82rem; font-weight:700; color:var(--slate); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0; }
+    .nrow .rdate { font-size:.66rem; color:var(--muted); flex-shrink:0; }
+    .nrow .rtitle { font-size:.76rem; color:var(--slate-light); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .nrow .rmeta { font-size:.66rem; color:var(--muted); margin-top:5px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+    .nrow .clip { color:var(--teal); }
+    .mini-tag { display:inline-flex; align-items:center; gap:3px; border-radius:6px; padding:1px 6px; font-size:.62rem; font-weight:700; }
+    .t-seen { background:#f1f5f9; color:#64748b; } .t-nte { background:#e0e7ff; color:#4338ca; } .t-nte-od { background:#fee2e2; color:#b91c1c; } .t-nte-rev { background:#dcfce7; color:#15803d; }
+    .list-empty { text-align:center; padding:50px 20px; color:var(--muted); }
+    .list-empty i { font-size:2rem; color:var(--teal-light); margin-bottom:10px; display:block; }
+
+    /* Reading pane */
+    .ntc-detail-pane { min-height:calc(100vh - 210px); display:flex; flex-direction:column; }
+    .nd-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; min-height:420px; text-align:center; color:var(--muted); padding:30px; }
+    .nd-empty i { font-size:2.8rem; color:var(--teal-light); margin-bottom:14px; }
+    .nd-head { padding:22px 26px 16px; border-bottom:1px solid var(--border); }
+    .nd-badges { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; align-items:center; }
+    .nd-title { font-size:1.25rem; font-weight:800; color:var(--slate); margin:0; line-height:1.3; }
+    .nd-meta { font-size:.76rem; color:var(--slate-light); margin-top:12px; display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:8px 20px; }
+    .nd-meta .mi { display:flex; align-items:center; gap:8px; }
+    .nd-meta .mi i { color:var(--muted); width:14px; text-align:center; }
+    .nd-meta .mi .mk { color:var(--muted); }
+    .nd-body { padding:22px 26px; font-size:.9rem; color:var(--slate); white-space:pre-wrap; line-height:1.65; flex:1; }
+    .nd-section-h { font-size:.7rem; font-weight:700; color:var(--slate-light); text-transform:uppercase; letter-spacing:.4px; margin:0 26px 8px; }
+    .nd-attach { margin:0 26px 22px; padding:16px 18px; background:var(--teal-light); border:1px solid var(--teal-mid); border-radius:12px; display:flex; align-items:center; gap:14px; }
+    .nd-attach .ai { width:40px; height:40px; border-radius:10px; background:#fff; color:var(--teal); display:flex; align-items:center; justify-content:center; font-size:1.05rem; flex-shrink:0; }
+    .nd-attach .an { font-size:.82rem; font-weight:700; color:var(--teal-dark); }
+    .nd-attach .as { font-size:.7rem; color:var(--slate-light); margin-top:2px; }
+    .nd-attach a { display:inline-flex; align-items:center; gap:8px; background:var(--teal); color:#fff; border-radius:8px; padding:9px 18px; font-size:.8rem; font-weight:700; text-decoration:none; margin-left:auto; white-space:nowrap; }
+    .nd-attach a:hover { background:var(--teal-dark); }
+
+    /* NTE block inside the reading pane */
+    .nte-box { margin:0 26px 22px; border:1px solid #fed7aa; background:#fff7ed; border-radius:12px; padding:16px 18px; }
+    .nte-box.od { border-color:#fca5a5; background:#fef2f2; }
+    .nte-box.submitted { border-color:var(--border); background:#f8fafc; }
+    .nte-h { font-size:.82rem; font-weight:800; color:#b45309; display:flex; align-items:center; gap:8px; }
+    .nte-box.od .nte-h { color:#b91c1c; } .nte-box.submitted .nte-h { color:var(--slate); }
+    .nte-sub { font-size:.74rem; color:var(--slate-light); margin:4px 0 0; }
+    .nte-resp { font-size:.86rem; color:var(--slate); white-space:pre-wrap; line-height:1.6; margin-top:10px; padding:12px 14px; background:#fff; border:1px solid var(--border); border-radius:8px; }
+    .nte-doc { display:inline-flex; align-items:center; gap:6px; margin-top:10px; font-size:.78rem; font-weight:700; color:var(--teal-dark); text-decoration:none; }
+    .nte-decision { margin-top:12px; padding:9px 14px; border-radius:8px; font-size:.8rem; font-weight:700; display:flex; align-items:center; gap:8px; }
+    .nte-decision.ok { background:#dcfce7; color:#15803d; } .nte-decision.warn { background:#fee2e2; color:#b91c1c; }
+
+    /* Action bar (sticky footer of the reading pane) */
+    .nd-actions { margin-top:auto; padding:16px 26px; border-top:1px solid var(--border); background:linear-gradient(to right,#fafcff,#f8fbfa); display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .nd-actions .lock { display:inline-flex; align-items:center; gap:7px; font-size:.78rem; font-weight:700; color:var(--slate-light); }
+    .nd-actions .spacer { flex:1; }
+    .btn-act { border:none; border-radius:8px; padding:9px 18px; font-size:.8rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:7px; transition:all .15s; }
+    .btn-act.primary { background:var(--teal); color:#fff; } .btn-act.primary:hover { background:var(--teal-dark); }
+    .btn-act.ghost { background:var(--surface); border:1.5px solid var(--border); color:var(--slate); } .btn-act.ghost:hover { border-color:var(--teal-mid); background:var(--teal-light); }
+    .btn-act.danger { background:var(--surface); border:1.5px solid #fecaca; color:var(--danger); } .btn-act.danger:hover { background:#fff5f5; border-color:var(--danger); }
+    .btn-act.review { background:#4338ca; color:#fff; } .btn-act.review:hover { background:#3730a3; }
+
+    /* Shared form styles (used by the modals) */
     .field-label { font-size:.7rem; font-weight:700; color:var(--slate-light); text-transform:uppercase; letter-spacing:.4px; margin-bottom:5px; display:block; }
     .field-label .req { color:var(--danger); margin-left:2px; }
     .form-control, .form-select { border:1.5px solid var(--border); border-radius:var(--radius-input); font-size:.875rem; color:var(--slate); background:#fafbfc; padding:.55rem .85rem; }
@@ -93,24 +172,24 @@
     .recip-hint { font-size:.72rem; color:var(--muted); margin-top:4px; display:block; }
     .btn-submit { background:linear-gradient(135deg,#008080,#006666); color:#fff; border:none; border-radius:10px; padding:10px 26px; font-size:.82rem; font-weight:700; letter-spacing:.4px; text-transform:uppercase; cursor:pointer; }
     .btn-submit:hover { color:#fff; transform:translateY(-1px); }
-    /* Fill the row next to the title and right-align the controls. */
-    .filters { display:flex; flex:1 1 auto; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-end; }
-    /* Bootstrap defaults .form-select/.form-control to width:100%, which makes
-       each control claim its own row inside the flex bar and balloons the header
-       height. Pin them to fixed widths so all three stay on one line. */
-    .filters .form-select, .filters .form-control { padding:6px 10px; font-size:.8rem; width:auto; flex:0 0 auto; }
-    .filters .form-select { min-width:120px; }
-    .filters .form-control { width:220px; max-width:100%; }
 </style>
 
 <div class="ntc-shell">
 
     <div class="ntc-topbar">
         <div>
-            <p class="page-title">Notices &amp; Memos</p>
-            <p class="page-sub">Issue memos and disciplinary notices to employees. {{ $d['stats']['suspend'] }} active disciplinary notices auto-recommends suspension for HR review.</p>
+            <p class="page-title"><i class="fa-solid fa-file-circle-exclamation me-2" style="color:var(--teal);"></i> Notices &amp; Memos</p>
+            <p class="page-sub">Issue memos and disciplinary notices. {{ $d['stats']['suspend'] }} active disciplinary notices auto-recommends suspension for HR review.</p>
         </div>
-        <button class="btn-teal" id="btnIssueNotice"><i class="fa-solid fa-plus"></i> Issue Notice</button>
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+            <div class="ntc-stats">
+                <div class="ntc-stat"><div class="ic t"><i class="fa-solid fa-file-lines"></i></div><div><div class="n">{{ $d['stats']['issuedThisMonth'] }}</div><div class="l">This Month</div></div></div>
+                <div class="ntc-stat"><div class="ic d"><i class="fa-solid fa-gavel"></i></div><div><div class="n">{{ $d['stats']['activeDisc'] }}</div><div class="l">Active Disc.</div></div></div>
+                <div class="ntc-stat"><div class="ic w"><i class="fa-solid fa-user-clock"></i></div><div><div class="n">{{ $d['stats']['atRiskCount'] }}</div><div class="l">At Risk ({{ $d['stats']['warn'] }}+)</div></div></div>
+                <div class="ntc-stat"><div class="ic b"><i class="fa-solid fa-ban"></i></div><div><div class="n">{{ $d['stats']['pendingRecs'] }}</div><div class="l">Pending Recs</div></div></div>
+            </div>
+            <button class="btn-teal" id="btnIssueNotice"><i class="fa-solid fa-plus"></i> Issue Notice</button>
+        </div>
     </div>
 
     {{-- Alert flash: employees over the suspension threshold --}}
@@ -125,44 +204,39 @@
         </div>
     @endif
 
-    {{-- Stat cards --}}
-    <div class="ntc-stats">
-        <div class="stat"><div class="stat-ic t"><i class="fa-solid fa-file-lines"></i></div><div><div class="num">{{ $d['stats']['issuedThisMonth'] }}</div><div class="lbl">Issued This Month</div></div></div>
-        <div class="stat"><div class="stat-ic d"><i class="fa-solid fa-gavel"></i></div><div><div class="num">{{ $d['stats']['activeDisc'] }}</div><div class="lbl">Active Disciplinary</div></div></div>
-        <div class="stat"><div class="stat-ic w"><i class="fa-solid fa-user-clock"></i></div><div><div class="num">{{ $d['stats']['atRiskCount'] }}</div><div class="lbl">At Risk ({{ $d['stats']['warn'] }}+)</div></div></div>
-        <div class="stat"><div class="stat-ic b"><i class="fa-solid fa-ban"></i></div><div><div class="num">{{ $d['stats']['pendingRecs'] }}</div><div class="lbl">Pending Suspension Recs</div></div></div>
-    </div>
-
-    {{-- Suspension recommendations --}}
-    <div class="sc">
-        <div class="sc-head">
-            <div class="sc-head-left"><div class="sc-icon"><i class="fa-solid fa-ban"></i></div><h5 class="sc-title">Suspension Recommendations (auto)</h5></div>
+    {{-- Suspension recommendations (collapsible) --}}
+    <div class="sc" id="recCard">
+        <div class="sc-head" id="recToggle">
+            <div class="sc-head-left"><div class="sc-icon"><i class="fa-solid fa-ban"></i></div><h5 class="sc-title">Suspension Recommendations <span class="cnt" id="recCount">0</span></h5></div>
+            <i class="fa-solid fa-chevron-down sc-caret"></i>
         </div>
         <div id="recList">
             <div class="rec-row"><span class="text-muted">Loading&hellip;</span></div>
         </div>
     </div>
 
-    {{-- Notices table --}}
-    <div class="sc">
-        <div class="sc-head">
-            <div class="sc-head-left"><div class="sc-icon"><i class="fa-solid fa-list"></i></div><h5 class="sc-title">All Notices</h5></div>
-            <div class="filters">
-                <select class="form-select" id="fType"><option value="">All Types</option><option value="disciplinary">Disciplinary</option><option value="memo">Memo</option></select>
-                <select class="form-select" id="fStatus"><option value="">All Status</option><option value="active">Active</option><option value="void">Void</option></select>
-                <input type="text" class="form-control" id="fSearch" placeholder="Search name / title…">
+    {{-- Workspace: notice list rail + reading pane --}}
+    <div class="ntc-workspace">
+        <aside class="ntc-pane ntc-list-pane">
+            <div class="ntc-list-head">
+                <div class="ntc-pills">
+                    <button class="pill active" data-filter="">All <span class="pc" id="cAll">0</span></button>
+                    <button class="pill" data-filter="memo">Memos <span class="pc" id="cMemo">0</span></button>
+                    <button class="pill" data-filter="disciplinary">Disciplinary <span class="pc" id="cDisc">0</span></button>
+                </div>
+                <div class="list-tools">
+                    <input type="text" class="ntc-search" id="fSearch" placeholder="Search name / title…">
+                    <select class="ntc-statusfilter" id="fStatus"><option value="">All</option><option value="active">Active</option><option value="void">Void</option></select>
+                </div>
             </div>
-        </div>
-        <div class="table-responsive" style="max-height:60vh; overflow-y:auto;">
-            <table class="ntc-table">
-                <thead>
-                    <tr>
-                        <th>Employee</th><th>Type</th><th>Title</th><th>Category</th><th>Issued</th><th>By</th><th>Status</th><th class="text-end pe-4">Action</th>
-                    </tr>
-                </thead>
-                <tbody id="tblNotices"><tr class="empty-row"><td colspan="8">Loading&hellip;</td></tr></tbody>
-            </table>
-        </div>
+            <div class="ntc-list" id="noticeList">
+                <div class="list-empty"><i class="fa-solid fa-spinner fa-spin"></i>Loading…</div>
+            </div>
+        </aside>
+
+        <section class="ntc-pane ntc-detail-pane" id="noticeDetail">
+            <div class="nd-empty"><i class="fa-solid fa-envelope-open-text"></i><div>Select a notice from the list to view it and take action.</div></div>
+        </section>
     </div>
 </div>
 
@@ -257,6 +331,35 @@
                         <textarea class="form-control" id="txtBody" rows="5" placeholder="Describe the notice / memo…"></textarea>
                         <span class="text-danger small d-block mt-1" id="err-body"></span>
                     </div>
+                    {{-- Signed-memo attachment: memo-only, preview-only for the employee (no download). --}}
+                    <div class="col-12" id="attachWrap">
+                        <label class="field-label" for="fileAttachment"><i class="fa-solid fa-file-signature me-1"></i> Signed Memo (scan) <span class="text-muted" style="text-transform:none;font-weight:600;">— optional, PDF or image</span></label>
+                        <input type="file" class="form-control" id="fileAttachment" accept=".pdf,.jpg,.jpeg,.png">
+                        <span class="recip-hint"><i class="fa-solid fa-eye me-1"></i> Employees can preview this but cannot download it. Max 10&nbsp;MB.</span>
+                        <div id="attachCurrent" class="mt-2" style="display:none;font-size:.8rem;">
+                            <span class="badge-soft b-memo"><i class="fa-solid fa-paperclip me-1"></i><span id="attachCurrentName"></span></span>
+                            <a href="#" id="attachPreviewLink" target="_blank" class="ms-2" style="font-weight:700;color:var(--teal);">Preview</a>
+                            <span class="text-muted ms-1" style="font-size:.72rem;">— upload a new file to replace</span>
+                        </div>
+                        <span class="text-danger small d-block mt-1" id="err-attachment"></span>
+                    </div>
+                    {{-- Notice to Explain: disciplinary only. --}}
+                    <div class="col-12" id="nteWrap" style="display:none;">
+                        <div style="background:#fff7ed; border:1px solid #fed7aa; border-radius:10px; padding:12px 14px;">
+                            <label class="recip-chip" style="border:none; background:transparent; padding:0; font-weight:700; color:var(--slate);">
+                                <input type="checkbox" id="chkRequiresResponse"> <span><i class="fa-solid fa-file-pen me-1" style="color:#b45309;"></i>Require a written explanation (Notice to Explain)</span>
+                            </label>
+                            <div id="respondByWrap" style="display:none; margin-top:10px; max-width:240px;">
+                                <label class="field-label" for="txtRespondBy">Respond by (deadline)</label>
+                                <input type="date" class="form-control" id="txtRespondBy">
+                                <span class="recip-hint">The employee must submit their explanation on or before this date.</span>
+                            </div>
+                            <label class="recip-chip" style="border:none; background:transparent; padding:0; margin-top:12px; font-weight:700; color:var(--slate);">
+                                <input type="checkbox" id="chkRequiresAck"> <span><i class="fa-solid fa-signature me-1" style="color:#1d4ed8;"></i>Require the employee to acknowledge receipt</span>
+                            </label>
+                            <div class="recip-hint" style="margin-top:2px;">Adds a one-click "I acknowledge receipt" button on the employee's copy (receipt only, not agreement) — timestamp + IP recorded.</div>
+                        </div>
+                    </div>
                     <div class="col-lg-5" id="statusWrap" style="display:none;">
                         <label class="field-label" for="selStatus">Status</label>
                         <select class="form-select" id="selStatus"><option value="active">Active</option><option value="void">Void (exclude from counts)</option></select>
@@ -271,5 +374,52 @@
     </div>
 </div>
 
-<script src="{{ asset('js/modules/notices.js') }}" defer></script>
+{{-- Review Explanation (NTE) Modal --}}
+<div class="modal fade" id="mdlReview" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content" style="border-radius:var(--radius-card); border:none; overflow:hidden;">
+            <div class="modal-header" style="background:var(--teal); color:#fff; border-bottom:none; padding:16px 22px;">
+                <h5 class="modal-title" style="color:#fff;"><i class="fa-solid fa-file-pen me-2"></i>Review Explanation</h5>
+                <button type="button" class="btn-close" style="filter:brightness(0) invert(1);" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="background:var(--bg); padding:22px;">
+                <input type="hidden" id="reviewId">
+                <div style="background:#fff; border:1px solid var(--border); border-radius:12px; padding:16px 18px; margin-bottom:16px;">
+                    <div style="font-size:.72rem; font-weight:700; color:var(--slate-light); text-transform:uppercase; letter-spacing:.4px;">Notice</div>
+                    <div id="revNoticeTitle" style="font-size:.95rem; font-weight:700; color:var(--slate); margin:4px 0 2px;"></div>
+                    <div id="revNoticeMeta" style="font-size:.74rem; color:var(--muted);"></div>
+                </div>
+                <div style="background:#fff; border:1px solid var(--border); border-radius:12px; padding:16px 18px; margin-bottom:16px;">
+                    <div style="font-size:.72rem; font-weight:700; color:var(--slate-light); text-transform:uppercase; letter-spacing:.4px;">Employee's Explanation</div>
+                    <div id="revResponseBody" style="font-size:.86rem; color:var(--slate); white-space:pre-wrap; line-height:1.6; margin-top:8px;"></div>
+                    <div id="revResponseDoc" style="margin-top:12px; display:none;">
+                        <a href="#" id="revDocLink" target="_blank" class="badge-soft b-memo" style="text-decoration:none;"><i class="fa-solid fa-paperclip me-1"></i><span id="revDocName">attachment</span></a>
+                    </div>
+                    <div id="revResponseAt" style="font-size:.72rem; color:var(--muted); margin-top:10px;"></div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-lg-5">
+                        <label class="field-label" for="selDecision">Decision <span class="req">*</span></label>
+                        <select class="form-select" id="selDecision">
+                            <option value="">— Select —</option>
+                            <option value="accepted">Explanation accepted</option>
+                            <option value="further_action">For further action</option>
+                        </select>
+                        <span class="text-danger small d-block mt-1" id="err-decision"></span>
+                    </div>
+                    <div class="col-12">
+                        <label class="field-label" for="txtReviewNote">Note (optional)</label>
+                        <textarea class="form-control" id="txtReviewNote" rows="3" placeholder="Remarks on the decision…"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="background:var(--surface); border-top:1px solid var(--border);">
+                <button type="button" class="btn-mini" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn-submit" id="btnSaveReview">Record Decision</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ asset('js/modules/notices.js') }}?v={{ @filemtime(public_path('js/modules/notices.js')) ?: time() }}" defer></script>
 @endsection
