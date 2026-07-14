@@ -369,19 +369,4 @@ class pageCtrl extends Controller
         return view('pages.modules.checkRegister');
     }
 
-    public function empscheduler()
-    {
-        $resultES = DB::table('users')
-        ->orderBy('lname')
-        ->get();
-
-        $resultSched = DB::table('worktimes')
-        ->orderBy('wt_timefrom')
-        ->get();
-
-        return view('pages.management.empscheduler')->with('resultES',$resultES)->with('resultSched',$resultSched);
-    }
-
-
-
 }

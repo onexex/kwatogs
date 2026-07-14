@@ -252,7 +252,6 @@ Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip
     Route::get('/pages/management/obvalidations',[pageCtrl::class, 'obvalidations']);
     Route::get('/pages/management/ssscontribution',[pageCtrl::class, 'ssscontribution'])->middleware('can:ssscontribution');
     Route::get('/pages/management/pagibigcontribution',[pageCtrl::class, 'pagibigcontribution'])->middleware('can:pagibigcontribution');
-    Route::get('/pages/management/empscheduler',[pageCtrl::class, 'empscheduler']);
     // leave
     Route::get('/pages/management/leavecreditallocations',[LeaveCreditAllocationController::class, 'index']);
     Route::post('/pages/leavecreditallocations/store',[LeaveCreditAllocationController::class, 'store'])->name('leavecreditallocation.store');

@@ -38,12 +38,6 @@ class HrDashboardController extends Controller
             ->selectRaw("dp.id as id, COALESCE(dp.dep_name,'Unassigned') as name, COUNT(*) as c")
             ->groupBy('dp.id', 'name')->orderByDesc('c')->limit(8)->get();
 
-        $d['byCompany'] = DB::table('emp_details as e')
-            ->leftJoin('companies as c', 'c.comp_id', '=', 'e.empCompID')
-            ->where('e.empStatus', '1')
-            ->selectRaw("COALESCE(c.comp_name,'Unassigned') as name, COUNT(*) as c")
-            ->groupBy('name')->orderByDesc('c')->limit(7)->get();
-
         // ── Pending approvals ──────────────────────────────────────────
         $d['pendLeave'] = Leave::whereIn('status', ['FORAPPROVAL', 'APPROVED'])->count();
         $d['pendOt']    = Overtime::whereIn('status', ['FORAPPROVAL', 'APPROVED'])->count();
@@ -177,8 +171,11 @@ class HrDashboardController extends Controller
             ->selectRaw("TRIM(CONCAT(u.lname,', ',u.fname)) as name, e.empDateRegular as due")
             ->orderBy('e.empDateRegular')->limit(10)->get();
 
+        // Key off the schedule's working day (sched_start_date) so this matches the Scheduler's
+        // per-day "Unscheduled" view exactly — the deep-link (?view=unscheduled&date=today) lists
+        // the same employees this count reports. (Overnight shifts are keyed to their start day.)
         $schedEmpIds = DB::table('employee_schedules')
-            ->whereDate('sched_start_date', '<=', $today)->whereDate('sched_end_date', '>=', $today)
+            ->whereDate('sched_start_date', '=', $today)
             ->pluck('employee_id')->unique();
         $d['noSchedule'] = empDetail::where('empStatus', '1')->whereNotIn('empID', $schedEmpIds)->count();
 
@@ -652,8 +649,11 @@ class HrDashboardController extends Controller
             ->selectRaw('COUNT(DISTINCT h.employee_id, DATE(h.attendance_date)) as c')
             ->value('c');
 
+        // Key off the schedule's working day (sched_start_date) so this matches the Scheduler's
+        // per-day "Unscheduled" view exactly — the deep-link (?view=unscheduled&date=today) lists
+        // the same employees this count reports. (Overnight shifts are keyed to their start day.)
         $schedEmpIds = DB::table('employee_schedules')
-            ->whereDate('sched_start_date', '<=', $today)->whereDate('sched_end_date', '>=', $today)
+            ->whereDate('sched_start_date', '=', $today)
             ->pluck('employee_id')->unique();
         $noSchedule = empDetail::where('empStatus', '1')->whereNotIn('empID', $schedEmpIds)->count();
 

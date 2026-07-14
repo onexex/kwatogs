@@ -47,10 +47,20 @@
     .att { border:1px solid var(--border); border-radius:10px; padding:12px; text-align:center; }
     .att .v { font-size:1.5rem; font-weight:800; } .att .l { font-size:.66rem; font-weight:700; text-transform:uppercase; color:var(--slate-light); letter-spacing:.3px; }
 
-    .chart { width:100%; height:150px; }
-    .chart .area-p { fill:rgba(0,128,128,.12); } 
+    .chart { width:100%; height:150px; display:block; }
+    .chart .area-p { fill:rgba(0,128,128,.12); }
     .chart .line-p { fill:none; stroke:var(--teal); stroke-width:2; vector-effect:non-scaling-stroke; }
     .chart .line-l { fill:none; stroke:var(--warning); stroke-width:2; stroke-dasharray:4 3; vector-effect:non-scaling-stroke; }
+    /* Hover tooltip overlay for the attendance trend chart */
+    .trend-wrap { position:relative; }
+    .trend-guide { position:absolute; top:0; bottom:0; width:1px; background:var(--border); pointer-events:none; opacity:0; transition:opacity .1s; }
+    .trend-dot { position:absolute; width:9px; height:9px; border-radius:50%; transform:translate(-50%,-50%); pointer-events:none; opacity:0; box-shadow:0 0 0 2px #fff; transition:opacity .1s; }
+    .trend-dot.p { background:var(--teal); } .trend-dot.l { background:var(--warning); }
+    .trend-tip { position:absolute; pointer-events:none; background:#fff; border:1px solid var(--border); border-radius:9px; box-shadow:var(--shadow); padding:8px 11px; font-size:.7rem; color:var(--slate); white-space:nowrap; transform:translate(-50%,calc(-100% - 12px)); opacity:0; transition:opacity .1s; z-index:6; }
+    .trend-tip .d { font-weight:800; margin-bottom:4px; font-size:.72rem; }
+    .trend-tip .r { display:flex; align-items:center; gap:6px; line-height:1.5; }
+    .trend-tip .sw { width:9px; height:9px; border-radius:3px; display:inline-block; flex-shrink:0; }
+    .trend-tip .r b { margin-left:auto; padding-left:14px; }
 
     .bar-row { display:flex; align-items:center; gap:10px; margin-bottom:9px; font-size:.8rem; }
     .bar-row .nm { width:110px; color:var(--slate); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -183,16 +193,22 @@
                     <span><span class="dot" style="background:var(--teal);"></span> Present</span>
                     <span><span class="dot" style="background:var(--warning);"></span> Late</span>
                 </div>
-                <svg class="chart trend-svg" data-range="14" viewBox="0 0 100 38" preserveAspectRatio="none">
-                    <polygon class="area-p" points="{{ $c14['area'] }}"></polygon>
-                    <polyline class="line-p" points="{{ $c14['present'] }}"></polyline>
-                    <polyline class="line-l" points="{{ $c14['late'] }}"></polyline>
-                </svg>
-                <svg class="chart trend-svg d-none" data-range="30" viewBox="0 0 100 38" preserveAspectRatio="none">
-                    <polygon class="area-p" points="{{ $c30['area'] }}"></polygon>
-                    <polyline class="line-p" points="{{ $c30['present'] }}"></polyline>
-                    <polyline class="line-l" points="{{ $c30['late'] }}"></polyline>
-                </svg>
+                <div class="trend-wrap" id="trendWrap">
+                    <svg class="chart trend-svg" data-range="14" viewBox="0 0 100 38" preserveAspectRatio="none">
+                        <polygon class="area-p" points="{{ $c14['area'] }}"></polygon>
+                        <polyline class="line-p" points="{{ $c14['present'] }}"></polyline>
+                        <polyline class="line-l" points="{{ $c14['late'] }}"></polyline>
+                    </svg>
+                    <svg class="chart trend-svg d-none" data-range="30" viewBox="0 0 100 38" preserveAspectRatio="none">
+                        <polygon class="area-p" points="{{ $c30['area'] }}"></polygon>
+                        <polyline class="line-p" points="{{ $c30['present'] }}"></polyline>
+                        <polyline class="line-l" points="{{ $c30['late'] }}"></polyline>
+                    </svg>
+                    <div class="trend-guide" id="trendGuide"></div>
+                    <div class="trend-dot p" id="trendDotP"></div>
+                    <div class="trend-dot l" id="trendDotL"></div>
+                    <div class="trend-tip" id="trendTip"></div>
+                </div>
                 <div class="d-flex justify-content-between" style="font-size:.6rem;color:var(--muted);margin-top:4px;">
                     <span>{{ $d['trend'][0]['label'] }}</span><span>today</span>
                 </div>
@@ -376,7 +392,7 @@
                     </div>
                     <div class="col-md-4">
                         <div class="lgnd mb-2"><i class="fa fa-calendar-xmark text-danger"></i> <b>No schedule today</b></div>
-                        <a href="/pages/management/empscheduler" class="att att-link" style="margin-top:6px;" title="Open the Employee Scheduler to assign schedules"><div class="v text-danger">{{ $d['noSchedule'] }}</div><div class="l">active staff unscheduled</div></a>
+                        <a href="/employee-schedules?view=unscheduled&date=today" class="att att-link" style="margin-top:6px;" title="Open the Employee Scheduler filtered to today's unscheduled staff"><div class="v text-danger">{{ $d['noSchedule'] }}</div><div class="l">active staff unscheduled</div></a>
                     </div>
                 </div>
             </div>
@@ -403,7 +419,7 @@
             <div class="cc-b">
                 <div class="d-flex align-items-center gap-3">
                     @php $totalG = max(1, $d['male'] + $d['female']); $malePct = round($d['male']/$totalG*100); @endphp
-                    <div class="donut" style="background:conic-gradient(var(--info) 0% {{ $malePct }}%, #ec4899 {{ $malePct }}% 100%);"><div class="hole"><b>{{ $d['total'] }}</b><span>Total</span></div></div>
+                    <div class="donut" style="background:conic-gradient(var(--info) 0% {{ $malePct }}%, #ec4899 {{ $malePct }}% 100%);"><div class="hole"><b>{{ $d['male'] + $d['female'] }}</b><span>Total</span></div></div>
                     <div class="flex-fill">
                         <div class="lgnd"><span class="dot" style="background:var(--info);"></span> Male <b class="ms-auto">{{ $d['male'] }}</b></div>
                         <div class="lgnd"><span class="dot" style="background:#ec4899;"></span> Female <b class="ms-auto">{{ $d['female'] }}</b></div>
@@ -638,6 +654,54 @@
             const r = this.dataset.range;
             document.querySelectorAll('.trend-svg').forEach(s => s.classList.toggle('d-none', s.dataset.range !== r));
         }));
+
+        // ── Attendance trend hover tooltip ──────────────────────────────
+        (function () {
+            const TREND = { '14': @json($d['trend']), '30': @json($d['trend30']) };
+            const wrap  = document.getElementById('trendWrap');
+            if (!wrap) return;
+            const guide = document.getElementById('trendGuide');
+            const dotP  = document.getElementById('trendDotP');
+            const dotL  = document.getElementById('trendDotL');
+            const tip   = document.getElementById('trendTip');
+            const VB_H = 38, PAD_TOP = 2, H = 34;   // must match the PHP $lp() point math
+
+            const activeRange = () => {
+                const s = wrap.querySelector('.trend-svg:not(.d-none)');
+                return s ? s.dataset.range : '14';
+            };
+
+            function move(e) {
+                const data = TREND[activeRange()] || [];
+                const n = data.length;
+                if (!n) return;
+                const rect = wrap.getBoundingClientRect();
+                let fx = (e.clientX - rect.left) / rect.width;
+                fx = Math.max(0, Math.min(1, fx));
+                const idx = Math.round(fx * (n - 1));
+                const pt  = data[idx];
+                const max = Math.max(1, ...data.map(d => d.present));
+                const px  = (n > 1 ? idx / (n - 1) : 0) * rect.width;
+                const py  = v => ((PAD_TOP + H - (v / max * H)) / VB_H) * rect.height;
+
+                guide.style.left = px + 'px'; guide.style.opacity = 1;
+                dotP.style.left = px + 'px'; dotP.style.top = py(pt.present) + 'px'; dotP.style.opacity = 1;
+                dotL.style.left = px + 'px'; dotL.style.top = py(pt.late) + 'px'; dotL.style.opacity = 1;
+
+                tip.innerHTML =
+                    '<div class="d">' + pt.label + '</div>' +
+                    '<div class="r"><span class="sw" style="background:var(--teal)"></span>Present <b>' + pt.present + '</b></div>' +
+                    '<div class="r"><span class="sw" style="background:var(--warning)"></span>Late <b>' + pt.late + '</b></div>';
+                tip.style.opacity = 1;   // measure width only after it's laid out
+                const half = tip.offsetWidth / 2;
+                tip.style.left = Math.max(half + 2, Math.min(rect.width - half - 2, px)) + 'px';
+                tip.style.top  = Math.max(py(Math.max(pt.present, pt.late)), 4) + 'px';
+            }
+            function leave() { [guide, dotP, dotL, tip].forEach(el => el.style.opacity = 0); }
+
+            wrap.addEventListener('mousemove', move);
+            wrap.addEventListener('mouseleave', leave);
+        })();
 
         function setStat(attr, obj) { for (const k in obj) { const el = document.querySelector(`[data-${attr}="${k}"]`); if (el) el.textContent = obj[k]; } }
         function refreshLive() {
