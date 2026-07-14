@@ -218,12 +218,21 @@
                     <i class="fa-solid fa-magnifying-glass align-self-center text-muted"></i>
                     <input type="text" id="empSearchInput" class="form-control border-0 bg-transparent shadow-none" placeholder="Search name or ID...">
                 </div>
+                <div id="e201FilterChip" class="d-none align-items-center justify-content-between mt-2 px-3 py-1 rounded-pill"
+                     style="background:var(--teal-light);color:var(--teal);font-size:.72rem;font-weight:600;">
+                    <span><i class="fa-solid fa-filter me-1"></i><span id="e201FilterLabel"></span> <span id="e201FilterCount" class="text-muted fw-normal"></span></span>
+                    <a href="#" id="e201FilterClear" class="text-decoration-none" style="color:var(--teal);"><i class="fa-solid fa-xmark"></i> Clear</a>
+                </div>
             </div>
             
             <div class="list-scroll" id="employeeList">
                 @foreach($resultUser as $user)
-                <div class="emp-row d-flex align-items-center" 
-                     data-search-key="{{ strtolower($user->lname . ' ' . $user->fname . ' ' . $user->empID) }}" 
+                <div class="emp-row d-flex align-items-center"
+                     data-search-key="{{ strtolower($user->lname . ' ' . $user->fname . ' ' . $user->empID) }}"
+                     data-status="{{ $user->empDetail->empStatus ?? '' }}"
+                     data-payroll="{{ strtoupper($user->empDetail->empPayrollType ?? '') }}"
+                     data-dept="{{ $user->empDetail->empDepID ?? '' }}"
+                     data-deptname="{{ $user->empDetail->department->dep_name ?? '' }}"
                      data-id="{{ $user->empID }}">
                     <div class="avatar-circle me-3">
                         <span>{{ strtoupper(substr($user->fname, 0, 1) . substr($user->lname, 0, 1)) }}</span>

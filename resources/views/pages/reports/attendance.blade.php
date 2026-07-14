@@ -207,7 +207,17 @@
             <form action='' id="frmSearch">
                 <div class="row g-3 align-items-end">
 
-                    <div class="col-lg-4 col-md-6">
+                    <div class="col-lg-2 col-md-6">
+                        <label class="field-label">Department</label>
+                        <select class="form-select" id="txtDept" name="department">
+                            <option value="All">All Departments</option>
+                            @foreach($departments as $dep)
+                                <option value="{{ $dep->id }}">{{ $dep->dep_name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="col-lg-3 col-md-6">
                         <label class="field-label">Employee Name</label>
                         <select class="form-select text-capitalize" id="txtLastname" name="search">
                             <option value="All">All Personnel</option>
@@ -222,7 +232,7 @@
                         </select>
                     </div>
 
-                    <div class="col-lg-5 col-md-6">
+                    <div class="col-lg-4 col-md-8">
                         <label class="field-label">Date Range</label>
                         <div class="input-group">
                             <input type="date" id="txtDateFrom" name="txtDateFrom" value="{{ date('Y-m-d', strtotime('-7 days')) }}" class="form-control rptdatefrom">
@@ -231,7 +241,7 @@
                         </div>
                     </div>
 
-                    <div class="col-lg-3 col-md-12 text-end">
+                    <div class="col-lg-3 col-md-4 text-end">
                         <div class="d-flex gap-2 justify-content-lg-end">
                             <button type="button" id="btn_rptrefresh" class="btn btn-outline-teal rounded-pill px-4 fw-bold flex-fill flex-lg-grow-0 rptbtnref">
                                 <i class="fa-solid fa-arrows-rotate me-2"></i>Refresh

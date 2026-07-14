@@ -14,19 +14,80 @@ $(document).ready(function() {
     const $backBtn = $('#btnBackToList');
     const $mainDetails = $('#mainDetails');
 
-    // 1. Sidebar Search Logic
-    $('#empSearchInput').on('input', function() {
-        const query = $(this).val().toLowerCase().trim();
+    // 1. Sidebar Search Logic (combined text search + optional URL status/payroll filter)
+    const urlParams = new URLSearchParams(window.location.search);
+    const statusFilter  = urlParams.get('status');   // '1' | '0' | '2'
+    const payrollFilter = (urlParams.get('payroll') || '').toUpperCase(); // 'CASH' | 'CARD'
+    const deptFilter    = urlParams.get('dept');      // department id
 
+    const STATUS_LABELS  = { '1': 'Active', '0': 'Resigned', '2': 'End of Contract' };
+    const PAYROLL_LABELS = { CASH: 'Cash payroll', CARD: 'Card payroll' };
+
+    let activeStatus  = STATUS_LABELS[statusFilter]  ? statusFilter  : null;
+    let activePayroll = PAYROLL_LABELS[payrollFilter] ? payrollFilter : null;
+    let activeDept    = (deptFilter && ('' + deptFilter).trim() !== '') ? ('' + deptFilter).trim() : null;
+
+    // Resolve a readable department name from the first matching row.
+    // NOTE: read raw attributes with .attr() (strings) — .data() coerces "0"/"1"
+    // to numbers, and 0 (Resigned) is falsy, which would break the comparison.
+    let activeDeptName = '';
+    if (activeDept) {
+        const $match = $rows.filter(function() { return (this.getAttribute('data-dept') || '') === activeDept; }).first();
+        activeDeptName = ($match.attr('data-deptname') || 'Department') + '';
+    }
+
+    function hasFilter() { return activeStatus || activePayroll || activeDept; }
+
+    function applyFilters() {
+        const query = ($('#empSearchInput').val() || '').toLowerCase().trim();
+        let shown = 0;
         $rows.each(function() {
-            const searchKey = $(this).data('search-key') || '';
-            if (searchKey.includes(query)) {
-                $(this).removeClass('d-none').addClass('d-flex');
+            const el = this;
+            const matchesSearch  = (el.getAttribute('data-search-key') || '').includes(query);
+            const matchesStatus  = !activeStatus  || (el.getAttribute('data-status')  || '') === activeStatus;
+            const matchesPayroll = !activePayroll || (el.getAttribute('data-payroll') || '').toUpperCase() === activePayroll;
+            const matchesDept    = !activeDept    || (el.getAttribute('data-dept')    || '') === activeDept;
+            if (matchesSearch && matchesStatus && matchesPayroll && matchesDept) {
+                el.classList.remove('d-none'); el.classList.add('d-flex');
+                shown++;
             } else {
-                $(this).removeClass('d-flex').addClass('d-none');
+                el.classList.remove('d-flex'); el.classList.add('d-none');
             }
         });
+        return shown;
+    }
+
+    function renderFilterChip() {
+        const $chip = $('#e201FilterChip');
+        if (!hasFilter()) { $chip.removeClass('d-flex').addClass('d-none'); return; }
+        const parts = [];
+        if (activeStatus)  parts.push(STATUS_LABELS[activeStatus]);
+        if (activePayroll) parts.push(PAYROLL_LABELS[activePayroll]);
+        if (activeDept)    parts.push(activeDeptName);
+        $('#e201FilterLabel').text(parts.join(' · '));
+        $chip.removeClass('d-none').addClass('d-flex');
+    }
+
+    $('#empSearchInput').on('input', function() {
+        const shown = applyFilters();
+        if (hasFilter()) $('#e201FilterCount').text('(' + shown + ')');
     });
+
+    $('#e201FilterClear').on('click', function(e) {
+        e.preventDefault();
+        activeStatus = null;
+        activePayroll = null;
+        activeDept = null;
+        renderFilterChip();
+        applyFilters();
+    });
+
+    // Apply any URL-driven filter on load.
+    if (hasFilter()) {
+        renderFilterChip();
+        const shown = applyFilters();
+        $('#e201FilterCount').text('(' + shown + ')');
+    }
 
     // 2. Fetch Employee Data & Update UI
     $rows.on('click', function() {
