@@ -386,7 +386,9 @@ $(document).ready(function(){
      *  SCHEDULES MODE
      * ========================================================= */
     const loadSchedules = (search = '', page = 1, perPage = 10) => {
-        $('#schList').html('<div class="empty-state es-loading"><i class="fa-solid fa-spinner fa-spin"></i>Loading…</div>');
+        if (currentMode === 'schedules') {
+            $('#schList').html('<div class="empty-state es-loading"><i class="fa-solid fa-spinner fa-spin"></i>Loading…</div>');
+        }
 
         axios.get("{{ route('employee-schedules.get') }}", { params: { search, page, per_page: perPage } })
             .then(res => {
@@ -395,11 +397,16 @@ $(document).ready(function(){
                 $('#cSched').text(res.data.total ?? data.length);
 
                 scheduleRows = {};
+                data.forEach(s => { scheduleRows[s.id] = s; });
+
+                // Only own the list/detail panes when the Schedules tab is active — otherwise
+                // this call is just refreshing the count and must not clobber the Unscheduled list.
+                if (currentMode !== 'schedules') return;
+
                 let html = '';
 
                 if (data.length) {
                     data.forEach(s => {
-                        scheduleRows[s.id] = s;
                         const name  = (s.employee_name || '').trim();
                         const dept  = s.department_name
                             ? `<span class="dept-chip">${escapeHtml(s.department_name)}</span>`
@@ -889,9 +896,26 @@ $(document).ready(function(){
 
     /* =========================================================
      *  INITIAL LOAD
+     *  Honor deep-links, e.g. the HR Dashboard "No schedule today"
+     *  card: /employee-schedules?view=unscheduled&date=today
      * ========================================================= */
-    loadSchedules();
-    loadUnscheduled();  // populates the Unscheduled count/badge on first paint
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('view') === 'unscheduled') {
+        if (params.get('date') === 'today') {
+            const now = new Date();
+            const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            const t = fmt(now);
+            $('#fromDate').val(t);   // from = to = today → per-day mode, "missing a schedule today"
+            $('#toDate').val(t);
+        }
+        // Toggle into the Unscheduled tab (reads the dates set above), then refresh the
+        // Schedules count without clobbering the list (loadSchedules is mode-guarded).
+        $('.pill[data-mode="unscheduled"]').trigger('click');
+        loadSchedules();
+    } else {
+        loadSchedules();
+        loadUnscheduled();  // populates the Unscheduled count/badge on first paint
+    }
 });
 </script>
 @endsection

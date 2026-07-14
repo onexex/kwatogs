@@ -109,7 +109,7 @@
                     text: 'Are you sure you want to approve this overtime request?',
                     icon: 'question',
                     showCancelButton: true,
-                    confirmButtonText: 'Yes, Apporve',
+                    confirmButtonText: 'Yes, Approve',
                     confirmButtonColor: '#198754',
                     cancelButtonColor: '#6c757d',
                     reverseButtons: true,
@@ -144,7 +144,7 @@
             if (btnDisapprove) {
                 const id = btnDisapprove.dataset.id;
                 Swal.fire({
-                    title: 'DisApprove Overtime Request',
+                    title: 'Disapprove Overtime Request',
                     text: 'Are you sure you want to disapprove this overtime request?',
                     icon: 'question',
                     input: 'textarea',
@@ -190,7 +190,7 @@
             if (btnCfoDisapprove) {
                 const id = btnCfoDisapprove.dataset.id;
                 Swal.fire({
-                    title: 'DisApprove Overtime Request',
+                    title: 'Disapprove Overtime Request',
                     text: 'Are you sure you want to disapprove this overtime request?',
                     icon: 'question',
                     input: 'textarea',
