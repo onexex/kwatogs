@@ -62,6 +62,9 @@
     .donut .hole { width:74px; height:74px; border-radius:50%; background:var(--surface); display:flex; flex-direction:column; align-items:center; justify-content:center; }
     .donut .hole b { font-size:1.1rem; font-weight:800; color:var(--slate); } .donut .hole span { font-size:.6rem; color:var(--muted); text-transform:uppercase; }
     .lgnd { font-size:.76rem; color:var(--slate); display:flex; align-items:center; gap:7px; margin-bottom:6px; }
+    a.lgnd.wf-link { text-decoration:none; color:var(--slate); border-radius:7px; padding:3px 6px; margin:0 -6px 3px; transition:background .12s; }
+    a.lgnd.wf-link:hover { background:var(--teal-light); color:var(--teal); }
+    a.lgnd.wf-link:hover b { color:var(--teal); }
     .dot { width:10px; height:10px; border-radius:3px; display:inline-block; }
 
     .alert-row { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f5f9; font-size:.82rem; }
@@ -77,6 +80,11 @@
     .badge-status { font-size:.66rem; font-weight:800; padding:3px 10px; border-radius:999px; text-transform:uppercase; }
     .dept-bar { cursor:pointer; }
     .dept-bar:hover .bar-track { outline:2px solid var(--teal-mid); }
+    .bar-row.clickable { cursor:pointer; border-radius:8px; padding:2px 4px; margin:0 -4px 9px; transition:background .12s; }
+    .bar-row.clickable:hover { background:var(--teal-light); }
+    a.att-link { text-decoration:none; color:inherit; display:block; transition:border-color .12s, box-shadow .12s; }
+    a.att-link:hover { border-color:var(--teal-mid); box-shadow:0 2px 8px rgba(0,128,128,.12); }
+    a.att-link:hover .l { color:var(--teal); }
     @media print {
         aside, header, nav, .sidebar, .main-sidebar, .navbar, .topbar, .main-header, #sidebar, .app-sidebar { display:none !important; }
         .content-wrapper, .main-content, main, #main-wrapper, .content { margin:0 !important; padding:0 !important; width:100% !important; }
@@ -305,12 +313,12 @@
                 <div class="d-flex align-items-center gap-3">
                     <div class="donut" style="background:conic-gradient(var(--teal) 0% {{ $cashPct }}%, var(--teal-mid) {{ $cashPct }}% 100%);"><div class="hole"><b>{{ number_format($d['total']) }}</b><span>Total</span></div></div>
                     <div class="flex-fill">
-                        <div class="lgnd"><span class="dot" style="background:var(--teal);"></span> Cash payroll <b class="ms-auto">{{ $d['cash'] }}</b></div>
-                        <div class="lgnd"><span class="dot" style="background:var(--teal-mid);"></span> Card payroll <b class="ms-auto">{{ $d['card'] }}</b></div>
+                        <a href="{{ url('/pages/management/e201') }}?payroll=CASH" class="lgnd wf-link"><span class="dot" style="background:var(--teal);"></span> Cash payroll <b class="ms-auto">{{ $d['cash'] }}</b></a>
+                        <a href="{{ url('/pages/management/e201') }}?payroll=CARD" class="lgnd wf-link"><span class="dot" style="background:var(--teal-mid);"></span> Card payroll <b class="ms-auto">{{ $d['card'] }}</b></a>
                         <hr class="my-2" style="opacity:.3;">
-                        <div class="lgnd"><span class="dot" style="background:var(--success);"></span> Active <b class="ms-auto">{{ $d['active'] }}</b></div>
-                        <div class="lgnd"><span class="dot" style="background:var(--danger);"></span> Resigned <b class="ms-auto">{{ $d['resigned'] }}</b></div>
-                        <div class="lgnd"><span class="dot" style="background:#f59e0b;"></span> End of Contract <b class="ms-auto">{{ $d['endOfContract'] }}</b></div>
+                        <a href="{{ url('/pages/management/e201') }}?status=1" class="lgnd wf-link"><span class="dot" style="background:var(--success);"></span> Active <b class="ms-auto">{{ $d['active'] }}</b></a>
+                        <a href="{{ url('/pages/management/e201') }}?status=0" class="lgnd wf-link"><span class="dot" style="background:var(--danger);"></span> Resigned <b class="ms-auto">{{ $d['resigned'] }}</b></a>
+                        <a href="{{ url('/pages/management/e201') }}?status=2" class="lgnd wf-link"><span class="dot" style="background:#f59e0b;"></span> End of Contract <b class="ms-auto">{{ $d['endOfContract'] }}</b></a>
                     </div>
                 </div>
             </div>
@@ -330,10 +338,15 @@
         <div class="cc-card cc-4" id="absCard">
             <div class="cc-h"><div class="i"><i class="fa fa-triangle-exclamation"></i></div><h6 title="Counts only shifts that have already ended (a night shift isn't judged until it's over). Approved leave, OB, and department holidays are excused.">Absenteeism by Dept (30d)</h6></div>
             <div class="cc-b">
+                @php $absFrom = now()->subDays(29)->toDateString(); $absTo = now()->toDateString(); @endphp
                 @forelse($d['absentByDept'] as $r)
                     @php $rate = $r->scheduled > 0 ? round(($r->scheduled - $r->present)/$r->scheduled*100) : 0;
                          $col = $rate >= 25 ? 'var(--danger)' : ($rate >= 10 ? 'var(--warning)' : 'var(--success)'); @endphp
-                    <div class="bar-row"><div class="nm" title="{{ $r->name }}">{{ $r->name }}</div><div class="bar-track"><div class="bar-fill" style="width:{{ $rate }}%;background:{{ $col }};"></div></div><div class="bar-val">{{ $rate }}%</div></div>
+                    <div class="bar-row absent-bar {{ $r->id ? 'clickable' : '' }}"
+                         @if($r->id) title="See who was absent in {{ $r->name }} (last 30 days)"
+                         data-dept-id="{{ $r->id }}" data-dept-name="{{ $r->name }}" @endif>
+                        <div class="nm" title="{{ $r->name }}">{{ $r->name }}</div><div class="bar-track"><div class="bar-fill" style="width:{{ $rate }}%;background:{{ $col }};"></div></div><div class="bar-val">{{ $rate }}%</div>
+                    </div>
                 @empty<div class="empty">Not enough schedule data.</div>@endforelse
             </div>
         </div>
@@ -363,7 +376,7 @@
                     </div>
                     <div class="col-md-4">
                         <div class="lgnd mb-2"><i class="fa fa-calendar-xmark text-danger"></i> <b>No schedule today</b></div>
-                        <div class="att" style="margin-top:6px;"><div class="v text-danger">{{ $d['noSchedule'] }}</div><div class="l">active staff unscheduled</div></div>
+                        <a href="/pages/management/empscheduler" class="att att-link" style="margin-top:6px;" title="Open the Employee Scheduler to assign schedules"><div class="v text-danger">{{ $d['noSchedule'] }}</div><div class="l">active staff unscheduled</div></a>
                     </div>
                 </div>
             </div>
@@ -436,8 +449,10 @@
                     <b style="color:var(--info);font-size:1.2rem;">{{ $d['leaveTotalDays'] }}</b>
                     <span style="color:var(--slate-light);font-size:.7rem;text-transform:uppercase;"> total days</span>
                 </div>
+                @php $moStart = now()->startOfMonth()->toDateString(); $moEnd = now()->endOfMonth()->toDateString(); @endphp
                 @forelse($d['leaveThisMonth'] as $r)
-                    <div class="bar-row">
+                    <div class="bar-row clickable" title="View {{ $r->type }} leaves this month"
+                         onclick="window.location.href='{{ url('/reports/leave') }}?leave_type={{ $r->type_id }}&date_from={{ $moStart }}&date_to={{ $moEnd }}'">
                         <div class="nm">{{ $r->type }}</div>
                         <div class="bar-track"><div class="bar-fill" style="width:{{ max(5, round($r->cnt/max(1,$d['leaveThisMonth']->max('cnt'))*100)) }}%;background:linear-gradient(90deg,#a5b4fc,#6366f1);"></div></div>
                         <div class="bar-val">{{ $r->cnt }}</div>
@@ -519,8 +534,8 @@
             </div>
             <div class="cc-b" style="max-height:220px;overflow:auto;">
                 <div class="att-grid mb-2">
-                    <div class="att"><div class="v" style="color:var(--danger);">{{ $d['ntcStats']['overCount'] }}</div><div class="l">Suspension Recs</div></div>
-                    <div class="att"><div class="v" style="color:var(--warning);">{{ $d['ntcStats']['atRiskCount'] }}</div><div class="l">At Risk ({{ $d['ntcStats']['warn'] }}+)</div></div>
+                    <a href="/pages/modules/notices" class="att att-link"><div class="v" style="color:var(--danger);">{{ $d['ntcStats']['overCount'] }}</div><div class="l">Suspension Recs</div></a>
+                    <a href="/pages/modules/notices" class="att att-link"><div class="v" style="color:var(--warning);">{{ $d['ntcStats']['atRiskCount'] }}</div><div class="l">At Risk ({{ $d['ntcStats']['warn'] }}+)</div></a>
                 </div>
                 {{-- Notice to Explain: explanations submitted, awaiting HR decision --}}
                 @if(($d['ntcStats']['nteToReview'] ?? 0) > 0)
@@ -551,8 +566,8 @@
             </div>
             <div class="cc-b" style="max-height:220px;overflow:auto;">
                 <div class="att-grid mb-2">
-                    <div class="att"><div class="v" style="color:var(--warning);">{{ $d['coeStats']['pending'] }}</div><div class="l">Pending</div></div>
-                    <div class="att"><div class="v" style="color:var(--teal);">{{ $d['coeStats']['approvedMonth'] }}</div><div class="l">Approved (mo.)</div></div>
+                    <a href="/pages/modules/coe" class="att att-link"><div class="v" style="color:var(--warning);">{{ $d['coeStats']['pending'] }}</div><div class="l">Pending</div></a>
+                    <a href="/pages/modules/coe" class="att att-link"><div class="v" style="color:var(--teal);">{{ $d['coeStats']['approvedMonth'] }}</div><div class="l">Approved (mo.)</div></a>
                 </div>
                 @if(!empty($d['coePending']))
                     <div class="lgnd mb-2"><i class="fa fa-hourglass-half text-warning"></i> <b>Awaiting review</b></div>
@@ -589,18 +604,27 @@
     </div>
 </div>
 
-{{-- Department drill-down modal --}}
-<div class="modal fade" id="deptModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable">
+{{-- Absenteeism drill-down modal --}}
+<div class="modal fade" id="absentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-lg">
         <div class="modal-content" style="border:0;border-radius:14px;overflow:hidden;">
             <div class="modal-header" style="background:var(--teal);color:#fff;border:0;">
-                <h6 class="modal-title" id="deptModalTitle">Department</h6>
+                <div>
+                    <h6 class="modal-title mb-0" id="absentModalTitle">Absenteeism</h6>
+                    <small id="absentModalSub" style="opacity:.85;font-size:.72rem;"></small>
+                </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" id="deptModalBody" style="background:var(--bg);"></div>
+            <div class="modal-body" id="absentModalBody" style="background:var(--bg);"></div>
+            <div class="modal-footer" style="background:#fff;border-top:1px solid var(--border);">
+                <a href="#" id="absentModalReport" target="_self" class="btn btn-sm" style="background:var(--teal);color:#fff;">
+                    <i class="fa fa-table-list me-1"></i> Open full attendance report
+                </a>
+            </div>
         </div>
     </div>
 </div>
+
 
 <script>
     (function () {
@@ -636,19 +660,46 @@
         refreshLive();
         setInterval(refreshLive, 120000);
 
-        let deptModal = null;
         document.querySelectorAll('.dept-bar').forEach(bar => bar.addEventListener('click', function () {
-            const id = this.dataset.id || '', name = this.dataset.name || 'Department';
-            document.getElementById('deptModalTitle').textContent = name + ' — employees';
-            const body = document.getElementById('deptModalBody');
+            const id = this.dataset.id || '';
+            if (!id) return;
+            window.location.href = '{{ url('/pages/management/e201') }}?dept=' + encodeURIComponent(id) + '&status=1';
+        }));
+
+        // Absenteeism-by-dept drill-down → who was absent, and on which days.
+        let absentModal = null;
+        const absFrom = '{{ $absFrom ?? now()->subDays(29)->toDateString() }}';
+        const absTo   = '{{ $absTo ?? now()->toDateString() }}';
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+        const fmtDay = iso => { const [, m, d] = iso.split('-').map(Number); return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1] + ' ' + d; };
+
+        document.querySelectorAll('.absent-bar.clickable').forEach(bar => bar.addEventListener('click', function () {
+            const id = this.dataset.deptId || '', name = this.dataset.deptName || 'Department';
+            if (!id) return;
+            document.getElementById('absentModalTitle').textContent = name;
+            document.getElementById('absentModalSub').textContent = 'Absences · last 30 days (' + absFrom + ' → ' + absTo + ')';
+            document.getElementById('absentModalReport').href = '{{ url('/pages/reports/attendance') }}?department=' + encodeURIComponent(id) + '&from=' + absFrom + '&to=' + absTo;
+            const body = document.getElementById('absentModalBody');
             body.innerHTML = '<div class="text-center py-4 text-muted"><div class="spinner-border spinner-border-sm"></div> Loading…</div>';
-            if (!deptModal) deptModal = new bootstrap.Modal(document.getElementById('deptModal'));
-            deptModal.show();
-            axios.get('/pages/management/hr-dashboard/dept', { params: { id } }).then(res => {
-                const rows = res.data || [];
-                body.innerHTML = rows.length
-                    ? '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;">' + rows.map((r,i) => `<div style="display:flex;justify-content:space-between;padding:9px 14px;${i?'border-top:1px solid #f1f5f9;':''}"><span style="font-weight:600;color:#334155;text-transform:uppercase;font-size:.82rem;">${r.name}</span><span style="color:#94a3b8;font-size:.74rem;">${r.empid}</span></div>`).join('') + '</div><div class="text-muted mt-2" style="font-size:.72rem;">' + rows.length + ' active employee(s)</div>'
-                    : '<div class="text-center text-muted py-4">No active employees.</div>';
+            if (!absentModal) absentModal = new bootstrap.Modal(document.getElementById('absentModal'));
+            absentModal.show();
+            axios.get('{{ url('/pages/management/hr-dashboard/absent-dept') }}', { params: { id } }).then(res => {
+                const emps = res.data.employees || [];
+                if (!emps.length) { body.innerHTML = '<div class="text-center text-muted py-4">No absences recorded for this department. 🎉</div>'; return; }
+                const head = '<div class="text-muted mb-3" style="font-size:.76rem;">'
+                    + '<b style="color:var(--danger);">' + res.data.total_absent + '</b> absent day(s) across '
+                    + '<b>' + emps.length + '</b> employee(s), out of <b>' + res.data.total_scheduled + '</b> scheduled day(s).</div>';
+                const rows = emps.map(e => {
+                    const chips = (e.dates || []).map(d => '<span style="display:inline-block;background:#fff5f5;color:var(--danger);border:1px dashed var(--danger);border-radius:6px;padding:1px 7px;font-size:.66rem;font-weight:700;margin:2px 3px 0 0;">' + fmtDay(d) + '</span>').join('');
+                    return '<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:8px;">'
+                        + '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">'
+                        + '<span style="font-weight:700;color:var(--slate);text-transform:uppercase;font-size:.8rem;">' + esc(e.name) + '</span>'
+                        + '<span style="white-space:nowrap;font-size:.72rem;font-weight:800;color:var(--danger);">' + e.absent + '/' + e.scheduled + ' days · ' + e.rate + '%</span>'
+                        + '</div>'
+                        + (chips ? '<div style="margin-top:6px;">' + chips + '</div>' : '')
+                        + '</div>';
+                }).join('');
+                body.innerHTML = head + rows;
             }).catch(() => { body.innerHTML = '<div class="text-center text-danger py-4">Failed to load.</div>'; });
         }));
     })();

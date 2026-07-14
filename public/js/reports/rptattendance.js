@@ -97,6 +97,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const btnRefresh = $("#btn_rptrefresh");
     const empSelect = $("#txtLastname");
+    const deptSelect = $("#txtDept");
     const dateFrom = $("#txtDateFrom");
     const dateTo = $("#txtDateTo");
     const tableBody = $("#tbl_rptattendance");
@@ -112,6 +113,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const empID = empSelect.val();
         const from = dateFrom.val();
         const to = dateTo.val();
+        const department = deptSelect.val();
 
         // Updated colspan to 13 to match the new columns
         tableBody.html(`<tr><td colspan="14" class="text-center"><div class="spinner-border spinner-border-sm"></div> Loading...</td></tr>`);
@@ -120,6 +122,7 @@ document.addEventListener('DOMContentLoaded', function () {
             empID: empID,
             dateFrom: from,
             dateTo: to,
+            department: department,
         })
         .then(response => {
             const res = response.data;
@@ -312,6 +315,17 @@ document.addEventListener('DOMContentLoaded', function () {
         h = h % 12 || 12;
         return `${h}:${min} ${ampm}`;
     }
+
+    // Re-fetch when the department scope changes.
+    deptSelect.on("change", fetchAttendance);
+
+    // Deep-link support: apply department / date range passed via URL query, then fetch.
+    (function applyUrlFilters() {
+        const qp = new URLSearchParams(window.location.search);
+        if (qp.get("department")) deptSelect.val(qp.get("department"));
+        if (qp.get("from")) dateFrom.val(qp.get("from"));
+        if (qp.get("to")) dateTo.val(qp.get("to"));
+    })();
 
     fetchAttendance();
 

@@ -12,7 +12,8 @@ class reportAttendanceCtrl extends Controller
     public function index()
     {
         $resultEmp = User::select('empID', 'fname', 'lname')->orderBy('lname')->orderBy('fname')->get();
-        return view('reports.attendance', compact('resultEmp'));
+        $departments = \App\Models\department::orderBy('dep_name')->get();
+        return view('pages.reports.attendance', compact('resultEmp', 'departments'));
     }
 
     // public function fetchAttendance(Request $request)
@@ -57,26 +58,36 @@ class reportAttendanceCtrl extends Controller
         $empId = $request->input('empID');
         $dateFrom = $request->input('dateFrom');
         $dateTo = $request->input('dateTo');
+        $department = $request->input('department');
 
-       
+        // Optional department scope: resolve the employee IDs in that department once,
+        // then constrain every query below to them (no N+1). Empty/'all' = no scope.
+        $deptEmpIds = null;
+        if ($department !== null && $department !== '' && strtolower($department) !== 'all') {
+            $deptEmpIds = \App\Models\empDetail::where('empDepID', $department)->pluck('empID')->all();
+        }
+
         $summaries = AttendanceSummary::with(['employee', 'manualDeductions'])
-            ->join('users', 'attendance_summaries.employee_id', '=', 'users.empID') 
+            ->join('users', 'attendance_summaries.employee_id', '=', 'users.empID')
             ->whereBetween('attendance_date', [$dateFrom, $dateTo])
             ->when($empId !== 'All', fn($q) => $q->where('attendance_summaries.employee_id', $empId))
-            ->orderBy('users.lname', 'asc') 
-            ->orderBy('attendance_date', 'asc') 
-            ->select('attendance_summaries.*') 
+            ->when($deptEmpIds !== null, fn($q) => $q->whereIn('attendance_summaries.employee_id', $deptEmpIds))
+            ->orderBy('users.lname', 'asc')
+            ->orderBy('attendance_date', 'asc')
+            ->select('attendance_summaries.*')
             ->get();
 
         $logs = \App\Models\homeAttendance::with('employee')
             ->whereBetween('attendance_date', [$dateFrom, $dateTo])
             ->when($empId !== 'All', fn($q) => $q->where('employee_id', $empId))
+            ->when($deptEmpIds !== null, fn($q) => $q->whereIn('employee_id', $deptEmpIds))
             ->get()
             ->groupBy(['employee_id', fn($log) => $log->attendance_date->format('Y-m-d')]);
 
         // Assigned shift(s) covering the range — used to show each day's actual schedule.
         // Bulk-fetched once (no N+1), then matched per summary by date span.
         $schedules = \App\Models\EmployeeSchedule::when($empId !== 'All', fn($q) => $q->where('employee_id', $empId))
+            ->when($deptEmpIds !== null, fn($q) => $q->whereIn('employee_id', $deptEmpIds))
             ->whereDate('sched_start_date', '<=', $dateTo)
             ->whereDate('sched_end_date', '>=', $dateFrom)
             ->orderBy('sched_start_date', 'desc')

@@ -27,7 +27,7 @@ class EmployeeScheduleController extends Controller
         $search = $request->search ?? '';
         $perPage = $request->per_page ?? 10;
 
-        $query = EmployeeSchedule::with('users')
+        $query = EmployeeSchedule::with('users.empDetail.department')
             ->when($search, fn($q) =>
                 $q->whereHas('users', fn($e) =>
                     $e->where('fname', 'like', "%$search%")
@@ -50,6 +50,7 @@ class EmployeeScheduleController extends Controller
         $schedules->getCollection()->transform(fn($s) => [
             'id' => $s->id,
             'employee_name' => $s->users->lname . ', ' . $s->users->fname,
+            'department_name' => optional(optional($s->users->empDetail)->department)->dep_name,
             'sched_start_date' => $s->sched_start_date,
             'sched_in' => $s->sched_in,
             'sched_end_date' => $s->sched_end_date,

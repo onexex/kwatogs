@@ -12,7 +12,8 @@ class LeaveReportController extends Controller
     public function index()
     {
         $departments = department::orderBy('dep_name')->get();
-        return view('pages.reports.leave_report', compact('departments'));
+        $leavetypes  = \App\Models\leavetype::orderBy('type_leave')->get();
+        return view('pages.reports.leave_report', compact('departments', 'leavetypes'));
     }
 
     private function baseQuery(Request $request)
@@ -34,6 +35,9 @@ class LeaveReportController extends Controller
         }
         if ($request->filled('department_id') && $request->department_id !== 'all') {
             $q->where('ed.empDepID', $request->department_id);
+        }
+        if ($request->filled('leave_type') && $request->leave_type !== 'all') {
+            $q->where('l.leave_type', $request->leave_type);
         }
         if ($request->filled('status') && $request->status !== 'all') {
             $q->where('l.status', $request->status);
