@@ -143,6 +143,12 @@ class NoticeService
                 'pendingRecs'    => count($pendingRecs),
                 'issuedThisMonth'=> Notice::whereDate('issued_at', '>=', $monthStart)->count(),
                 'activeDisc'     => Notice::where('type', 'disciplinary')->where('status', 'active')->count(),
+                // Notice to Explain: explanations submitted but not yet decided by HR (actionable).
+                'nteToReview'    => Notice::where('status', 'active')->where('requires_response', true)
+                                        ->whereNotNull('response_at')->whereNull('response_decision')->count(),
+                // NTEs still awaiting the employee's explanation.
+                'nteAwaiting'    => Notice::where('status', 'active')->where('requires_response', true)
+                                        ->whereNull('response_at')->count(),
             ],
         ];
     }

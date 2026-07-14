@@ -295,6 +295,15 @@
                 </a>
             </li>
 
+            {{-- "Handbook" — walang permission; babasahin ng lahat ng empleyado ang
+                 employee handbook (sections + optional na dokumento). --}}
+            <li class="nav-item">
+                <a class="nav-link {{ request()->is('pages/modules/myhandbook*') ? 'active-page' : '' }}" href="{{ route('handbook.mine') }}">
+                    <i class="fas fa-fw fa-book-open"></i>
+                    <span>Handbook</span>
+                </a>
+            </li>
+
             @can('kuboaccess')
                 <li class="nav-item">
                     <a class="nav-link {{ request()->is('kubo*') ? 'active-page' : '' }}" href="{{ route('kubo.feed') }}">
@@ -327,6 +336,7 @@
                     'payadjustments'   => ['name' => 'Pay Adjustments', 'url' => '/pages/modules/payadjustments', 'icon' => 'fa-sliders', 'group' => 'Payroll'],
                     'noticemanagement' => ['name' => 'Notices & Memos', 'url' => '/pages/modules/notices', 'icon' => 'fa-file-circle-exclamation', 'group' => 'People & HR'],
                     'coemanagement'    => ['name' => 'Certificate of Employment', 'url' => '/pages/modules/coe', 'icon' => 'fa-file-signature', 'group' => 'People & HR'],
+                    'handbookmanagement' => ['name' => 'Employee Handbook', 'url' => '/pages/modules/handbook', 'icon' => 'fa-book-open', 'group' => 'People & HR'],
                     'programs'         => ['name' => 'Programs', 'url' => '/pages/modules/programs', 'icon' => 'fa-award', 'group' => 'People & HR'],
                     'applicantmanagement' => ['name' => 'Applicants', 'url' => '/pages/modules/applicants', 'icon' => 'fa-user-tie', 'group' => 'People & HR'],
                     'attendanceimport' => ['name' => 'Attendance Import', 'url' => '/attendance-import', 'icon' => 'fa-file-import', 'group' => 'Attendance & Time'],
