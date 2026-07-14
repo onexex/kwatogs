@@ -16,6 +16,8 @@
     .btn-teal { background:var(--teal); border:none; color:#fff; border-radius:9px; padding:9px 18px; font-size:.85rem; font-weight:700; }
     .btn-teal:hover { background:var(--teal-dark); color:#fff; }
     .btn-teal:disabled { background:var(--muted); cursor:not-allowed; }
+    .btn-outline-teal { background:var(--teal-light); border:1px solid var(--teal-mid); color:var(--teal-dark); border-radius:9px; font-weight:700; }
+    .btn-outline-teal:hover { background:var(--teal-mid); color:#fff; }
 
     .card-box { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-card); box-shadow:var(--shadow-card); padding:18px 22px; margin-bottom:20px; }
     .card-box h6 { font-size:.92rem; font-weight:700; color:var(--slate); margin:0 0 12px; }
@@ -100,6 +102,26 @@
             <div class="modal-footer" style="border-top:1px solid var(--border);">
                 <button class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
                 <button class="btn btn-teal" id="btnSubmitRequest"><i class="fa-solid fa-paper-plane me-1"></i> Submit Request</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Preview modal — inline PDF render before downloading --}}
+<div class="modal fade" id="mdlPreview" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content" style="border:none;border-radius:14px;">
+            <div class="modal-header" style="border-bottom:1px solid var(--border);">
+                <h6 class="modal-title fw-bold" style="color:var(--slate);" id="coePreviewTitle">Certificate Preview</h6>
+                <div class="ms-auto d-flex gap-2 align-items-center">
+                    <a href="#" id="coePreviewDownload" class="btn btn-teal btn-sm">
+                        <i class="fa-solid fa-download me-1"></i> Download
+                    </a>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+            </div>
+            <div class="modal-body p-0">
+                <iframe id="coePreviewFrame" src="about:blank" title="COE Preview" style="width:100%;height:78vh;border:none;background:#525659;"></iframe>
             </div>
         </div>
     </div>
