@@ -111,7 +111,7 @@
                     text: 'Are you sure you want to approve this leave request?',
                     icon: 'question',
                     showCancelButton: true,
-                    confirmButtonText: 'Yes, Apporve',
+                    confirmButtonText: 'Yes, Approve',
                     confirmButtonColor: '#198754',
                     cancelButtonColor: '#6c757d',
                     reverseButtons: true,
