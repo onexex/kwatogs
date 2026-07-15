@@ -392,6 +392,33 @@ $(document).ready(function () {
         });
     });
 
-    // Initial load
-    loadAll();
+    /* ── Initial load ──────────────────────────────────────────────────
+       Honor an HR Attention deep link: /pages/modules/programs?focus=pending
+       (milestones with recipients still to be granted) or ?focus=upcoming
+       (anniversaries in the next 60 days). Recipients/anniversaries render
+       inside a selected milestone's detail pane, so we auto-open the milestone
+       with the most matching people and prime its recipient filter. */
+    loadAll().then(function () {
+        var focus = (new URLSearchParams(window.location.search).get('focus') || '').toLowerCase();
+        if (focus !== 'pending' && focus !== 'upcoming') return;
+
+        var pool = focus === 'pending'
+            ? REACHED.filter(function (r) { return r.status !== 'granted'; })
+            : UPCOMING;
+        if (!pool.length) return;
+
+        // Land on the milestone with the largest matching group.
+        var counts = {};
+        pool.forEach(function (r) { counts[r.program_id] = (counts[r.program_id] || 0) + 1; });
+        var bestId = null, best = -1;
+        Object.keys(counts).forEach(function (pid) { if (counts[pid] > best) { best = counts[pid]; bestId = pid; } });
+        if (bestId == null) return;
+
+        selectedId = bestId;
+        recipFilter = focus === 'pending' ? 'pending' : 'all';
+        renderRail();
+        renderDetail();
+        var el = document.getElementById('programDetail');
+        if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
 });

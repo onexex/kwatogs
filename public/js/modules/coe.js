@@ -325,5 +325,15 @@ $(document).ready(function () {
         $('#coePreviewFrame').attr('src', 'about:blank');
     });
 
+    /* ── Deep link from the HR Attention panel: /pages/modules/coe?status=pending ──
+       Prime the client-side pill before the first load so the list opens pre-filtered. */
+    (function applyUrlFilter() {
+        var focus = (new URLSearchParams(window.location.search).get('status') || '').toLowerCase();
+        if (['pending', 'approved', 'rejected'].indexOf(focus) === -1) return;
+        activeFilter = focus;
+        $('.coe-pills .pill').removeClass('active');
+        $('.coe-pills .pill[data-filter="' + focus + '"]').addClass('active');
+    })();
+
     loadList();
 });

@@ -698,22 +698,22 @@ class HrDashboardController extends Controller
         $canAny = fn ($perm) => collect((array) $perm)->some(fn ($p) => (bool) $u?->can($p));
         $e201   = ['e201', 'admine201'];
         $items = [
-            ['urgent', 'noticemanagement', $over, 'Over suspension threshold', 'Disciplinary notices', '/pages/modules/notices', 'fa-triangle-exclamation', 'danger'],
-            ['urgent', 'noticemanagement', $atRisk, 'At-risk employees', 'Approaching threshold', '/pages/modules/notices', 'fa-circle-exclamation', 'danger'],
-            ['urgent', 'noticemanagement', $pendingRecs, 'Suspension recommendations', 'Pending your decision', '/pages/modules/notices', 'fa-gavel', 'danger'],
-            ['urgent', 'noticemanagement', $nteToReview, 'NTE explanations to review', 'Notice to Explain responses', '/pages/modules/notices', 'fa-file-pen', 'danger'],
+            ['urgent', 'noticemanagement', $over, 'Over suspension threshold', 'Disciplinary notices', '/pages/modules/notices?focus=over', 'fa-triangle-exclamation', 'danger'],
+            ['urgent', 'noticemanagement', $atRisk, 'At-risk employees', 'Approaching threshold', '/pages/modules/notices?focus=atrisk', 'fa-circle-exclamation', 'danger'],
+            ['urgent', 'noticemanagement', $pendingRecs, 'Suspension recommendations', 'Pending your decision', '/pages/modules/notices?focus=recs', 'fa-gavel', 'danger'],
+            ['urgent', 'noticemanagement', $nteToReview, 'NTE explanations to review', 'Notice to Explain responses', '/pages/modules/notices?focus=nte', 'fa-file-pen', 'danger'],
             ['approvals', 'pendingleaverequests', $leave, 'Leave requests to approve', 'Leave Requests', '/pages/modules/leaverequests', 'fa-calendar-xmark', 'info'],
             ['approvals', 'pendingovertimerequests', $ot, 'Overtime requests', 'Overtime', '/pages/modules/overtimerequests', 'fa-clock', 'info'],
             ['approvals', 'approveschedulechange', $sched, 'Schedule change requests', 'Schedule Requests', '/pages/modules/schedulerequests', 'fa-calendar-day', 'info'],
             ['attendance', 'summarylogs', $missed, 'Missed logouts to validate', 'Summary Logs', '/pages/modules/summary-logs?missed=1&from=' . Carbon::today()->subDays(14)->toDateString() . '&to=' . $today, 'fa-right-from-bracket', 'warning'],
-            ['attendance', 'hrdashboard', $noSchedule, 'Active staff with no schedule', 'Employee Schedules', '/employee-schedules', 'fa-calendar-plus', 'warning'],
-            ['attendance', $e201, $missingDocs, 'Missing government docs', 'SSS, PhilHealth, TIN', '/pages/management/e201', 'fa-file-circle-exclamation', 'warning'],
-            ['attendance', $e201, $expiringPassport, 'Passports expiring soon', 'Within 60 days', '/pages/management/e201', 'fa-id-card', 'warning'],
-            ['hr', 'coemanagement', $coePending, 'COE requests to review', 'Certificate of Employment', '/pages/modules/coe', 'fa-file-signature', 'purple'],
-            ['hr', 'programs', $tenurePending, 'Tenure milestones to grant', 'Programs', '/pages/modules/programs', 'fa-award', 'purple'],
-            ['hr', $e201, $regularize, 'Upcoming regularizations', 'Within 14 days', '/pages/management/e201', 'fa-user-check', 'purple'],
-            ['info', $e201, $birthdays, 'Birthdays this week', 'Say hello', '/pages/management/e201', 'fa-cake-candles', 'muted'],
-            ['info', 'programs', $anniversaries, 'Work anniversaries', 'Within 60 days', '/pages/modules/programs', 'fa-champagne-glasses', 'muted'],
+            ['attendance', 'hrdashboard', $noSchedule, 'Active staff with no schedule', 'Employee Schedules', '/employee-schedules?view=unscheduled&date=today', 'fa-calendar-plus', 'warning'],
+            ['attendance', $e201, $missingDocs, 'Missing government docs', 'SSS, PhilHealth, TIN', '/pages/management/e201?focus=missingdocs', 'fa-file-circle-exclamation', 'warning'],
+            ['attendance', $e201, $expiringPassport, 'Passports expiring soon', 'Within 60 days', '/pages/management/e201?focus=passport', 'fa-id-card', 'warning'],
+            ['hr', 'coemanagement', $coePending, 'COE requests to review', 'Certificate of Employment', '/pages/modules/coe?status=pending', 'fa-file-signature', 'purple'],
+            ['hr', 'programs', $tenurePending, 'Tenure milestones to grant', 'Programs', '/pages/modules/programs?focus=pending', 'fa-award', 'purple'],
+            ['hr', $e201, $regularize, 'Upcoming regularizations', 'Within 14 days', '/pages/management/e201?focus=regularize', 'fa-user-check', 'purple'],
+            ['info', $e201, $birthdays, 'Birthdays this week', 'Say hello', '/pages/management/e201?focus=birthday', 'fa-cake-candles', 'muted'],
+            ['info', 'programs', $anniversaries, 'Work anniversaries', 'Within 60 days', '/pages/modules/programs?focus=upcoming', 'fa-champagne-glasses', 'muted'],
         ];
 
         $labels = [
