@@ -29,6 +29,17 @@
     .flash-alert { background:linear-gradient(135deg,#fee2e2,#fff1f2); border:1px solid #fca5a5; border-left:5px solid var(--danger); border-radius:var(--radius-card); padding:16px 20px; margin-bottom:16px; box-shadow:var(--shadow-card); }
     .flash-alert .fa-title { color:#b91c1c; font-weight:800; font-size:.9rem; display:flex; align-items:center; gap:9px; }
     .flash-alert .names { margin-top:8px; display:flex; flex-wrap:wrap; gap:8px; }
+    /* Amber variant for the at-risk banner (revealed by ?focus=atrisk). */
+    .flash-alert.amber { background:linear-gradient(135deg,#fef3c7,#fffbeb); border-color:#fcd34d; border-left-color:var(--warning); }
+    .flash-alert.amber .fa-title { color:#b45309; }
+    /* Deep-link highlight pulse for a scrolled-to section. */
+    .attn-pulse { animation:attnPulse 1.1s ease-in-out 2; }
+    @keyframes attnPulse { 0%,100% { box-shadow:var(--shadow-card); } 50% { box-shadow:0 0 0 4px rgba(0,128,128,.35); } }
+    /* NTE focus filter banner. */
+    .focus-flash { display:flex; align-items:center; gap:10px; background:#eef2ff; border:1px solid #c7d2fe; border-left:4px solid #4338ca; border-radius:var(--radius-card); padding:12px 16px; margin-bottom:16px; font-size:.82rem; color:#3730a3; }
+    .focus-flash i { color:#4338ca; }
+    .focus-flash-x { margin-left:auto; background:#fff; border:1px solid #c7d2fe; color:#4338ca; border-radius:20px; padding:3px 12px; font-size:.72rem; font-weight:700; cursor:pointer; }
+    .focus-flash-x:hover { background:#4338ca; color:#fff; }
     .flash-name { background:#fff; border:1px solid #fca5a5; color:#b91c1c; border-radius:20px; padding:5px 12px; font-size:.78rem; font-weight:700; }
     .flash-name .n { background:#b91c1c; color:#fff; border-radius:10px; padding:1px 7px; margin-left:6px; font-size:.68rem; }
 
@@ -194,11 +205,24 @@
 
     {{-- Alert flash: employees over the suspension threshold --}}
     @if (!empty($d['over']))
-        <div class="flash-alert">
+        <div class="flash-alert" id="ntcOverBanner">
             <div class="fa-title"><i class="fa-solid fa-triangle-exclamation"></i> {{ count($d['over']) }} employee(s) exceeded the disciplinary limit ({{ $d['stats']['suspend'] }}+ notices) &mdash; recommended for suspension review:</div>
             <div class="names">
                 @foreach ($d['over'] as $o)
                     <span class="flash-name">{{ $o['name'] }} <span class="n">{{ $o['count'] }}</span></span>
+                @endforeach
+            </div>
+        </div>
+    @endif
+
+    {{-- At-risk banner: revealed by the HR Attention deep link (?focus=atrisk). There is no
+         standalone at-risk list elsewhere, so this names them on demand. Hidden by default. --}}
+    @if (!empty($d['atRisk']))
+        <div class="flash-alert amber" id="ntcAtRiskBanner" style="display:none;">
+            <div class="fa-title"><i class="fa-solid fa-user-clock"></i> {{ count($d['atRisk']) }} employee(s) approaching the disciplinary limit ({{ $d['stats']['warn'] }}+ notices):</div>
+            <div class="names">
+                @foreach ($d['atRisk'] as $a)
+                    <span class="flash-name">{{ $a['name'] }} <span class="n">{{ $a['count'] }}</span></span>
                 @endforeach
             </div>
         </div>
@@ -214,6 +238,9 @@
             <div class="rec-row"><span class="text-muted">Loading&hellip;</span></div>
         </div>
     </div>
+
+    {{-- HR Attention deep-link banner (?focus=nte): NTE-only list filter, with "Show all". --}}
+    <div id="ntcFocusFlash"></div>
 
     {{-- Workspace: notice list rail + reading pane --}}
     <div class="ntc-workspace">

@@ -67,7 +67,11 @@ class pageCtrl extends Controller
 
     public function e201()
     {
-        $resultUser = User::orderBy('lname')->orderBy('fname')
+        // Eager-load the relations the sidebar list reads (dept/position for the
+        // label, empDetail + employeeInformation for the HR-attention deep-link
+        // filters — missing gov docs / passport / regularization / birthday).
+        $resultUser = User::with(['empDetail.department', 'empDetail.position', 'employeeInformation'])
+        ->orderBy('lname')->orderBy('fname')
         ->where('status','1')
         ->get();
 

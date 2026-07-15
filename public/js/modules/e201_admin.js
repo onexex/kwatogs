@@ -19,13 +19,24 @@ $(document).ready(function() {
     const statusFilter  = urlParams.get('status');   // '1' | '0' | '2'
     const payrollFilter = (urlParams.get('payroll') || '').toUpperCase(); // 'CASH' | 'CARD'
     const deptFilter    = urlParams.get('dept');      // department id
+    const focusFilter   = (urlParams.get('focus') || '').toLowerCase(); // HR-attention deep link
 
     const STATUS_LABELS  = { '1': 'Active', '0': 'Resigned', '2': 'End of Contract' };
     const PAYROLL_LABELS = { CASH: 'Cash payroll', CARD: 'Card payroll' };
+    // HR-attention deep links (from the "Needs your attention" panel). Each key matches a
+    // token emitted in the row's data-flags attribute (see e201.blade.php).
+    const FOCUS_LABELS   = {
+        missingdocs: 'Missing government docs',
+        passport:    'Passport expiring soon',
+        regularize:  'Upcoming regularization',
+        birthday:    'Birthday this week',
+        hireanniv:   'Work anniversary this week',
+    };
 
     let activeStatus  = STATUS_LABELS[statusFilter]  ? statusFilter  : null;
     let activePayroll = PAYROLL_LABELS[payrollFilter] ? payrollFilter : null;
     let activeDept    = (deptFilter && ('' + deptFilter).trim() !== '') ? ('' + deptFilter).trim() : null;
+    let activeFocus   = FOCUS_LABELS[focusFilter] ? focusFilter : null;
 
     // Resolve a readable department name from the first matching row.
     // NOTE: read raw attributes with .attr() (strings) — .data() coerces "0"/"1"
@@ -36,7 +47,7 @@ $(document).ready(function() {
         activeDeptName = ($match.attr('data-deptname') || 'Department') + '';
     }
 
-    function hasFilter() { return activeStatus || activePayroll || activeDept; }
+    function hasFilter() { return activeStatus || activePayroll || activeDept || activeFocus; }
 
     function applyFilters() {
         const query = ($('#empSearchInput').val() || '').toLowerCase().trim();
@@ -47,7 +58,8 @@ $(document).ready(function() {
             const matchesStatus  = !activeStatus  || (el.getAttribute('data-status')  || '') === activeStatus;
             const matchesPayroll = !activePayroll || (el.getAttribute('data-payroll') || '').toUpperCase() === activePayroll;
             const matchesDept    = !activeDept    || (el.getAttribute('data-dept')    || '') === activeDept;
-            if (matchesSearch && matchesStatus && matchesPayroll && matchesDept) {
+            const matchesFocus   = !activeFocus   || (el.getAttribute('data-flags')   || '').split(' ').indexOf(activeFocus) !== -1;
+            if (matchesSearch && matchesStatus && matchesPayroll && matchesDept && matchesFocus) {
                 el.classList.remove('d-none'); el.classList.add('d-flex');
                 shown++;
             } else {
@@ -64,6 +76,7 @@ $(document).ready(function() {
         if (activeStatus)  parts.push(STATUS_LABELS[activeStatus]);
         if (activePayroll) parts.push(PAYROLL_LABELS[activePayroll]);
         if (activeDept)    parts.push(activeDeptName);
+        if (activeFocus)   parts.push(FOCUS_LABELS[activeFocus]);
         $('#e201FilterLabel').text(parts.join(' · '));
         $chip.removeClass('d-none').addClass('d-flex');
     }
@@ -78,6 +91,7 @@ $(document).ready(function() {
         activeStatus = null;
         activePayroll = null;
         activeDept = null;
+        activeFocus = null;
         renderFilterChip();
         applyFilters();
     });
