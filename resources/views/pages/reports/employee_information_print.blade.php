@@ -44,7 +44,7 @@
     <div class="head">
         <img src="{{ asset('img/kwatogslogo.jpg') }}" onerror="this.style.display='none'" alt="">
         <div>
-            <div class="org">KWATOGS LOMI HOUSE</div>
+            <div class="org">DEMO</div>
             <div class="sub">Employee Information Report</div>
         </div>
     </div>

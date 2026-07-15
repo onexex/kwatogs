@@ -16,7 +16,7 @@ class PagibigRemittanceReportController extends Controller
 {
     use AggregatesPayrollRemittance;
 
-    private const LETTERHEAD = 'KWATOGS LOMI HOUSE';
+    private const LETTERHEAD = 'DEMO';
 
     private const SUMS = [
         'ee'   => 'COALESCE(p.pagibig_contribution,0)',

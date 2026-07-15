@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <div class="head">
                     <img src="${logoUrl}" onerror="this.style.display='none'" alt="">
                     <div>
-                        <div class="org">KWATOGS LOMI HOUSE</div>
+                        <div class="org">DEMO</div>
                         <div class="sub">Attendance Report</div>
                     </div>
                 </div>

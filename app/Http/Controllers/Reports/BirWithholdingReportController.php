@@ -26,7 +26,7 @@ class BirWithholdingReportController extends Controller
 {
     use AggregatesPayrollRemittance;
 
-    private const LETTERHEAD = 'KWATOGS LOMI HOUSE';
+    private const LETTERHEAD = 'DEMO';
 
     private const SUMS = [
         'gross'        => 'COALESCE(p.gross_pay,0)',

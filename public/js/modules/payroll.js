@@ -203,7 +203,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         </div>
 
                         <div class="footer">
-                            <i>Generated from KWATOGS Payroll System &mdash; ${generatedAt}</i>
+                            <i>Generated from DEMO Payroll System &mdash; ${generatedAt}</i>
                         </div>
 
                         <div class="endmark">*** End of Report ***</div>
@@ -581,7 +581,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         </div>
 
                         <div class="footer">
-                            <i>Generated from KWATOGS Payroll System &mdash; ${generatedAt}</i>
+                            <i>Generated from DEMO Payroll System &mdash; ${generatedAt}</i>
                         </div>
 
                         <div class="endmark">*** End of Report ***</div>

@@ -142,7 +142,7 @@ class ScheduleRequestService
             : $date;
 
         // critical writes — schedule + applied flag. Break now comes from the REQUEST
-        // (employee-specified via Kuya Kwatogs); fall back to the existing schedule's break
+        // (employee-specified via Demo Assistant); fall back to the existing schedule's break
         // only for a legacy request that has none.
         EmployeeSchedule::updateOrCreate(
             ['employee_id' => $req->employee_id, 'sched_start_date' => $date],

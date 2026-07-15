@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('schedule_requests', function (Blueprint $table) {
-            // Employee-requested break window (Kuya Kwatogs). Nullable so existing rows
+            // Employee-requested break window (Demo Assistant). Nullable so existing rows
             // and any legacy break-less request stay valid.
             $table->time('new_break_start')->nullable()->after('new_sched_out');
             $table->time('new_break_end')->nullable()->after('new_break_start');

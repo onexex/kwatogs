@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\DB;
  */
 class FinalPayReportController extends Controller
 {
-    private const LETTERHEAD = 'KWATOGS LOMI HOUSE';
+    private const LETTERHEAD = 'DEMO';
     private const WORKING_DAYS = 26; // monthly basic ÷ working days = daily rate
 
     public function index()

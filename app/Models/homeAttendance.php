@@ -510,7 +510,7 @@ class homeAttendance extends Model
 
         // ── Emergency override ──────────────────────────────────────────
         // If the employee has an APPLIED schedule-change request for today
-        // (filed via the Kuya Kwatogs assistant), open the window so they can
+        // (filed via the Demo Assistant assistant), open the window so they can
         // punch at the requested time even outside the strict shift window.
         if (!$matchedSchedule) {
             $hasEmergency = false;

@@ -312,7 +312,7 @@
             .summary-value { font-size:1.05rem; }
             .summary-label { font-size:.57rem; letter-spacing:.3px; margin-bottom:2px; }
             .summary-unit { font-size:.6rem; }
-            /* Kuya Kwatogs to the left so it clears the Time In button */
+            /* Demo Assistant to the left so it clears the Time In button */
             #saFab { left:16px; right:auto; bottom:16px; }
             .sa-pop { left:16px; right:auto; bottom:74px; }
         }
@@ -387,15 +387,15 @@
 
         @can('createschedulechange')
         {{-- ── Floating schedule-change assistant ── --}}
-        <div id="saFab" title="Kuya Kwatogs — adjust today's schedule">
-            <span class="saFab-dot"></span><i class="fa fa-wand-magic-sparkles"></i> Kuya Kwatogs
+        <div id="saFab" title="Demo Assistant — adjust today's schedule">
+            <span class="saFab-dot"></span><i class="fa fa-wand-magic-sparkles"></i> Demo Assistant
         </div>
         <div id="schedAssistCard" class="sa-pop">
             <div class="sa-pop-head">
                 <div class="d-flex align-items-center gap-2" style="min-width:0;">
                     <div class="sa-pop-avatar"><i class="fa fa-robot"></i></div>
                     <div style="min-width:0;">
-                        <div class="sa-pop-title">Kuya Kwatogs</div>
+                        <div class="sa-pop-title">Demo Assistant</div>
                         <div class="sa-pop-sub text-truncate" id="saCurrent">Checking your schedule…</div>
                     </div>
                 </div>
@@ -409,7 +409,7 @@
             <div class="sa-pop-body">
                 {{-- Guided assistant --}}
                 <div id="saAssistant">
-                    <div class="sa-bubble"><i class="fa fa-robot"></i><span id="saBubble">Hi, I'm Kuya Kwatogs! How can I help today? First, which day do you need to adjust?</span></div>
+                    <div class="sa-bubble"><i class="fa fa-robot"></i><span id="saBubble">Hi, I'm Demo Assistant! How can I help today? First, which day do you need to adjust?</span></div>
                     <div class="sa-step" data-step="1">
                         <label class="field-label">Which day?</label>
                         <input type="date" id="saDate" class="form-control form-control-sm" value="{{ date('Y-m-d') }}" min="{{ date('Y-m-d') }}">
@@ -874,7 +874,7 @@ $(function () {
     });
 
     const bubbles = {
-        1: "Hi, I'm Kuya Kwatogs! How can I help today? First, which day do you need to adjust?",
+        1: "Hi, I'm Demo Assistant! How can I help today? First, which day do you need to adjust?",
         2: "What time should you start and end that day?",
         3: "Tell me why — your approver will see this.",
         4: "Here's your request. Looks good? Hit Submit."
@@ -1056,12 +1056,12 @@ $(function () {
             },
         ];
 
-        // Only add the Kuya Kwatogs step if the FAB exists (permission-gated)
+        // Only add the Demo Assistant step if the FAB exists (permission-gated)
         if (document.getElementById('saFab')) {
             steps.push({
                 element: '#saFab',
                 popover: {
-                    title: '🤖 Kuya Kwatogs',
+                    title: '🤖 Demo Assistant',
                     description: 'Need to adjust your schedule for a day? Click this button to open the Schedule Change Assistant. It will guide you step-by-step to file a request — your supervisor will then approve or reject it.',
                     side: 'top',
                     align: 'end'

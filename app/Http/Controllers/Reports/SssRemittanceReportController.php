@@ -18,7 +18,7 @@ class SssRemittanceReportController extends Controller
 {
     use AggregatesPayrollRemittance;
 
-    private const LETTERHEAD = 'KWATOGS LOMI HOUSE';
+    private const LETTERHEAD = 'DEMO';
 
     private const SUMS = [
         'ee' => 'COALESCE(p.sss_contribution,0)',

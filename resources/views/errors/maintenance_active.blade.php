@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ config('app.name') }} — Under Maintenance</title>
-    <link rel="icon" type="image/png" href="{{ asset('img/kwatogslogo.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('img/kwatogslogo.png') }}?v=demo">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <style>
         :root {
@@ -57,7 +57,7 @@
 </head>
 <body>
     <div class="card">
-        <img class="logo" src="{{ asset('img/kwatogslogo.png') }}" alt="{{ config('app.name') }}">
+        <img class="logo" src="{{ asset('img/kwatogslogo.png') }}?v=demo" alt="{{ config('app.name') }}">
         <div class="gear"><i class="fa-solid fa-gear"></i></div>
 
         <h1>We&rsquo;ll be right back</h1>

@@ -10,7 +10,7 @@ use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 /**
- * A Kuya Kwatogs schedule-change request must be refused once the employee has already
+ * A Demo Assistant schedule-change request must be refused once the employee has already
  * timed in for that day — applying a new schedule then would diverge the recorded punch.
  */
 class ScheduleRequestBlockTest extends TestCase

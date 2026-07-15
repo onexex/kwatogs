@@ -1,4 +1,4 @@
-# Activation Checklist — KWATOGS HRIS
+# Activation Checklist — DEMO HRIS
 
 Run these once to turn on everything built recently. Order matters.
 
@@ -18,7 +18,7 @@ Creates / alters:
 | `add_cash_advance_to_payrolls` | `cash_advance` + `other_deduction` columns |
 | `create_pay_adjustments_table` | Pay Adjustments + `adjustment_amount` on payrolls |
 | `create_payroll_approvals_table` | Payroll approve/lock |
-| `create_schedule_requests_table` | Schedule-change requests (Kuya Kwatogs) |
+| `create_schedule_requests_table` | Schedule-change requests (Demo Assistant) |
 
 ## 2. Register permissions
 
@@ -54,7 +54,7 @@ Then **restart your web server / PHP** (Apache, Nginx+PHP-FPM, or stop/restart `
 | `thirteenthmonth` | Payroll / HR / Finance |
 | `auditlog` | Admin / HR |
 | `approveschedulechange` | HR (Pending Schedule Requests) |
-| `createschedulechange` | All employees (enables Kuya Kwatogs on the clock-in page) |
+| `createschedulechange` | All employees (enables Demo Assistant on the clock-in page) |
 
 ## 5. Re-compute payroll once
 
@@ -68,7 +68,7 @@ After migrating, re-run **Generate** for the current period so the new columns p
 - **Payroll register:** Print Report (logo), Print Payslips, **Export** (Cash list / ATM bank file), Cash Adv + Company Loan columns, Totals row, **Approve / lock** with Reopen override.
 - **Pay Adjustments** (Operations): +/− to Gross (taxed) or Take-home, flows into payroll & payroll log.
 - **Imports** (Operations): Attendance, Overtime, Leave — drag/drop xlsx/csv, dependency-free, name-matching.
-- **Kuya Kwatogs** (clock-in page): emergency schedule change — applies on submit so the employee can time in; HR confirms or reverts.
+- **Demo Assistant** (clock-in page): emergency schedule change — applies on submit so the employee can time in; HR confirms or reverts.
 - **HR Control Center** (HR Dashboard): live KPIs, 14/30-day trend, who's-in (auto-refresh), pending approvals, attendance, payroll snapshot, workforce, absenteeism, alerts, drill-downs, Export PDF.
 
 ## Known follow-ups (optional)

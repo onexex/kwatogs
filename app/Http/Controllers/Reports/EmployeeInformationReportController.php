@@ -14,7 +14,7 @@ use Illuminate\Http\Request;
 
 class EmployeeInformationReportController extends Controller
 {
-    private const LETTERHEAD = 'KWATOGS LOMI HOUSE';
+    private const LETTERHEAD = 'DEMO';
 
     private const HEADERS = [
         'NO.', 'EMP ID', 'EMPLOYEE NAME', 'SUFFIX', 'GENDER', 'CITIZENSHIP',

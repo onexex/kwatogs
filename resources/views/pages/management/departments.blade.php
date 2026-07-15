@@ -338,7 +338,7 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label for="txtDeptName" class="field-label">Department / Company Name <span class="req">*</span></label>
-                            <input class="form-control" id="txtDeptName" name="department" type="text" placeholder="e.g. KwaTogs Inc." />
+                            <input class="form-control" id="txtDeptName" name="department" type="text" placeholder="e.g. Demo Company Inc." />
                             <span class="text-danger small error-text department_error"></span>
                         </div>
                         <div class="col-md-6">

@@ -20,9 +20,9 @@
     <title>{{ config('app.name') }} - {{ $pageTitle }}</title>
 
     {{-- Brand favicon (public/favicon.ico was empty; use the square 960x960 logo) --}}
-    <link rel="icon" type="image/png" href="{{ asset('img/kwatogslogo.png') }}">
-    <link rel="shortcut icon" type="image/png" href="{{ asset('img/kwatogslogo.png') }}">
-    <link rel="apple-touch-icon" href="{{ asset('img/kwatogslogo.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('img/kwatogslogo.png') }}?v=demo">
+    <link rel="shortcut icon" type="image/png" href="{{ asset('img/kwatogslogo.png') }}?v=demo">
+    <link rel="apple-touch-icon" href="{{ asset('img/kwatogslogo.png') }}?v=demo">
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/js/bootstrap.bundle.min.js"></script>
@@ -241,7 +241,7 @@
         <ul class="navbar-nav sidebar sidebar-dark accordion" id="accordionSidebar">
             <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{ url('/') }}">
                 <div class="sidebar-brand-icon">
-                    <img style="width: 50px;" src="{{URL::asset('/img/kwatogslogo.png')}}" alt="Logo">
+                    <img style="width: 50px;" src="{{URL::asset('/img/kwatogslogo.png')}}?v=demo" alt="Logo">
                 </div>
             </a>
 

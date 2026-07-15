@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  */
 class LoanLedgerReportController extends Controller
 {
-    private const LETTERHEAD = 'KWATOGS LOMI HOUSE';
+    private const LETTERHEAD = 'DEMO';
 
     public function index()
     {

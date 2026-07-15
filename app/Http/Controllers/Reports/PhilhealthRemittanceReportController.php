@@ -15,7 +15,7 @@ class PhilhealthRemittanceReportController extends Controller
 {
     use AggregatesPayrollRemittance;
 
-    private const LETTERHEAD = 'KWATOGS LOMI HOUSE';
+    private const LETTERHEAD = 'DEMO';
 
     private const SUMS = [
         'ee' => 'COALESCE(p.philhealth_contribution,0)',

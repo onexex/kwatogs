@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 class ThirteenthMonthController extends Controller
 {
-    private const LETTERHEAD = 'KWATOGS LOMI HOUSE';
+    private const LETTERHEAD = 'DEMO';
 
     public function index()
     {

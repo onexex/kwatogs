@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
  */
 class LeaveLedgerReportController extends Controller
 {
-    private const LETTERHEAD = 'KWATOGS LOMI HOUSE';
+    private const LETTERHEAD = 'DEMO';
 
     public function index()
     {

@@ -193,7 +193,7 @@
                                 <td>Set the start and end dates of the attendance period you want to view. Defaults to the last 10 days through today. Change the dates then click <b>Refresh</b> to reload.</td>
                             </tr>
                             <tr>
-                                <td class="item-name"><i class="fa-solid fa-wand-magic-sparkles"></i>Kuya Kwatogs (floating button)</td>
+                                <td class="item-name"><i class="fa-solid fa-wand-magic-sparkles"></i>Demo Assistant (floating button)</td>
                                 <td>Fixed bottom-right corner (teal pill, above Time In/Out)</td>
                                 <td>Opens the <b>Schedule Change Assistant</b> — a guided chatbot-style form to file a schedule adjustment request (change your shift time for a specific day). Only visible if your role has the <code class="kk">createschedulechange</code> permission.</td>
                             </tr>
@@ -230,12 +230,12 @@
                     </table>
                 </div>
 
-                {{-- Kuya Kwatogs assistant --}}
+                {{-- Demo Assistant assistant --}}
                 <div class="sc-body prose" style="border-top:1px solid var(--border);">
                     <p style="font-weight:800;color:var(--slate);font-size:.9rem;margin-bottom:6px;">
-                        <i class="fa-solid fa-robot me-2" style="color:var(--teal)"></i>Kuya Kwatogs — Schedule Change Assistant
+                        <i class="fa-solid fa-robot me-2" style="color:var(--teal)"></i>Demo Assistant — Schedule Change Assistant
                     </p>
-                    <p>Click the floating <b>Kuya Kwatogs</b> button to open the assistant panel. You can use the <b>Guided</b> mode (step-by-step questions) or switch to <b>Quick Form</b> mode using the toggle in the panel header.</p>
+                    <p>Click the floating <b>Demo Assistant</b> button to open the assistant panel. You can use the <b>Guided</b> mode (step-by-step questions) or switch to <b>Quick Form</b> mode using the toggle in the panel header.</p>
                     <ol style="font-size:.86rem;color:var(--slate);line-height:1.8;padding-left:1.4rem;margin-bottom:0;">
                         <li>Choose the <b>date</b> you need to adjust (today or a future date).</li>
                         <li>Enter the <b>new time in</b> and <b>new time out</b> for that day.</li>

@@ -20,7 +20,7 @@ use Illuminate\Http\Request;
 class PayrollExportController extends Controller
 {
     /** Letterhead shown at the top of the bank file. */
-    private const LETTERHEAD = 'KWATOGS LOMI HOUSE';
+    private const LETTERHEAD = 'DEMO';
 
     // ── Data ─────────────────────────────────────────────────────────────
     private function getRows(Request $request)

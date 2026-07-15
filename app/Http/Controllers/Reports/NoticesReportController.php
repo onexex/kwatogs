@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
  */
 class NoticesReportController extends Controller
 {
-    private const LETTERHEAD = 'KWATOGS LOMI HOUSE';
+    private const LETTERHEAD = 'DEMO';
 
     // Mirrors App\Services\NoticeService thresholds (active disciplinary count).
     private const WARN = 3;

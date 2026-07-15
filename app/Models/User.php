@@ -126,7 +126,7 @@ class User extends Authenticatable
         $suffix = $this->suffix ?? '';
 
         $fullName = trim($fname . ' ' . ($mname ? strtoupper(substr($mname, 0, 1)) . '. ' : '') . $lname . ' ' . $suffix);
-        return $fullName ?: 'Kwatogs Employee';
+        return $fullName ?: 'Demo Employee';
     }
 
     public function leaves()
