@@ -250,6 +250,15 @@
                     </select>
                 </div>
                 <div class="col-6 col-md-2">
+                    <label class="field-label">Leave Type</label>
+                    <select id="fltType" class="form-select">
+                        <option value="all">All</option>
+                        @foreach ($leavetypes as $lt)
+                            <option value="{{ $lt->id }}">{{ $lt->type_leave }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
                     <label class="field-label">Status</label>
                     <select id="fltStatus" class="form-select">
                         <option value="all">All</option>
@@ -321,6 +330,7 @@ $(function () {
     const params = () => ({
         date_from: $('#fltFrom').val(), date_to: $('#fltTo').val(),
         department_id: $('#fltDept').val() || 'all', status: $('#fltStatus').val() || 'all',
+        leave_type: $('#fltType').val() || 'all',
         search: $('#fltSearch').val(),
     });
 
@@ -366,7 +376,20 @@ $(function () {
 
     $('#btnFilter').on('click', () => load(1));
     $('#fltSearch').on('keyup', e => { if (e.key === 'Enter') load(1); });
-    $('#fltFrom,#fltTo,#fltDept,#fltStatus').on('change', () => load(1));
+    $('#fltFrom,#fltTo,#fltDept,#fltStatus,#fltType').on('change', () => load(1));
+
+    // Deep-link support: apply any filter passed via URL query and auto-run.
+    (function applyUrlFilters() {
+        const qp = new URLSearchParams(location.search);
+        if (![...qp.keys()].length) return;
+        if (qp.get('date_from'))     $('#fltFrom').val(qp.get('date_from'));
+        if (qp.get('date_to'))       $('#fltTo').val(qp.get('date_to'));
+        if (qp.get('department_id')) $('#fltDept').val(qp.get('department_id'));
+        if (qp.get('status'))        $('#fltStatus').val(qp.get('status'));
+        if (qp.get('leave_type'))    $('#fltType').val(qp.get('leave_type'));
+        if (qp.get('search'))        $('#fltSearch').val(qp.get('search'));
+        load(1);
+    })();
     $(document).on('click', '.pg', function (e) { e.preventDefault(); if ($(this).closest('.page-item').hasClass('disabled')) return; const p = parseInt($(this).data('page'), 10); if (p) load(p); });
     $('#btnPrint').on('click', () => window.open('/reports/leave/print?' + new URLSearchParams(params()).toString(), '_blank'));
 });

@@ -231,7 +231,9 @@ class pageCtrl extends Controller
         ->where('status','1')
         ->get();
 
-        return view('pages.reports.attendance')->with('resultEmp',$resultEmp);
+        $departments = \App\Models\department::orderBy('dep_name')->get();
+
+        return view('pages.reports.attendance')->with('resultEmp',$resultEmp)->with('departments',$departments);
     }
 
     public function darView()
@@ -366,20 +368,5 @@ class pageCtrl extends Controller
     {
         return view('pages.modules.checkRegister');
     }
-
-    public function empscheduler()
-    {
-        $resultES = DB::table('users')
-        ->orderBy('lname')
-        ->get();
-
-        $resultSched = DB::table('worktimes')
-        ->orderBy('wt_timefrom')
-        ->get();
-
-        return view('pages.management.empscheduler')->with('resultES',$resultES)->with('resultSched',$resultSched);
-    }
-
-
 
 }

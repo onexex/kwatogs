@@ -38,12 +38,6 @@ class HrDashboardController extends Controller
             ->selectRaw("dp.id as id, COALESCE(dp.dep_name,'Unassigned') as name, COUNT(*) as c")
             ->groupBy('dp.id', 'name')->orderByDesc('c')->limit(8)->get();
 
-        $d['byCompany'] = DB::table('emp_details as e')
-            ->leftJoin('companies as c', 'c.comp_id', '=', 'e.empCompID')
-            ->where('e.empStatus', '1')
-            ->selectRaw("COALESCE(c.comp_name,'Unassigned') as name, COUNT(*) as c")
-            ->groupBy('name')->orderByDesc('c')->limit(7)->get();
-
         // ── Pending approvals ──────────────────────────────────────────
         $d['pendLeave'] = Leave::whereIn('status', ['FORAPPROVAL', 'APPROVED'])->count();
         $d['pendOt']    = Overtime::whereIn('status', ['FORAPPROVAL', 'APPROVED'])->count();
@@ -145,8 +139,8 @@ class HrDashboardController extends Controller
         $d['leaveThisMonth'] = DB::table('leaves as l')
             ->join('leavetypes as lt', 'lt.id', '=', 'l.leave_type')
             ->whereDate('l.start_date', '>=', $monthStart)
-            ->selectRaw("lt.type_leave as type, COUNT(*) as cnt, SUM(l.total_hrs) as hrs")
-            ->groupBy('lt.type_leave')->orderByDesc('cnt')->limit(6)->get();
+            ->selectRaw("lt.id as type_id, lt.type_leave as type, COUNT(*) as cnt, SUM(l.total_hrs) as hrs")
+            ->groupBy('lt.id', 'lt.type_leave')->orderByDesc('cnt')->limit(6)->get();
         $d['leaveTotalDays'] = round(Leave::whereDate('start_date', '>=', $monthStart)->sum('total_hrs') / 8, 1);
 
         // ── Payroll snapshot ───────────────────────────────────────────
@@ -177,8 +171,11 @@ class HrDashboardController extends Controller
             ->selectRaw("TRIM(CONCAT(u.lname,', ',u.fname)) as name, e.empDateRegular as due")
             ->orderBy('e.empDateRegular')->limit(10)->get();
 
+        // Key off the schedule's working day (sched_start_date) so this matches the Scheduler's
+        // per-day "Unscheduled" view exactly — the deep-link (?view=unscheduled&date=today) lists
+        // the same employees this count reports. (Overnight shifts are keyed to their start day.)
         $schedEmpIds = DB::table('employee_schedules')
-            ->whereDate('sched_start_date', '<=', $today)->whereDate('sched_end_date', '>=', $today)
+            ->whereDate('sched_start_date', '=', $today)
             ->pluck('employee_id')->unique();
         $d['noSchedule'] = empDetail::where('empStatus', '1')->whereNotIn('empID', $schedEmpIds)->count();
 
@@ -287,8 +284,8 @@ class HrDashboardController extends Controller
             ->leftJoin('attendance_summaries as a', function ($j) {
                 $j->on('a.employee_id', '=', 's.employee_id')->on('a.attendance_date', '=', 's.sched_start_date');
             })
-            ->selectRaw("COALESCE(dp.dep_name,'Unassigned') as name, COUNT(*) as scheduled, COUNT(CASE WHEN a.total_hours>0 THEN 1 END) as present")
-            ->groupBy('name')->havingRaw('COUNT(*) > 0')->orderByDesc('scheduled')->limit(8)->get();
+            ->selectRaw("dp.id as id, COALESCE(dp.dep_name,'Unassigned') as name, COUNT(*) as scheduled, COUNT(CASE WHEN a.total_hours>0 THEN 1 END) as present")
+            ->groupBy('dp.id', 'name')->havingRaw('COUNT(*) > 0')->orderByDesc('scheduled')->limit(8)->get();
 
         // ── Tenure-milestone programs (Programs Management) ─────────────
         // Reuses the same eligibility computation as the Programs screen so the
@@ -408,6 +405,65 @@ class HrDashboardController extends Controller
             ->whereRaw('DATE_ADD(TIMESTAMP(s.sched_start_date, s.sched_out), INTERVAL (s.sched_out <= s.sched_in) DAY) <= NOW()');
 
         return $this->withoutExcusedDays($q);
+    }
+
+    /**
+     * Drill-down for the "Absenteeism by Dept (30d)" card: the per-employee breakdown
+     * behind a department's % — who was absent and on which scheduled days, over the
+     * same last-30-days / judgeable-day rules the card uses (so the numbers reconcile).
+     * "Absent" = a judgeable scheduled day with no attendance (total_hours <= 0), after
+     * excusing approved leave / OB / holidays (handled by judgeableScheduledDays()).
+     */
+    public function absentDeptDetail(Request $request)
+    {
+        $deptId = $request->query('id');
+        if (!$deptId) {
+            return response()->json(['name' => 'Department', 'total_scheduled' => 0, 'total_absent' => 0, 'employees' => []]);
+        }
+
+        $today   = Carbon::today()->toDateString();
+        $start30 = Carbon::today()->subDays(29)->toDateString();
+
+        // One row per judgeable scheduled day in the department, flagged present/absent.
+        $rows = $this->judgeableScheduledDays($start30, $today)
+            ->leftJoin('users as u', 'u.empID', '=', 's.employee_id')
+            ->leftJoin('attendance_summaries as a', function ($j) {
+                $j->on('a.employee_id', '=', 's.employee_id')
+                  ->on('a.attendance_date', '=', 's.sched_start_date');
+            })
+            ->where('e.empDepID', $deptId)
+            ->selectRaw("s.employee_id as empID, u.lname, u.fname,
+                s.sched_start_date as d, COALESCE(a.total_hours, 0) as hrs")
+            ->orderBy('u.lname')->orderBy('u.fname')->orderBy('s.sched_start_date')
+            ->get();
+
+        $employees = $rows->groupBy('empID')->map(function ($g) {
+            $first     = $g->first();
+            $scheduled = $g->count();
+            $absentRows = $g->filter(fn($r) => (float) $r->hrs <= 0);
+            $absent    = $absentRows->count();
+            $absentDates = $absentRows->pluck('d')->map(fn($x) => substr($x, 0, 10))->unique()->values();
+
+            return [
+                'empID'     => $first->empID,
+                'name'      => strtoupper(trim(($first->lname ?? '') . ', ' . ($first->fname ?? ''), ', ')) ?: $first->empID,
+                'scheduled' => $scheduled,
+                'absent'    => $absent,
+                'rate'      => $scheduled > 0 ? round($absent / $scheduled * 100) : 0,
+                'dates'     => $absentDates,
+            ];
+        })->filter(fn($e) => $e['absent'] > 0)
+          ->sortByDesc('absent')
+          ->values();
+
+        $deptName = \App\Models\department::where('id', $deptId)->value('dep_name') ?? 'Department';
+
+        return response()->json([
+            'name'            => $deptName,
+            'total_scheduled' => $rows->count(),
+            'total_absent'    => $employees->sum('absent'),
+            'employees'       => $employees,
+        ]);
     }
 
     /** NOT EXISTS filters for excused scheduled days (expects aliases s + e). */
@@ -593,8 +649,11 @@ class HrDashboardController extends Controller
             ->selectRaw('COUNT(DISTINCT h.employee_id, DATE(h.attendance_date)) as c')
             ->value('c');
 
+        // Key off the schedule's working day (sched_start_date) so this matches the Scheduler's
+        // per-day "Unscheduled" view exactly — the deep-link (?view=unscheduled&date=today) lists
+        // the same employees this count reports. (Overnight shifts are keyed to their start day.)
         $schedEmpIds = DB::table('employee_schedules')
-            ->whereDate('sched_start_date', '<=', $today)->whereDate('sched_end_date', '>=', $today)
+            ->whereDate('sched_start_date', '=', $today)
             ->pluck('employee_id')->unique();
         $noSchedule = empDetail::where('empStatus', '1')->whereNotIn('empID', $schedEmpIds)->count();
 

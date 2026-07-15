@@ -35,7 +35,7 @@ class EmployeeRecordController extends Controller
     // Load the initial Admin Search Page
     public function index() {
         // Fetch users with their details, ordered alphabetically by last name
-        $resultUser = User::with('empDetail.position')
+        $resultUser = User::with('empDetail.position', 'empDetail.department')
             ->orderBy('lname', 'asc')
             ->get();
 
