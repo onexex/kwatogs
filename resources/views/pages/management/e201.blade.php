@@ -237,7 +237,11 @@
                 @php
                     $det   = $user->empDetail;
                     $flags = [];
-                    if ($det) {
+                    // All HR-attention filters are active-employee concerns only — a separated
+                    // employee (empStatus 0=Resigned / 2=End of Contract) isn't chased for docs,
+                    // passport, regularization or birthday greetings, and the attention counts
+                    // exclude them too.
+                    if ($det && ($det->empStatus ?? '') === '1') {
                         if (blank($det->empSSS) || blank($det->empPhilhealth) || blank($det->empPagibig) || blank($det->empTIN)) {
                             $flags[] = 'missingdocs';
                         }
@@ -249,10 +253,18 @@
                             $rg = \Carbon\Carbon::parse($det->empDateRegular);
                             if ($rg->gte($attnToday) && $rg->lte($attnToday->copy()->addDays(14))) $flags[] = 'regularize';
                         }
-                    }
-                    $bd = optional($user->employeeInformation)->empBdate;
-                    if ($bd && in_array(\Carbon\Carbon::parse($bd)->format('m-d'), $attnWeekDays, true)) {
-                        $flags[] = 'birthday';
+                        $bd = optional($user->employeeInformation)->empBdate;
+                        if ($bd && in_array(\Carbon\Carbon::parse($bd)->format('m-d'), $attnWeekDays, true)) {
+                            $flags[] = 'birthday';
+                        }
+                        // Hire-date (service) anniversary this week — only counts as an
+                        // anniversary if they were hired in a prior year (year < today).
+                        if ($det->empDateHired) {
+                            $hd = \Carbon\Carbon::parse($det->empDateHired);
+                            if ($hd->year < $attnToday->year && in_array($hd->format('m-d'), $attnWeekDays, true)) {
+                                $flags[] = 'hireanniv';
+                            }
+                        }
                     }
                 @endphp
                 <div class="emp-row d-flex align-items-center"

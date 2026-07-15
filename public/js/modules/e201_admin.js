@@ -30,6 +30,7 @@ $(document).ready(function() {
         passport:    'Passport expiring soon',
         regularize:  'Upcoming regularization',
         birthday:    'Birthday this week',
+        hireanniv:   'Work anniversary this week',
     };
 
     let activeStatus  = STATUS_LABELS[statusFilter]  ? statusFilter  : null;

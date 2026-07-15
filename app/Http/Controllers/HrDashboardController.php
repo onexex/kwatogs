@@ -682,6 +682,13 @@ class HrDashboardController extends Controller
             ->where('e.empStatus', '1')->whereNotNull('i.empBdate')
             ->whereIn(DB::raw("DATE_FORMAT(i.empBdate, '%m-%d')"), $weekDays)->count();
 
+        // Hire-date (service) anniversary this week — active staff whose hire month-day
+        // lands in the next 7 days, and who were hired in a prior year (a real anniversary).
+        $hireAnnivs = DB::table('emp_details')->where('empStatus', '1')
+            ->whereNotNull('empDateHired')
+            ->whereRaw('YEAR(empDateHired) < YEAR(CURDATE())')
+            ->whereIn(DB::raw("DATE_FORMAT(empDateHired, '%m-%d')"), $weekDays)->count();
+
         $nd = $notices->dashboard();
         $over        = collect($nd['over'] ?? [])->count();
         $atRisk      = collect($nd['atRisk'] ?? [])->count();
@@ -713,7 +720,8 @@ class HrDashboardController extends Controller
             ['hr', 'programs', $tenurePending, 'Tenure milestones to grant', 'Programs', '/pages/modules/programs?focus=pending', 'fa-award', 'purple'],
             ['hr', $e201, $regularize, 'Upcoming regularizations', 'Within 14 days', '/pages/management/e201?focus=regularize', 'fa-user-check', 'purple'],
             ['info', $e201, $birthdays, 'Birthdays this week', 'Say hello', '/pages/management/e201?focus=birthday', 'fa-cake-candles', 'muted'],
-            ['info', 'programs', $anniversaries, 'Work anniversaries', 'Within 60 days', '/pages/modules/programs?focus=upcoming', 'fa-champagne-glasses', 'muted'],
+            ['info', $e201, $hireAnnivs, 'Work anniversaries this week', 'Hire-date anniversary', '/pages/management/e201?focus=hireanniv', 'fa-briefcase', 'muted'],
+            ['info', 'programs', $anniversaries, 'Tenure milestones approaching', 'Within 60 days', '/pages/modules/programs?focus=upcoming', 'fa-champagne-glasses', 'muted'],
         ];
 
         $labels = [
