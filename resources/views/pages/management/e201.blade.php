@@ -226,13 +226,42 @@
             </div>
             
             <div class="list-scroll" id="employeeList">
+                @php
+                    // HR-attention deep-link filters (mirrors HrDashboardController@attention).
+                    // The panel links here with ?focus=missingdocs|passport|regularize|birthday;
+                    // e201_admin.js narrows the list to rows carrying the matching data-flags token.
+                    $attnToday    = \Carbon\Carbon::today();
+                    $attnWeekDays = collect(range(0, 6))->map(fn ($i) => $attnToday->copy()->addDays($i)->format('m-d'))->all();
+                @endphp
                 @foreach($resultUser as $user)
+                @php
+                    $det   = $user->empDetail;
+                    $flags = [];
+                    if ($det) {
+                        if (blank($det->empSSS) || blank($det->empPhilhealth) || blank($det->empPagibig) || blank($det->empTIN)) {
+                            $flags[] = 'missingdocs';
+                        }
+                        if ($det->empPassportExpDate) {
+                            $pe = \Carbon\Carbon::parse($det->empPassportExpDate);
+                            if ($pe->gte($attnToday) && $pe->lte($attnToday->copy()->addDays(60))) $flags[] = 'passport';
+                        }
+                        if ($det->empDateRegular) {
+                            $rg = \Carbon\Carbon::parse($det->empDateRegular);
+                            if ($rg->gte($attnToday) && $rg->lte($attnToday->copy()->addDays(14))) $flags[] = 'regularize';
+                        }
+                    }
+                    $bd = optional($user->employeeInformation)->empBdate;
+                    if ($bd && in_array(\Carbon\Carbon::parse($bd)->format('m-d'), $attnWeekDays, true)) {
+                        $flags[] = 'birthday';
+                    }
+                @endphp
                 <div class="emp-row d-flex align-items-center"
                      data-search-key="{{ strtolower($user->lname . ' ' . $user->fname . ' ' . $user->empID) }}"
                      data-status="{{ $user->empDetail->empStatus ?? '' }}"
                      data-payroll="{{ strtoupper($user->empDetail->empPayrollType ?? '') }}"
                      data-dept="{{ $user->empDetail->empDepID ?? '' }}"
                      data-deptname="{{ $user->empDetail->department->dep_name ?? '' }}"
+                     data-flags="{{ implode(' ', $flags) }}"
                      data-id="{{ $user->empID }}">
                     <div class="avatar-circle me-3">
                         <span>{{ strtoupper(substr($user->fname, 0, 1) . substr($user->lname, 0, 1)) }}</span>

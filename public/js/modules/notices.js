@@ -16,6 +16,14 @@ $(document).ready(function () {
     var activeId = null;       // currently opened notice
     var didAutoOpen = false;   // auto-open the first notice once, on first load
 
+    /* HR Attention deep link (?focus=over|atrisk|recs|nte). 'nte' narrows the notice list
+       to disciplinary notices whose explanation was submitted but HR hasn't decided yet;
+       the others scroll/reveal the relevant section (see applyDeepFocus below). */
+    var deepFocus = (new URLSearchParams(window.location.search).get('focus') || '').toLowerCase();
+    var focusNte = (deepFocus === 'nte');
+    function isNteToReview(n) { return n.requires_response == 1 && !!n.response_at && !n.response_decision; }
+    function visibleRows() { var r = typeRows(activeType); if (focusNte) r = r.filter(isNteToReview); return r; }
+
     // NTE state pill for a disciplinary notice that requires a written explanation.
     function nteStatusBadge(n) {
         if (n.response_decision === 'accepted') return '<span class="badge-soft" style="background:#dcfce7;color:#15803d;" title="Explanation accepted"><i class="fa-solid fa-check me-1"></i>NTE: Accepted</span>';
@@ -123,7 +131,7 @@ $(document).ready(function () {
                     activeId = null; renderEmptyDetail();
                 } else if (!didAutoOpen && allRows.length) {
                     didAutoOpen = true;
-                    var first = typeRows(activeType)[0];
+                    var first = visibleRows()[0];
                     if (first) { activeId = first.id; renderList(); renderDetail(first); }
                 }
             });
@@ -137,7 +145,7 @@ $(document).ready(function () {
         $('#cMemo').text(allRows.filter(function (n) { return n.type === 'memo'; }).length);
         $('#cDisc').text(allRows.filter(function (n) { return n.type === 'disciplinary'; }).length);
 
-        var rows = typeRows(activeType);
+        var rows = visibleRows();
         if (!rows.length) {
             $('#noticeList').html('<div class="list-empty"><i class="fa-solid fa-inbox"></i>No notices found.</div>');
             return;
@@ -482,6 +490,38 @@ $(document).ready(function () {
     var t;
     $(document).on('input', '#fSearch', function () { clearTimeout(t); t = setTimeout(function () { loadNotices(true); }, 300); });
     $(document).on('change', '#fStatus', function () { loadNotices(true); });
+
+    /* ── HR Attention deep-link behaviors ── */
+    function scrollPulse(sel) {
+        var el = document.querySelector(sel);
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        el.classList.add('attn-pulse');
+        setTimeout(function () { el.classList.remove('attn-pulse'); }, 2400);
+    }
+    function renderFocusBanner() {
+        if (!focusNte) { $('#ntcFocusFlash').empty(); return; }
+        $('#ntcFocusFlash').html(
+            '<div class="focus-flash">' +
+                '<i class="fa-solid fa-file-pen"></i>' +
+                '<span>Showing only <b>NTE explanations awaiting your review</b>.</span>' +
+                '<button type="button" id="focusFlashClear" class="focus-flash-x">Show all</button>' +
+            '</div>');
+    }
+    $(document).on('click', '#focusFlashClear', function () {
+        focusNte = false;
+        renderFocusBanner();
+        renderList();
+        var first = visibleRows()[0];
+        if (first) { activeId = first.id; renderList(); renderDetail(first); }
+    });
+    // One-shot: scroll/reveal the section the panel pointed us at.
+    (function applyDeepFocus() {
+        if (deepFocus === 'over')        scrollPulse('#ntcOverBanner');
+        else if (deepFocus === 'atrisk') { $('#ntcAtRiskBanner').show(); scrollPulse('#ntcAtRiskBanner'); }
+        else if (deepFocus === 'recs')   { $('#recCard').removeClass('collapsed'); scrollPulse('#recCard'); }
+        else if (deepFocus === 'nte')    renderFocusBanner();
+    })();
 
     loadEmployees(); loadNotices(); loadRecs();
 });
