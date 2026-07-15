@@ -474,7 +474,9 @@ class HrDashboardController extends Controller
                 $sub->select(DB::raw(1))->from('leave_details as ld')
                     ->whereColumn('ld.employee_id', 's.employee_id')
                     ->whereColumn('ld.date', 's.sched_start_date')
-                    ->where('ld.status', 'APPROVEDBYCFO');
+                    // Leave excuses the absence once the first-level approver signs off
+                    // (APPROVED) and through final CFO approval (APPROVEDBYCFO).
+                    ->whereIn('ld.status', ['APPROVED', 'APPROVEDBYCFO']);
             })
             ->whereNotExists(function ($sub) {
                 $sub->select(DB::raw(1))->from('obs as ob')
@@ -533,7 +535,8 @@ class HrDashboardController extends Controller
             ->join('emp_details as e', 'e.empID', '=', 'ld.employee_id')
             ->where('e.empStatus', '1')
             ->whereDate('ld.date', $today)
-            ->where('ld.status', 'APPROVEDBYCFO')
+            // Match withoutExcusedDays(): first-level APPROVED or final APPROVEDBYCFO.
+            ->whereIn('ld.status', ['APPROVED', 'APPROVEDBYCFO'])
             ->distinct('ld.employee_id')->count('ld.employee_id');
     }
 
