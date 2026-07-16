@@ -91,6 +91,12 @@ class ThirteenthMonthController extends Controller
                   ->orWhere('u.empID', 'like', "%{$s}%");
             });
         }
+        // When the report screen ticks a subset of employees, Export/Print funnel the
+        // chosen IDs through here so only those payees are emitted. fetch() never sends
+        // this — the on-screen grid always shows the full candidate list to pick from.
+        if ($request->filled('employee_ids')) {
+            $q->whereIn('u.empID', (array) $request->input('employee_ids'));
+        }
 
         $rows = $q->selectRaw("
                 u.empID as employee_id,

@@ -118,7 +118,8 @@
             <table class="table table-hover align-middle mb-0 rpt-table">
                 <thead>
                     <tr>
-                        <th class="ps-3">Employee</th>
+                        <th class="text-center ps-3" style="width:36px"><input type="checkbox" id="chkAll" checked title="Select all"></th>
+                        <th>Employee</th>
                         <th>Dept</th>
                         <th>Company</th>
                         <th class="text-center">Months</th>
@@ -127,7 +128,7 @@
                         <th class="text-center pe-3">Slip</th>
                     </tr>
                 </thead>
-                <tbody id="tbl"><tr><td colspan="7" class="text-center text-muted py-4">Pick a year and click Filter.</td></tr></tbody>
+                <tbody id="tbl"><tr><td colspan="8" class="text-center text-muted py-4">Pick a year and click Filter.</td></tr></tbody>
                 <tfoot id="tfoot"></tfoot>
             </table>
         </div>
@@ -155,24 +156,47 @@ $(function () {
         $('#fltTo').val(`${y}-12-31`);
     }
 
+    // IDs of currently ticked rows; Export/Print emit only these.
+    const selectedIds = () => $('#tbl .chkRow:checked').map((_, el) => el.value).get();
+
+    // Recompute the stat cards + grand-total footer from the ticked rows only.
+    function recomputeTotals() {
+        let basic = 0, thirteen = 0, n = 0;
+        $('#tbl .chkRow:checked').each(function () {
+            basic += parseFloat(this.dataset.basic) || 0;
+            thirteen += parseFloat(this.dataset.thirteen) || 0;
+            n++;
+        });
+        $('#kEmp').text(n);
+        $('#kBasic').text(peso(basic));
+        $('#k13').text(peso(thirteen));
+        $('#tfoot').html(`<tr><td colspan="5" class="text-end">GRAND TOTAL (${n} employees):</td><td class="text-end">${peso(basic)}</td><td class="text-end">${peso(thirteen)}</td><td class="pe-3"></td></tr>`);
+        // Sync master checkbox state (checked / unchecked / indeterminate).
+        const total = $('#tbl .chkRow').length;
+        $('#chkAll').prop('checked', total > 0 && n === total).prop('indeterminate', n > 0 && n < total);
+    }
+
     function load() {
-        $('#tbl').html('<tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm text-secondary"></div></td></tr>');
+        $('#tbl').html('<tr><td colspan="8" class="text-center py-4"><div class="spinner-border spinner-border-sm text-secondary"></div></td></tr>');
         $('#tfoot').html('');
         axios.get('/reports/thirteenth-month/fetch', { params: params() }).then(res => {
             const d = res.data, rows = d.data || [];
-            $('#kEmp').text(d.count || 0);
-            $('#kBasic').text(peso(d.total_basic));
-            $('#k13').text(peso(d.total_13th));
             $('#covLabel').html(`<i class="fa fa-calendar me-1"></i>${d.coverage_label || ''}`);
             // The server may normalize a bad/reversed/over-long window — reflect the effective one.
             if (d.coverage_from) $('#fltFrom').val(d.coverage_from);
             if (d.coverage_to) $('#fltTo').val(d.coverage_to);
-            if (!rows.length) { $('#tbl').html('<tr><td colspan="7" class="text-center text-muted py-4">No payroll records found within this coverage.</td></tr>'); return; }
+            if (!rows.length) {
+                $('#chkAll').prop('checked', false).prop('indeterminate', false);
+                $('#kEmp').text(0); $('#kBasic').text(peso(0)); $('#k13').text(peso(0));
+                $('#tbl').html('<tr><td colspan="8" class="text-center text-muted py-4">No payroll records found within this coverage.</td></tr>');
+                return;
+            }
             let h = '';
             rows.forEach(r => {
                 const slipQs = new URLSearchParams(Object.assign({}, params(), { employee_id: r.employee_id })).toString();
                 h += `<tr>
-                    <td class="ps-3"><span class="fw-bold text-uppercase">${r.employee_name || ''}</span><br><span class="text-muted">${r.employee_id}</span></td>
+                    <td class="text-center ps-3"><input type="checkbox" class="chkRow" value="${r.employee_id}" data-basic="${r.total_basic}" data-thirteen="${r.thirteenth}" checked></td>
+                    <td><span class="fw-bold text-uppercase">${r.employee_name || ''}</span><br><span class="text-muted">${r.employee_id}</span></td>
                     <td>${r.department_name ?? '—'}</td>
                     <td>${r.company_name ?? '—'}</td>
                     <td class="text-center"><span class="pill">${r.months}/12</span></td>
@@ -182,16 +206,35 @@ $(function () {
                 </tr>`;
             });
             $('#tbl').html(h);
-            $('#tfoot').html(`<tr><td colspan="4" class="text-end">GRAND TOTAL (${d.count} employees):</td><td class="text-end">${peso(d.total_basic)}</td><td class="text-end">${peso(d.total_13th)}</td><td class="pe-3"></td></tr>`);
-        }).catch(() => $('#tbl').html('<tr><td colspan="7" class="text-center text-danger py-4">Failed to load.</td></tr>'));
+            $('#chkAll').prop('checked', true).prop('indeterminate', false);
+            recomputeTotals(); // all start ticked, so totals equal the server totals
+        }).catch(() => {
+            $('#chkAll').prop('checked', false).prop('indeterminate', false);
+            $('#tbl').html('<tr><td colspan="8" class="text-center text-danger py-4">Failed to load.</td></tr>');
+        });
     }
+
+    // Build an Export/Print URL, appending ticked IDs when it's a real subset.
+    function outUrl(base) {
+        const ids = selectedIds();
+        if (!ids.length) { alert('Select at least one employee.'); return null; }
+        const p = new URLSearchParams(params());
+        if (ids.length !== $('#tbl .chkRow').length) ids.forEach(id => p.append('employee_ids[]', id));
+        return base + '?' + p.toString();
+    }
+
+    $('#chkAll').on('change', function () {
+        $('#tbl .chkRow').prop('checked', this.checked);
+        recomputeTotals();
+    });
+    $('#tbl').on('change', '.chkRow', recomputeTotals);
 
     $('#btnFilter').on('click', load);
     $('#fltSearch').on('keyup', e => { if (e.key === 'Enter') load(); });
     $('#fltYear').on('change', () => { setCoverageFromYear(); load(); });
     $('#fltFrom,#fltTo,#fltCompany,#fltDept').on('change', load);
-    $('#btnExport').on('click', () => window.location = '/reports/thirteenth-month/export?' + new URLSearchParams(params()).toString());
-    $('#btnPrint').on('click', () => window.open('/reports/thirteenth-month/print?' + new URLSearchParams(params()).toString(), '_blank'));
+    $('#btnExport').on('click', () => { const u = outUrl('/reports/thirteenth-month/export'); if (u) window.location = u; });
+    $('#btnPrint').on('click', () => { const u = outUrl('/reports/thirteenth-month/print'); if (u) window.open(u, '_blank'); });
     // Per-employee 13th-month payslip (opens the printable slip in a new tab).
     $('#tbl').on('click', '.btn-slip', function () {
         window.open('/reports/thirteenth-month/payslip?' + $(this).data('qs'), '_blank');
