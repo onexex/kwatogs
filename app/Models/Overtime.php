@@ -16,6 +16,7 @@ class Overtime extends Model
         'emp_detail_id',
         'approved_by',
         'approved_at',
+        'filed_by',
         'status',
         'date_from',
         'date_to',  
@@ -34,5 +35,10 @@ class Overtime extends Model
     public function employee(): BelongsTo
     {
         return $this->belongsTo(empDetail::class, 'emp_detail_id', 'id');
+    }
+
+    public function filedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'filed_by', 'id');
     }
 }

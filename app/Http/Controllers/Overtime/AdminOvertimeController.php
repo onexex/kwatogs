@@ -18,31 +18,71 @@ class AdminOvertimeController extends Controller
 {
     public function index()
     {
-        if (!Auth::user()->can('adminovertime')) {
+        $user = Auth::user();
+
+        if (!$user->can('adminovertime')) {
             abort(403, 'Unauthorized action.');
         }
 
-        $employees = User::whereHas('empDetail', fn($q) => $q->where('empStatus', '1'))
+        // Managers (spatie admin role, legacy super admin, or anyone who can
+        // approve overtime) see the whole company and file pre-approved; a
+        // supervisor is scoped to their own department and files FOR APPROVAL.
+        // Mirrors the guard/status re-applied in store().
+        $isManager = $this->isManager($user);
+        $myDepID   = optional($user->empDetail)->empDepID;
+
+        $employees = User::whereHas('empDetail', function ($q) use ($isManager, $myDepID) {
+                $q->where('empStatus', '1');
+                if (!$isManager) {
+                    $q->where('empDepID', $myDepID);
+                }
+            })
+            ->with('empDetail.position')
             ->orderBy('lname')
             ->orderBy('fname')
             ->get();
 
-        $overtimes = Overtime::select('overtimes.*')
+        // Shared scope for both the list and the stat chips — mirrors the
+        // employee dropdown above: managers see the whole workforce, a supervisor
+        // is scoped to their own department. Deliberately NOT filtered by the
+        // logged-in user's empCompID: admin accounts carry placeholder companies
+        // (e.g. 'wedo01') that match no real staff, so a company filter would hide
+        // every record — including ones the manager just filed.
+        $scoped = fn() => Overtime::query()
             ->join('emp_details', 'emp_details.id', '=', 'overtimes.emp_detail_id')
-            ->join('users', 'users.empID', '=', 'emp_details.empID')
-            ->where('emp_details.empCompID', Auth::user()->empDetail->empCompID)
-            ->with(['employee.user'])
+            ->when(!$isManager, fn($q) => $q->where('emp_details.empDepID', $myDepID));
+
+        $overtimes = $scoped()
+            ->select('overtimes.*')
+            ->with(['employee.user', 'filedBy'])
             ->orderByDesc('overtimes.created_at')
             ->paginate(15);
 
-        return view('pages.modules.admin_overtime', compact('employees', 'overtimes'));
+        $counts = $scoped()
+            ->selectRaw('overtimes.status, COUNT(*) as c')
+            ->groupBy('overtimes.status')
+            ->pluck('c', 'status');
+
+        $stats = [
+            'total'       => (int) $counts->sum(),
+            'forapproval' => (int) $counts->get(OvertimeStatusEnum::FORAPPROVAL->name, 0),
+            'approved'    => (int) $counts->get(OvertimeStatusEnum::APPROVED->name, 0)
+                           + (int) $counts->get(OvertimeStatusEnum::APPROVEDBYCFO->name, 0),
+            'disapproved' => (int) $counts->get(OvertimeStatusEnum::DISAPPROVED->name, 0),
+        ];
+
+        return view('pages.modules.admin_overtime', compact('employees', 'overtimes', 'isManager', 'stats'));
     }
 
     public function store(Request $request)
     {
-        if (!Auth::user()->can('adminovertime')) {
+        $user = Auth::user();
+
+        if (!$user->can('adminovertime')) {
             abort(403, 'Unauthorized action.');
         }
+
+        $isManager = $this->isManager($user);
 
         $request->validate([
             'employee_id' => ['required', 'exists:users,empID'],
@@ -55,6 +95,15 @@ class AdminOvertimeController extends Controller
 
         $employee   = User::where('empID', $request->employee_id)->firstOrFail();
         $empDetail  = $employee->empDetail;
+
+        if (!$empDetail) {
+            return response()->json(['status' => 'error', 'message' => 'That employee has no employment record.']);
+        }
+
+        // Re-enforce the department scope server-side — the dropdown is not the guard.
+        if (!$isManager && $empDetail->empDepID !== optional($user->empDetail)->empDepID) {
+            return response()->json(['status' => 'error', 'message' => 'You may only file overtime for employees in your own department.']);
+        }
 
         $fromDateTime = Carbon::parse($request->dateFrom . ' ' . $request->timeFrom);
         $toDateTime   = Carbon::parse($request->dateTo   . ' ' . $request->timeTo);
@@ -170,9 +219,17 @@ class AdminOvertimeController extends Controller
             $overtimeHourlyPay = $hourlyRate * $overtimeRate * $totalHours;
         }
 
+        // A manager (admin / super admin / overtime approver) files pre-approved.
+        // A supervisor — who holds `adminovertime` only — files FOR APPROVAL,
+        // routing the request to Pending Overtime Requests for a real approver.
+        $status = $isManager
+            ? OvertimeStatusEnum::APPROVED->name
+            : OvertimeStatusEnum::FORAPPROVAL->name;
+
         Overtime::create([
             'emp_detail_id'         => $empDetail->id,
-            'status'                => OvertimeStatusEnum::APPROVED->name,
+            'filed_by'              => $user->id,
+            'status'                => $status,
             'date_from'             => $request->dateFrom,
             'date_to'               => $request->dateTo,
             'time_in'               => $request->timeFrom,
@@ -185,6 +242,28 @@ class AdminOvertimeController extends Controller
             'hourly_rate'           => $hourlyRate,
         ]);
 
-        return response()->json(['status' => 'success', 'message' => 'Overtime filed successfully for ' . ucwords(strtolower($employee->fname . ' ' . $employee->lname)) . '.']);
+        $employeeName = ucwords(strtolower($employee->fname . ' ' . $employee->lname));
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => $isManager
+                ? 'Overtime filed successfully for ' . $employeeName . '.'
+                : 'Overtime for ' . $employeeName . ' was submitted for approval.',
+        ]);
+    }
+
+    /**
+     * A "manager" sees the whole company and files pre-approved overtime; anyone
+     * else with `adminovertime` (a supervisor) is scoped to their own department
+     * and files FOR APPROVAL. Managers are the spatie `admin` role, the legacy
+     * super admin (`users.role == 1`), or anyone who can approve overtime — the
+     * same admin-exemption convention used by Maintenance Mode and the
+     * separated-employee block.
+     */
+    private function isManager($user): bool
+    {
+        return $user->hasRole('admin')
+            || (int) $user->role === 1
+            || $user->can('approveovertime');
     }
 }
