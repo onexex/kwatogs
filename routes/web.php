@@ -289,6 +289,7 @@ Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip
     // admin apply overtime
     Route::get('/pages/modules/admin-overtime', [AdminOvertimeController::class, 'index'])->name('admin.overtime.index')->middleware('can:adminovertime');
     Route::post('/admin/overtime/store', [AdminOvertimeController::class, 'store'])->name('admin.overtime.store')->middleware('can:adminovertime');
+    Route::post('/admin/overtime/{overtime}/update', [AdminOvertimeController::class, 'update'])->name('admin.overtime.update')->middleware('can:adminovertime');
 
     // admin apply OB
     Route::get('/pages/modules/admin-ob', [AdminObController::class, 'index'])->name('admin.ob.index')->middleware('can:adminob');

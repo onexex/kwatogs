@@ -146,23 +146,29 @@
         <div class="sc aot-form-pane">
             <div class="sc-head">
                 <div class="sc-head-left">
-                    <div class="sc-icon"><i class="fa-solid fa-user-clock"></i></div>
+                    <div class="sc-icon" id="formIcon"><i class="fa-solid fa-user-clock"></i></div>
                     <div>
-                        <h5 class="sc-title">New Overtime Filing</h5>
-                        <p class="sc-sub">{{ $isManager ? 'Saved as approved' : 'Routed to an approver' }}</p>
+                        <h5 class="sc-title" id="formTitle">New Overtime Filing</h5>
+                        <p class="sc-sub" id="formSub">{{ $isManager ? 'Saved as approved' : 'Routed to an approver' }}</p>
                     </div>
                 </div>
             </div>
             <div class="sc-body">
                 @unless($isManager)
-                <div class="aot-note">
+                <div class="aot-note" id="noteSupervisor">
                     <i class="fa-solid fa-circle-info"></i>
                     <p>Overtime you file is submitted <b>For Approval</b> and appears in Pending Overtime Requests. You can only file for employees in your department.</p>
                 </div>
                 @endunless
 
+                <div class="aot-note d-none" id="noteEdit" style="background:#eff6ff;border-color:#bfdbfe;">
+                    <i class="fa-solid fa-pen" style="color:#2563eb;"></i>
+                    <p style="color:#1e40af;">Editing a filing that is still <b>For Approval</b>. It stays For Approval after saving and the hours, rate and pay are recomputed.</p>
+                </div>
+
                 <form id="frmAdminOT">
                     @csrf
+                    <input type="hidden" id="editId" value="">
 
                     <div class="sub-divider"><span>Employee</span></div>
                     <div class="mb-3">
@@ -209,9 +215,13 @@
                         <span class="text-danger small error-text" id="err_purpose"></span>
                     </div>
 
-                    <div class="d-grid">
+                    <div class="d-grid gap-2">
                         <button type="submit" class="btn-submit" id="btnSubmitOT">
                             <i class="fa-solid fa-paper-plane me-2"></i>{{ $isManager ? 'Submit Overtime' : 'Submit for Approval' }}
+                        </button>
+                        <button type="button" class="btn btn-light d-none" id="btnCancelEdit"
+                                style="border-radius:10px;font-weight:700;font-size:.8rem;padding:9px 28px;color:var(--slate-light);border:1.5px solid var(--border);">
+                            <i class="fa-solid fa-xmark me-2"></i>Cancel Edit
                         </button>
                     </div>
                 </form>
@@ -257,10 +267,21 @@
                         $filedByName = $ot->filedBy
                             ? ucwords(strtolower($ot->filedBy->fname . ' ' . $ot->filedBy->lname))
                             : '';
+                        // Editable only while still FOR APPROVAL — an approved row may
+                        // already have fed payroll. Mirrors the guard in update().
+                        $isEditable = $ot->status === 'FORAPPROVAL'
+                            && ($isManager || $ot->filed_by == auth()->id());
                     @endphp
                     <div class="orow"
                          data-status="{{ $ot->status }}"
                          data-mine="{{ $ot->filed_by == auth()->id() ? '1' : '0' }}"
+                         data-editable="{{ $isEditable ? '1' : '0' }}"
+                         data-id="{{ $ot->id }}"
+                         data-empid="{{ optional($ot->employee->user)->empID }}"
+                         data-rawdatefrom="{{ \Carbon\Carbon::parse($ot->date_from)->format('Y-m-d') }}"
+                         data-rawdateto="{{ \Carbon\Carbon::parse($ot->date_to)->format('Y-m-d') }}"
+                         data-rawtimein="{{ \Carbon\Carbon::parse($ot->time_in)->format('H:i') }}"
+                         data-rawtimeout="{{ \Carbon\Carbon::parse($ot->time_out)->format('H:i') }}"
                          data-search="{{ strtolower($empName . ' ' . $ot->purpose . ' ' . $dayType) }}"
                          data-employee="{{ $empName }}"
                          data-filed="{{ \Carbon\Carbon::parse($ot->created_at)->format('M d, Y h:i A') }}"
@@ -367,6 +388,15 @@
                     </div>
                 </div>
             </div>
+            <div class="modal-footer" style="border-top:1px solid var(--border);padding:12px 22px;">
+                <span class="text-muted d-none" id="d_lockNote" style="font-size:.72rem;margin-right:auto;">
+                    <i class="fa-solid fa-lock me-1"></i>Only records still For Approval can be edited.
+                </span>
+                <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal" style="border-radius:8px;font-weight:600;">Close</button>
+                <button type="button" class="btn-submit d-none" id="btnEditOt" style="padding:7px 18px;font-size:.8rem;">
+                    <i class="fa-solid fa-pen me-2"></i>Edit
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -380,25 +410,83 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnHtml = btn.innerHTML;
     const errors  = ['employee', 'dateFrom', 'dateTo', 'timeFrom', 'timeTo', 'purpose'];
 
+    const editId       = document.getElementById('editId');
+    const formTitle    = document.getElementById('formTitle');
+    const formSub      = document.getElementById('formSub');
+    const formIcon     = document.getElementById('formIcon');
+    const btnCancel    = document.getElementById('btnCancelEdit');
+    const noteEdit     = document.getElementById('noteEdit');
+    const noteSup      = document.getElementById('noteSupervisor');
+    const formPane     = document.querySelector('.aot-form-pane');
+
+    const defaults = {
+        title: formTitle.textContent,
+        sub:   formSub.textContent,
+        icon:  formIcon.innerHTML,
+        btn:   btnHtml
+    };
+
     function clearErrors() {
         errors.forEach(k => document.getElementById('err_' + k).textContent = '');
     }
+
+    function enterEditMode(d) {
+        editId.value = d.id;
+        document.getElementById('selEmployee').value = d.empid || '';
+        document.getElementById('txtDateFrom').value = d.rawdatefrom;
+        document.getElementById('txtDateTo').value   = d.rawdateto;
+        document.getElementById('txtTimeFrom').value = d.rawtimein;
+        document.getElementById('txtTimeTo').value   = d.rawtimeout;
+        document.getElementById('txtPurpose').value  = d.purpose || '';
+
+        clearErrors();
+        formTitle.textContent = 'Edit Overtime Filing';
+        formSub.textContent   = d.employee || '';
+        formIcon.innerHTML    = '<i class="fa-solid fa-pen"></i>';
+        btn.innerHTML         = '<i class="fa-solid fa-floppy-disk me-2"></i>Save Changes';
+        btnCancel.classList.remove('d-none');
+        noteEdit.classList.remove('d-none');
+        if (noteSup) noteSup.classList.add('d-none');
+
+        formPane.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function exitEditMode() {
+        editId.value = '';
+        form.reset();
+        clearErrors();
+        formTitle.textContent = defaults.title;
+        formSub.textContent   = defaults.sub;
+        formIcon.innerHTML    = defaults.icon;
+        btn.innerHTML         = defaults.btn;
+        btnCancel.classList.add('d-none');
+        noteEdit.classList.add('d-none');
+        if (noteSup) noteSup.classList.remove('d-none');
+    }
+
+    btnCancel.addEventListener('click', exitEditMode);
 
     form.addEventListener('submit', function (e) {
         e.preventDefault();
         clearErrors();
 
+        const isEdit = !!editId.value;
+        const url    = isEdit
+            ? '{{ url("admin/overtime") }}/' + editId.value + '/update'
+            : '{{ route("admin.overtime.store") }}';
+
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting...';
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>'
+                      + (isEdit ? 'Saving...' : 'Submitting...');
 
         const formData = new FormData(form);
 
-        axios.post('{{ route("admin.overtime.store") }}', formData)
+        axios.post(url, formData)
             .then(function (response) {
                 if (response.data.status === 'success') {
                     Swal.fire({
                         icon: 'success',
-                        title: 'Filed!',
+                        title: isEdit ? 'Updated!' : 'Filed!',
                         text: response.data.message,
                         timer: 2500,
                         showConfirmButton: false
@@ -422,7 +510,11 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .finally(function () {
                 btn.disabled = false;
-                btn.innerHTML = btnHtml;
+                // Restore the label for whichever mode we're still in — a failed
+                // save must not relabel the button back to "Submit".
+                btn.innerHTML = editId.value
+                    ? '<i class="fa-solid fa-floppy-disk me-2"></i>Save Changes'
+                    : defaults.btn;
             });
     });
 
@@ -483,6 +575,17 @@ document.addEventListener('DOMContentLoaded', function () {
     /* ── Records: detail modal ── */
     const detailModalEl = document.getElementById('mdlOtDetail');
     const detailModal   = new bootstrap.Modal(detailModalEl);
+    const btnEditOt     = document.getElementById('btnEditOt');
+    const lockNote      = document.getElementById('d_lockNote');
+    let   activeRow     = null;
+
+    // Only FOR APPROVAL rows the viewer is allowed to touch expose an Edit
+    // button; the server re-checks both conditions in update().
+    btnEditOt.addEventListener('click', function () {
+        if (!activeRow) return;
+        detailModal.hide();
+        enterEditMode(activeRow.dataset);
+    });
 
     rows.forEach(row => row.addEventListener('click', function () {
         rows.forEach(r => r.classList.remove('active'));
@@ -505,6 +608,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const st = document.getElementById('d_status');
         st.textContent = d.statuslabel;
         st.className = 'st-badge ' + d.statusclass;
+
+        activeRow = this;
+        const editable = d.editable === '1';
+        btnEditOt.classList.toggle('d-none', !editable);
+        lockNote.classList.toggle('d-none', editable || d.status === 'FORAPPROVAL');
 
         detailModal.show();
     }));
