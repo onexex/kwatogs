@@ -94,6 +94,7 @@ class ThirteenthMonthController extends Controller
 
         $rows = $q->selectRaw("
                 u.empID as employee_id,
+                COALESCE(ed.empCardNo,'') as card_no,
                 TRIM(CONCAT(COALESCE(u.lname,''), ', ', COALESCE(u.fname,''))) as employee_name,
                 COALESCE(d.dep_name,'—') as department_name,
                 COALESCE(c.comp_name,'—') as company_name,
@@ -103,7 +104,7 @@ class ThirteenthMonthController extends Controller
                 MIN(p.pay_date) as first_pay,
                 MAX(p.pay_date) as last_pay
             ")
-            ->groupBy('u.empID', 'employee_name', 'department_name', 'company_name')
+            ->groupBy('u.empID', 'card_no', 'employee_name', 'department_name', 'company_name')
             ->havingRaw('SUM(GREATEST(COALESCE(p.gross_pay,0) - COALESCE(p.overtime_pay,0) - COALESCE(p.holiday_pay,0) - COALESCE(p.night_diff_pay,0), 0)) > 0')
             ->orderBy('employee_name')
             ->get();
@@ -142,15 +143,15 @@ class ThirteenthMonthController extends Controller
         [$rows, $year, $from, $to] = $this->compute($request);
 
         $x = new SimpleXlsx('13th Month Pay');
-        $x->setColumnWidths([6, 14, 34, 22, 22, 10, 18, 18]);
+        $x->setColumnWidths([6, 14, 16, 34, 22, 22, 10, 18, 18]);
 
         $x->setString('A1', self::LETTERHEAD, SimpleXlsx::S_TITLE);
         $x->setString('A2', '13TH MONTH PAY — COVERAGE '.strtoupper($this->coverageLabel($from, $to)), SimpleXlsx::S_TITLE);
         $x->setString('A3', 'Total basic salary earned within the coverage ÷ 12', SimpleXlsx::S_TITLE);
 
         $hr = 5;
-        $headers = ['NO.', 'EMP ID', 'EMPLOYEE NAME', 'DEPARTMENT', 'COMPANY', 'MONTHS', 'TOTAL BASIC EARNED', '13TH MONTH PAY'];
-        foreach (['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as $i => $col) {
+        $headers = ['NO.', 'EMP ID', 'CARD NO', 'EMPLOYEE NAME', 'DEPARTMENT', 'COMPANY', 'MONTHS', 'TOTAL BASIC EARNED', '13TH MONTH PAY'];
+        foreach (['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'] as $i => $col) {
             $x->setString("{$col}{$hr}", $headers[$i], SimpleXlsx::S_BOLD);
         }
 
@@ -160,18 +161,19 @@ class ThirteenthMonthController extends Controller
             $n++;
             $x->setNumber("A{$r}", $n, SimpleXlsx::S_NORMAL);
             $x->setString("B{$r}", (string) $row->employee_id, SimpleXlsx::S_TEXT);
-            $x->setString("C{$r}", strtoupper((string) $row->employee_name), SimpleXlsx::S_NORMAL);
-            $x->setString("D{$r}", (string) $row->department_name, SimpleXlsx::S_NORMAL);
-            $x->setString("E{$r}", (string) $row->company_name, SimpleXlsx::S_NORMAL);
-            $x->setNumber("F{$r}", (float) $row->months, SimpleXlsx::S_NORMAL);
-            $x->setNumber("G{$r}", (float) $row->total_basic, SimpleXlsx::S_MONEY);
-            $x->setNumber("H{$r}", (float) $row->thirteenth, SimpleXlsx::S_MONEY);
+            $x->setString("C{$r}", (string) $row->card_no, SimpleXlsx::S_TEXT);
+            $x->setString("D{$r}", strtoupper((string) $row->employee_name), SimpleXlsx::S_NORMAL);
+            $x->setString("E{$r}", (string) $row->department_name, SimpleXlsx::S_NORMAL);
+            $x->setString("F{$r}", (string) $row->company_name, SimpleXlsx::S_NORMAL);
+            $x->setNumber("G{$r}", (float) $row->months, SimpleXlsx::S_NORMAL);
+            $x->setNumber("H{$r}", (float) $row->total_basic, SimpleXlsx::S_MONEY);
+            $x->setNumber("I{$r}", (float) $row->thirteenth, SimpleXlsx::S_MONEY);
             $r++;
         }
 
-        $x->setString("C{$r}", 'TOTAL', SimpleXlsx::S_BOLD);
-        $x->setNumber("G{$r}", (float) $rows->sum('total_basic'), SimpleXlsx::S_SUBTOTAL);
-        $x->setNumber("H{$r}", (float) $rows->sum('thirteenth'), SimpleXlsx::S_SUBTOTAL);
+        $x->setString("D{$r}", 'TOTAL', SimpleXlsx::S_BOLD);
+        $x->setNumber("H{$r}", (float) $rows->sum('total_basic'), SimpleXlsx::S_SUBTOTAL);
+        $x->setNumber("I{$r}", (float) $rows->sum('thirteenth'), SimpleXlsx::S_SUBTOTAL);
 
         $path = $x->saveToTempFile();
 
