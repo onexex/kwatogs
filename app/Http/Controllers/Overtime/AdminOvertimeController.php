@@ -84,6 +84,105 @@ class AdminOvertimeController extends Controller
 
         $isManager = $this->isManager($user);
 
+        $resolved = $this->resolveFiling($request, $user, $isManager);
+
+        if (isset($resolved['error'])) {
+            return response()->json(['status' => 'error', 'message' => $resolved['error']]);
+        }
+
+        // A manager (admin / super admin / overtime approver) files pre-approved.
+        // A supervisor — who holds `adminovertime` only — files FOR APPROVAL,
+        // routing the request to Pending Overtime Requests for a real approver.
+        $status = $isManager
+            ? OvertimeStatusEnum::APPROVED->name
+            : OvertimeStatusEnum::FORAPPROVAL->name;
+
+        Overtime::create($resolved['payload'] + [
+            'filed_by' => $user->id,
+            'status'   => $status,
+        ]);
+
+        $employeeName = $this->displayName($resolved['employee']);
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => $isManager
+                ? 'Overtime filed successfully for ' . $employeeName . '.'
+                : 'Overtime for ' . $employeeName . ' was submitted for approval.',
+        ]);
+    }
+
+    /**
+     * Edit a filing that is still FOR APPROVAL. Once an approver has acted on it
+     * the figures may already have fed payroll, so the record is frozen — the
+     * same reasoning as the Summary Logs payroll lock. The whole filing gauntlet
+     * is re-run (filing window, schedule overlap, duplicate OT, rate/pay), with
+     * this record excluded from its own overlap check.
+     */
+    public function update(Request $request, Overtime $overtime)
+    {
+        $user = Auth::user();
+
+        if (!$user->can('adminovertime')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $isManager = $this->isManager($user);
+
+        if ($overtime->status !== OvertimeStatusEnum::FORAPPROVAL->name) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Only overtime that is still For Approval can be edited.',
+            ]);
+        }
+
+        // The filer may correct their own submission; a manager may correct any
+        // pending one in their scope. Rows filed through other flows (self-filing
+        // or import) carry filed_by = null and are manager-only.
+        if (!$isManager && (int) $overtime->filed_by !== (int) $user->id) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'You may only edit overtime that you filed.',
+            ]);
+        }
+
+        // The record's CURRENT employee must be in scope too, otherwise a
+        // supervisor could edit an out-of-department row by pointing it at one of
+        // their own employees.
+        if (!$isManager && optional($overtime->employee)->empDepID !== optional($user->empDetail)->empDepID) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'You may only edit overtime for employees in your own department.',
+            ]);
+        }
+
+        $resolved = $this->resolveFiling($request, $user, $isManager, $overtime);
+
+        if (isset($resolved['error'])) {
+            return response()->json(['status' => 'error', 'message' => $resolved['error']]);
+        }
+
+        // Instance save so Auditable records the before→after diff. Status and
+        // filed_by are deliberately untouched — an edit is a correction, not a
+        // re-filing, so it stays FOR APPROVAL under the original filer.
+        $overtime->fill($resolved['payload'])->save();
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Overtime for ' . $this->displayName($resolved['employee']) . ' was updated.',
+        ]);
+    }
+
+    /**
+     * Shared filing gauntlet for store() and update(): validates the request,
+     * enforces the department scope, checks the OT filing window / schedule
+     * overlap / duplicate OT, derives the day type + rate, and computes payable
+     * hours and pay. Returns ['error' => string] or ['payload' => array,
+     * 'employee' => User]. $ignore excludes a record from the duplicate check so
+     * an edit doesn't collide with itself.
+     */
+    private function resolveFiling(Request $request, $user, bool $isManager, ?Overtime $ignore = null): array
+    {
         $request->validate([
             'employee_id' => ['required', 'exists:users,empID'],
             'dateFrom'    => ['required', 'date'],
@@ -97,23 +196,23 @@ class AdminOvertimeController extends Controller
         $empDetail  = $employee->empDetail;
 
         if (!$empDetail) {
-            return response()->json(['status' => 'error', 'message' => 'That employee has no employment record.']);
+            return ['error' => 'That employee has no employment record.'];
         }
 
         // Re-enforce the department scope server-side — the dropdown is not the guard.
         if (!$isManager && $empDetail->empDepID !== optional($user->empDetail)->empDepID) {
-            return response()->json(['status' => 'error', 'message' => 'You may only file overtime for employees in your own department.']);
+            return ['error' => 'You may only file overtime for employees in your own department.'];
         }
 
         $fromDateTime = Carbon::parse($request->dateFrom . ' ' . $request->timeFrom);
         $toDateTime   = Carbon::parse($request->dateTo   . ' ' . $request->timeTo);
 
         if ($request->dateFrom !== $request->dateTo) {
-            return response()->json(['status' => 'error', 'message' => 'The start and end dates must be the same.']);
+            return ['error' => 'The start and end dates must be the same.'];
         }
 
         if ($fromDateTime->greaterThanOrEqualTo($toDateTime)) {
-            return response()->json(['status' => 'error', 'message' => 'Start time must be earlier than end time.']);
+            return ['error' => 'Start time must be earlier than end time.'];
         }
 
         // OT filing window check
@@ -122,23 +221,23 @@ class AdminOvertimeController extends Controller
             $now = Carbon::now();
 
             if ($fromDateTime->greaterThan($now) && $otfilling->filebefore == 0) {
-                return response()->json(['status' => 'error', 'message' => 'Filing overtime for future schedules is not allowed for this employee.']);
+                return ['error' => 'Filing overtime for future schedules is not allowed for this employee.'];
             }
 
             if ($fromDateTime->greaterThan($now) && $otfilling->no_days_before > 0) {
                 if ($fromDateTime->greaterThan($now->copy()->addDays($otfilling->no_days_before))) {
-                    return response()->json(['status' => 'error', 'message' => "You may only file overtime up to {$otfilling->no_days_before} day(s) in advance."]);
+                    return ['error' => "You may only file overtime up to {$otfilling->no_days_before} day(s) in advance."];
                 }
             }
 
             if ($toDateTime->lessThan($now) && $otfilling->fileafter == 0) {
-                return response()->json(['status' => 'error', 'message' => 'Filing overtime for past schedules is not allowed for this employee.']);
+                return ['error' => 'Filing overtime for past schedules is not allowed for this employee.'];
             }
 
             if ($toDateTime->lessThan($now) && $otfilling->no_days_after > 0) {
                 $minPastDate = $now->copy()->subDays($otfilling->no_days_after);
                 if ($toDateTime->lessThan($minPastDate)) {
-                    return response()->json(['status' => 'error', 'message' => "You may only file overtime within {$otfilling->no_days_after} day(s) after the work date."]);
+                    return ['error' => "You may only file overtime within {$otfilling->no_days_after} day(s) after the work date."];
                 }
             }
         }
@@ -156,12 +255,13 @@ class AdminOvertimeController extends Controller
         });
 
         if ($hasOverlap) {
-            return response()->json(['status' => 'error', 'message' => 'Employee has a work schedule that overlaps this time range.']);
+            return ['error' => 'Employee has a work schedule that overlaps this time range.'];
         }
 
-        // Duplicate OT check
+        // Duplicate OT check — an edit must not collide with the record being edited.
         $overlapping = Overtime::where('emp_detail_id', $empDetail->id)
             ->where('status', '<>', OvertimeStatusEnum::CANCELED->name)
+            ->when($ignore, fn($q) => $q->where('id', '<>', $ignore->id))
             ->where(function ($q) use ($fromDateTime, $toDateTime) {
                 $q->whereRaw("STR_TO_DATE(CONCAT(date_from,' ',time_in),'%Y-%m-%d %H:%i') < ?", [$toDateTime])
                   ->whereRaw("STR_TO_DATE(CONCAT(date_to,' ',time_out),'%Y-%m-%d %H:%i') > ?", [$fromDateTime]);
@@ -169,7 +269,7 @@ class AdminOvertimeController extends Controller
             ->exists();
 
         if ($overlapping) {
-            return response()->json(['status' => 'error', 'message' => 'Employee already has an overlapping overtime record.']);
+            return ['error' => 'Employee already has an overlapping overtime record.'];
         }
 
         // Day type
@@ -219,37 +319,27 @@ class AdminOvertimeController extends Controller
             $overtimeHourlyPay = $hourlyRate * $overtimeRate * $totalHours;
         }
 
-        // A manager (admin / super admin / overtime approver) files pre-approved.
-        // A supervisor — who holds `adminovertime` only — files FOR APPROVAL,
-        // routing the request to Pending Overtime Requests for a real approver.
-        $status = $isManager
-            ? OvertimeStatusEnum::APPROVED->name
-            : OvertimeStatusEnum::FORAPPROVAL->name;
+        return [
+            'employee' => $employee,
+            'payload'  => [
+                'emp_detail_id'         => $empDetail->id,
+                'date_from'             => $request->dateFrom,
+                'date_to'               => $request->dateTo,
+                'time_in'               => $request->timeFrom,
+                'time_out'              => $request->timeTo,
+                'purpose'               => $request->purpose,
+                'total_hrs'             => $totalHours,
+                'total_pay'             => $overtimeHourlyPay,
+                'day_type'              => $day_type,
+                'day_type_computation'  => $overtimeRate,
+                'hourly_rate'           => $hourlyRate,
+            ],
+        ];
+    }
 
-        Overtime::create([
-            'emp_detail_id'         => $empDetail->id,
-            'filed_by'              => $user->id,
-            'status'                => $status,
-            'date_from'             => $request->dateFrom,
-            'date_to'               => $request->dateTo,
-            'time_in'               => $request->timeFrom,
-            'time_out'              => $request->timeTo,
-            'purpose'               => $request->purpose,
-            'total_hrs'             => $totalHours,
-            'total_pay'             => $overtimeHourlyPay,
-            'day_type'              => $day_type,
-            'day_type_computation'  => $overtimeRate,
-            'hourly_rate'           => $hourlyRate,
-        ]);
-
-        $employeeName = ucwords(strtolower($employee->fname . ' ' . $employee->lname));
-
-        return response()->json([
-            'status'  => 'success',
-            'message' => $isManager
-                ? 'Overtime filed successfully for ' . $employeeName . '.'
-                : 'Overtime for ' . $employeeName . ' was submitted for approval.',
-        ]);
+    private function displayName(User $employee): string
+    {
+        return ucwords(strtolower($employee->fname . ' ' . $employee->lname));
     }
 
     /**
