@@ -19,7 +19,7 @@ $(document).ready(function() {
 
     // 👁️ Toggle password visibility
     $(document).on('click', '.toggle-password', function() {
-        const input = $(this).closest('.form-floating').find('input');
+        const input = $(this).closest('.input-wrap').find('input');
         const icon = $(this).find('i');
 
         if (input.attr('type') === 'password') {
