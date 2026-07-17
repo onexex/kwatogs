@@ -78,7 +78,21 @@ class ThirteenthMonthController extends Controller
             $to = $from->copy()->addYear()->subDay();
         }
 
-        $year  = $to->year; // report/payout year = coverage end year
+        $year = $to->year; // report/payout year = coverage end year
+        $rows = $this->computeWindow($request, $from, $to, $year);
+
+        return [$rows, $year, $from, $to];
+    }
+
+    /**
+     * Run the 13th-month aggregation for an EXPLICIT coverage window (all other
+     * filters — department/company/search/employee_ids — still read from
+     * $request), returning the enriched rows. Extracted from compute() so the
+     * mid-year HALF advance can be pinned to the full calendar year regardless
+     * of the on-screen coverage filter — see release().
+     */
+    private function computeWindow(Request $request, Carbon $from, Carbon $to, int $year): Collection
+    {
         $start = $from->format('Y-m-d');
         $end   = $to->format('Y-m-d');
 
@@ -133,7 +147,7 @@ class ThirteenthMonthController extends Controller
 
         $this->enrichRows($rows, $from, $to, $year);
 
-        return [$rows, $year, $from, $to];
+        return $rows;
     }
 
     /**
@@ -382,12 +396,22 @@ class ThirteenthMonthController extends Controller
 
     /**
      * Record a CLAIM of the selected employees' 13th month for the coverage year:
-     * `portion=half` = the mid-year 50% advance, `portion=full` = the remaining
+     * `portion=half` = the mid-year advance, `portion=full` = the remaining
      * (whole) balance. One ledger row per employee+year+portion (idempotent —
      * re-releasing a portion updates its row). The amount is always the freshly
      * re-computed figure (never a client-sent value); a `half` claim is skipped
      * for anyone already fully settled. Saved through the model instance so
      * Auditable logs it.
+     *
+     * The mid-year HALF advance pays the 13th month accrued over the FIRST HALF
+     * of the selected coverage window, IN FULL (no ÷2). The window is split by
+     * date at its midpoint — e.g. a Dec 11 2025 – Dec 10 2026 cutoff advances
+     * the Dec 11 2025 – Jun 10 2026 accrual now; the second half is paid in
+     * December via the FULL release. "Half" is a date split of the window, not a
+     * division of the number, and it CAPS at the midpoint: running it after
+     * mid-year still only advances the first-half months. The later FULL release
+     * settles the REMAINING balance (full-window 13th − the advance already
+     * paid), which equals the second half.
      */
     public function release(Request $request)
     {
@@ -403,6 +427,17 @@ class ThirteenthMonthController extends Controller
         $batch = $request->input('batch');
         $by    = $this->actorName();
         $today = Carbon::now()->startOfDay();
+
+        // A HALF advance is computed on the FIRST HALF of the coverage window
+        // (from its start to the date midpoint), so it caps at mid-year no
+        // matter when it's run. The row it writes stores that first-half window.
+        $covFrom  = $from;
+        $covTo    = $to;
+        $halfRows = collect();
+        if ($portion === ThirteenthMonthPayout::PORTION_HALF) {
+            $covTo    = $from->copy()->addDays(intdiv($from->diffInDays($to), 2));
+            $halfRows = $this->computeWindow($request, $covFrom, $covTo, $year)->keyBy('employee_id');
+        }
 
         $released = 0;
         $skipped  = 0;
@@ -422,7 +457,9 @@ class ThirteenthMonthController extends Controller
                     $skipped++;
                     continue;
                 }
-                $amount = round($r->thirteenth / 2, 2);
+                // 13th month on the FIRST HALF of the window, paid IN FULL. The
+                // second half is settled by the December FULL release.
+                $amount = round(optional($halfRows->get($r->employee_id))->thirteenth ?? 0, 2);
             } else {
                 // Full = the remaining balance to reach the computed total.
                 $amount = round($r->thirteenth - $priorTotal, 2);
@@ -437,8 +474,8 @@ class ThirteenthMonthController extends Controller
                 'portion'       => $portion,
             ]);
             $po->forceFill([
-                'coverage_from'  => $from->format('Y-m-d'),
-                'coverage_to'    => $to->format('Y-m-d'),
+                'coverage_from'  => $covFrom->format('Y-m-d'),
+                'coverage_to'    => $covTo->format('Y-m-d'),
                 'amount'         => $amount,
                 'taxable_excess' => $portion === ThirteenthMonthPayout::PORTION_FULL ? $r->taxable : 0,
                 'released_at'    => $today->format('Y-m-d'),
