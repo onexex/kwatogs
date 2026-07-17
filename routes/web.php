@@ -464,8 +464,11 @@ Route::group(['middleware' => ['AuthCheck', 'force.password', 'check.employee.ip
     Route::get('/reports/thirteenth-month', [ThirteenthMonthController::class, 'index'])->name('reports.thirteenth.index')->middleware('can:thirteenthmonth');
     Route::get('/reports/thirteenth-month/fetch', [ThirteenthMonthController::class, 'fetch'])->name('reports.thirteenth.fetch')->middleware('can:thirteenthmonth');
     Route::get('/reports/thirteenth-month/export', [ThirteenthMonthController::class, 'export'])->name('reports.thirteenth.export')->middleware('can:thirteenthmonth');
+    Route::get('/reports/thirteenth-month/bank-export', [ThirteenthMonthController::class, 'bankExport'])->name('reports.thirteenth.bank')->middleware('can:thirteenthmonth');
     Route::get('/reports/thirteenth-month/print', [ThirteenthMonthController::class, 'print'])->name('reports.thirteenth.print')->middleware('can:thirteenthmonth');
     Route::get('/reports/thirteenth-month/payslip', [ThirteenthMonthController::class, 'payslip'])->name('reports.thirteenth.payslip')->middleware('can:thirteenthmonth');
+    Route::post('/reports/thirteenth-month/release', [ThirteenthMonthController::class, 'release'])->name('reports.thirteenth.release')->middleware('can:thirteenthmonth');
+    Route::post('/reports/thirteenth-month/unrelease', [ThirteenthMonthController::class, 'unrelease'])->name('reports.thirteenth.unrelease')->middleware('can:thirteenthmonth');
 
     // ── Statutory / government compliance reports (filing-ready worksheets) ──
     Route::get('/reports/bir', [BirWithholdingReportController::class, 'index'])->name('reports.bir.index')->middleware('can:birreport');

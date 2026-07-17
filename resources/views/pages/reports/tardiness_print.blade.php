@@ -21,8 +21,9 @@
         tfoot td { padding:7px 6px; border-top:2px solid #008080; background:#e0f2f1; font-weight:800; color:#006666; font-size:10.5px; text-align:right; }
         tfoot td.l { text-align:left; }
         .sign { margin-top:40px; display:flex; justify-content:space-between; font-size:11px; }
-        .sign div { width:30%; text-align:center; }
-        .sign .ln { border-top:1px solid #475569; margin-bottom:4px; padding-top:4px; }
+        .sign > div { width:30%; text-align:center; }
+        .sign .cap { margin-bottom:28px; }
+        .sign .ln { border-top:1px solid #475569; }
         @media print { body { margin:12mm; } .noprint { display:none; } }
         .noprint { text-align:right; margin-bottom:10px; }
         .btn { background:#008080; color:#fff; border:none; padding:8px 18px; border-radius:6px; font-weight:700; cursor:pointer; }
@@ -76,9 +77,9 @@
     </table>
 
     <div class="sign">
-        <div><div class="ln"></div>Prepared by</div>
-        <div><div class="ln"></div>Reviewed by</div>
-        <div><div class="ln"></div>Noted by</div>
+        <div><div class="cap">Prepared by</div><div class="ln"></div></div>
+        <div><div class="cap">Reviewed by</div><div class="ln"></div></div>
+        <div><div class="cap">Noted by</div><div class="ln"></div></div>
     </div>
 </body>
 </html>

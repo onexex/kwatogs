@@ -86,7 +86,7 @@
 
         <div class="col">
             <h4>13th Month Computation</h4>
-            <div class="ln muted"><span>Total Days Worked</span><span class="v">{{ $totalDays > 0 ? number_format($totalDays) : '—' }}</span></div>
+            <div class="ln muted"><span>Total Days Paid</span><span class="v">{{ $totalDays > 0 ? number_format($totalDays) : '—' }}</span></div>
             <div class="ln muted"><span>Total Tardiness (hrs)</span><span class="v">{{ $tardyHours > 0 ? number_format($tardyHours, 2) : '—' }}</span></div>
             <div class="ln"><span>Total Basic Earned ({{ $months }}/12 mo)</span><span class="v">{{ number_format($totalBasic, 2) }}</span></div>
             <div class="breakdown">13th Month Pay = Total Basic Earned &divide; 12</div>
