@@ -175,6 +175,9 @@
 $(function () {
     const peso = n => '₱' + Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const csrf = $('meta[name="csrf-token"]').attr('content') || '';
+    const toast = (title, icon) => window.Swal
+        ? Swal.fire({ toast: true, position: 'top-end', timer: 2400, timerProgressBar: true, showConfirmButton: false, icon: icon || 'success', title })
+        : alert(title);
     const params = () => ({
         year: $('#fltYear').val(),
         coverage_from: $('#fltFrom').val(),
@@ -334,7 +337,7 @@ $(function () {
     // Build an Export/Print/Bank URL, appending ticked IDs when it's a real subset.
     function outUrl(base) {
         const ids = selectedIds();
-        if (!ids.length) { alert('Select at least one employee.'); return null; }
+        if (!ids.length) { toast('Select at least one employee.', 'warning'); return null; }
         const p = new URLSearchParams(params());
         if (ids.length !== allRows.length) ids.forEach(id => p.append('employee_ids[]', id));
         return base + '?' + p.toString();
@@ -374,19 +377,36 @@ $(function () {
     $('#btnPrint').on('click', () => { const u = outUrl('/reports/thirteenth-month/print'); if (u) window.open(u, '_blank'); });
     $('#btnRelease').on('click', function () {
         const ids = selectedIds();
-        if (!ids.length) { alert('Select at least one employee.'); return; }
+        if (!ids.length) { toast('Select at least one employee.', 'warning'); return; }
         const portion = $('#relPortion').val();
         const label = portion === 'half' ? 'the ½ HALF advance (50%)' : 'the FULL / remaining balance';
-        if (!confirm(`Record ${label} for ${ids.length} employee(s) in this coverage year?\n\nThis is idempotent — safe to re-run.`)) return;
-        const batch = prompt('Optional batch label (e.g. "Dec 2026" or "Mid-year"):', portion === 'half' ? 'Mid-year' : '') || '';
-        const body = new URLSearchParams(params());
-        body.append('portion', portion);
-        ids.forEach(id => body.append('employee_ids[]', id));
-        if (batch) body.append('batch', batch);
-        $('#btnRelease').prop('disabled', true);
-        axios.post('/reports/thirteenth-month/release', body, { headers: { 'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/x-www-form-urlencoded' } })
-            .then(res => { alert(res.data.message || 'Recorded.'); load(); })
-            .catch(err => { alert(err.response?.data?.message || 'Failed to record claim.'); $('#btnRelease').prop('disabled', false); });
+        Swal.fire({
+            title: 'Record claim?',
+            html: `Record <b>${label}</b> for <b>${ids.length}</b> employee(s) in this coverage year.` +
+                  `<br><span style="font-size:.78rem;color:#94a3b8">Idempotent — safe to re-run.</span>`,
+            icon: 'question',
+            input: 'text',
+            inputLabel: 'Optional batch label',
+            inputPlaceholder: 'e.g. Dec 2026 or Mid-year',
+            inputValue: portion === 'half' ? 'Mid-year' : '',
+            showCancelButton: true,
+            confirmButtonColor: '#008080',
+            confirmButtonText: '<i class="fa fa-check-double me-1"></i> Record',
+        }).then(result => {
+            if (!result.isConfirmed) return;
+            const batch = result.value || '';
+            const body = new URLSearchParams(params());
+            body.append('portion', portion);
+            ids.forEach(id => body.append('employee_ids[]', id));
+            if (batch) body.append('batch', batch);
+            $('#btnRelease').prop('disabled', true);
+            axios.post('/reports/thirteenth-month/release', body, { headers: { 'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/x-www-form-urlencoded' } })
+                .then(res => { toast(res.data.message || 'Recorded.', 'success'); load(); })
+                .catch(err => {
+                    Swal.fire({ icon: 'error', title: 'Failed', text: err.response?.data?.message || 'Failed to record claim.', confirmButtonColor: '#008080' });
+                    $('#btnRelease').prop('disabled', false);
+                });
+        });
     });
     // Per-employee 13th-month payslip (opens the printable slip in a new tab).
     $('#tbl').on('click', '.btn-slip', function () {
