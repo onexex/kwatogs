@@ -213,6 +213,18 @@ class ThirteenthMonthController extends Controller
             }
             $r->released  = $r->claim_status === 'full';
             $r->partially = $r->claim_status === 'half';
+
+            // (5) What is DUE now — the December view. Someone with no advance
+            //     is owed the WHOLE; someone who took the mid-year half is owed
+            //     the REMAINING; a settled row is PAID.
+            if ($r->claim_status === 'full') {
+                $r->due_type = 'paid';
+            } elseif ($r->claim_status === 'half') {
+                $r->due_type = 'remaining';
+            } else {
+                $r->due_type = 'whole';
+            }
+            $r->due_amount = $r->due_type === 'paid' ? 0.0 : $r->balance;
         }
     }
 
@@ -236,6 +248,7 @@ class ThirteenthMonthController extends Controller
             'total_taxable'  => $rows->sum('taxable'),
             'fully_count'    => $rows->where('claim_status', 'full')->count(),
             'half_count'     => $rows->where('claim_status', 'half')->count(),
+            'unclaimed_count'=> $rows->where('claim_status', 'unclaimed')->count(),
             'count'          => $rows->count(),
         ]);
     }

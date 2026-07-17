@@ -99,7 +99,16 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-12 col-md-4">
+                <div class="col-6 col-md-2">
+                    <label class="field-label" title="December view: who is owed the whole vs the remaining half">Claim</label>
+                    <select id="fltClaim" class="form-select form-select-sm">
+                        <option value="all">All</option>
+                        <option value="unclaimed">Due Whole (no advance)</option>
+                        <option value="half">Due Remaining (½ advanced)</option>
+                        <option value="full">Fully Paid</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
                     <label class="field-label">Search</label>
                     <input type="text" id="fltSearch" class="form-control form-control-sm" placeholder="Name or ID...">
                 </div>
@@ -123,8 +132,9 @@
         <div class="stat"><div class="l">Total Basic Earned</div><div class="v" id="kBasic">&#8369;0.00</div></div>
         <div class="stat"><div class="l">Total 13th Month</div><div class="v" id="k13">&#8369;0.00</div></div>
         <div class="stat"><div class="l">Taxable Excess (&gt;&#8369;90k)</div><div class="v" id="kTax">&#8369;0.00</div></div>
-        <div class="stat"><div class="l">Fully Claimed</div><div class="v" id="kFull">0</div></div>
-        <div class="stat"><div class="l">Half Only</div><div class="v" id="kHalf">0</div></div>
+        <div class="stat"><div class="l">Due Whole (no advance)</div><div class="v" id="kUnclaimed">0</div></div>
+        <div class="stat"><div class="l">Due Remaining (&frac12;)</div><div class="v" id="kHalf">0</div></div>
+        <div class="stat"><div class="l">Fully Paid</div><div class="v" id="kFull">0</div></div>
     </div>
 
     <div class="sc">
@@ -150,7 +160,7 @@
                         <th class="text-end sortable" data-key="thirteenth">13th Month Pay <i class="fa fa-sort"></i></th>
                         <th class="text-end sortable" data-key="taxable">Taxable Excess <i class="fa fa-sort"></i></th>
                         <th class="sortable" data-key="claim_status">Claim (½ / Full) <i class="fa fa-sort"></i></th>
-                        <th class="text-end sortable" data-key="balance">Balance <i class="fa fa-sort"></i></th>
+                        <th class="text-end sortable" data-key="balance">Balance Due <i class="fa fa-sort"></i></th>
                         <th class="text-center pe-3">Slip</th>
                     </tr>
                 </thead>
@@ -198,23 +208,39 @@ $(function () {
 
     const selectedIds = () => [...checked];
 
-    // Claim cell: a status badge + a who/when/amount line per portion claimed.
+    // Claim cell: a status badge + a who/when/amount line per portion claimed,
+    // plus what is still DUE (the December view).
     function claimCell(r) {
-        if (r.claim_status === 'unclaimed') return '<span class="badge-s b-pend">Unclaimed</span>';
         const line = (label, c) => c
             ? `<div class="claim-line"><b>${label}</b> ${peso(c.amount)}${c.at ? ` · ${c.at}` : ''}${c.by ? ` · ${c.by}` : ''}</div>`
             : '';
+        if (r.claim_status === 'unclaimed') {
+            return '<span class="badge-s b-pend">Unclaimed</span><div class="claim-line">Due: <b>WHOLE</b></div>';
+        }
         const badge = r.claim_status === 'full'
-            ? '<span class="badge-s b-rel">Fully claimed</span>'
-            : '<span class="badge-s b-half">½ claimed</span>';
+            ? '<span class="badge-s b-rel">Fully paid</span>'
+            : '<span class="badge-s b-half">½ claimed</span><div class="claim-line">Due: <b>remaining</b></div>';
         return `${badge}${line('½', r.claim_half)}${line('Full', r.claim_full)}`;
+    }
+
+    // Rows visible under the current claim filter (the December "whole vs half" view).
+    function baseRows() {
+        const f = $('#fltClaim').val();
+        return (f && f !== 'all') ? allRows.filter(r => r.claim_status === f) : allRows;
+    }
+
+    // Selection always follows visibility, so Export/Print/Release act on the
+    // filtered group only.
+    function selectVisible() {
+        checked.clear();
+        baseRows().forEach(r => checked.add(String(r.employee_id)));
     }
 
     const CLAIM_RANK = { unclaimed: 0, half: 1, full: 2 };
     function sortedRows() {
         const k = sort.key, dir = sort.dir === 'asc' ? 1 : -1;
         const numeric = ['months', 'total_basic', 'thirteenth', 'taxable', 'balance', 'status_code'].includes(k);
-        return allRows.slice().sort((a, b) => {
+        return baseRows().slice().sort((a, b) => {
             let x = a[k], y = b[k];
             if (k === 'claim_status') { return ((CLAIM_RANK[a.claim_status] ?? 0) - (CLAIM_RANK[b.claim_status] ?? 0)) * dir; }
             if (numeric) return ((parseFloat(x) || 0) - (parseFloat(y) || 0)) * dir;
@@ -225,8 +251,10 @@ $(function () {
     function render() {
         const rows = sortedRows();
         if (!rows.length) {
-            $('#tbl').html('<tr><td colspan="12" class="text-center text-muted py-4">No payroll records found within this coverage.</td></tr>');
+            const msg = allRows.length ? 'No employees match this claim filter.' : 'No payroll records found within this coverage.';
+            $('#tbl').html(`<tr><td colspan="12" class="text-center text-muted py-4">${msg}</td></tr>`);
             $('#tfoot').html('');
+            recomputeTotals();
             return;
         }
         let h = '';
@@ -260,8 +288,9 @@ $(function () {
     // Stat cards + grand-total footer reflect the TICKED subset (kReleased is a
     // whole-list count, set on load).
     function recomputeTotals() {
+        const rows = baseRows();
         let basic = 0, thirteen = 0, tax = 0, bal = 0, n = 0;
-        allRows.forEach(r => {
+        rows.forEach(r => {
             if (!checked.has(String(r.employee_id))) return;
             basic += parseFloat(r.total_basic) || 0;
             thirteen += parseFloat(r.thirteenth) || 0;
@@ -274,7 +303,7 @@ $(function () {
         $('#k13').text(peso(thirteen));
         $('#kTax').text(peso(tax));
         $('#tfoot').html(`<tr><td colspan="6" class="text-end">GRAND TOTAL (${n} selected):</td><td class="text-end">${peso(basic)}</td><td class="text-end">${peso(thirteen)}</td><td class="text-end">${peso(tax)}</td><td></td><td class="text-end">${peso(bal)}</td><td class="pe-3"></td></tr>`);
-        const total = allRows.length;
+        const total = rows.length;
         $('#chkAll').prop('checked', total > 0 && n === total).prop('indeterminate', n > 0 && n < total);
         $('#btnRelease').prop('disabled', n === 0);
     }
@@ -285,14 +314,15 @@ $(function () {
         axios.get('/reports/thirteenth-month/fetch', { params: params() }).then(res => {
             const d = res.data;
             allRows = d.data || [];
-            checked.clear();
-            allRows.forEach(r => checked.add(String(r.employee_id))); // default all ticked
+            selectVisible(); // default: all rows in the current filter ticked
             $('#covLabel').html(`<i class="fa fa-calendar me-1"></i>${d.coverage_label || ''}`);
             // The server may normalize a bad/reversed/over-long window — reflect the effective one.
             if (d.coverage_from) $('#fltFrom').val(d.coverage_from);
             if (d.coverage_to) $('#fltTo').val(d.coverage_to);
-            $('#kFull').text(d.fully_count || 0);
+            // Whole-workforce counts (independent of the current filter).
+            $('#kUnclaimed').text(d.unclaimed_count || 0);
             $('#kHalf').text(d.half_count || 0);
+            $('#kFull').text(d.fully_count || 0);
             render();
         }).catch(() => {
             allRows = []; checked.clear();
@@ -315,8 +345,7 @@ $(function () {
     }
 
     $('#chkAll').on('change', function () {
-        if (this.checked) allRows.forEach(r => checked.add(String(r.employee_id)));
-        else checked.clear();
+        if (this.checked) selectVisible(); else baseRows().forEach(r => checked.delete(String(r.employee_id)));
         $('#tbl .chkRow').prop('checked', this.checked);
         recomputeTotals();
     });
@@ -324,6 +353,8 @@ $(function () {
         if (this.checked) checked.add(String(this.value)); else checked.delete(String(this.value));
         recomputeTotals();
     });
+    // Claim filter (December: whole vs remaining-half) — re-selects the visible group.
+    $('#fltClaim').on('change', function () { selectVisible(); render(); });
     $('#rptTable thead').on('click', '.sortable', function () {
         const key = $(this).data('key');
         if (sort.key === key) sort.dir = sort.dir === 'asc' ? 'desc' : 'asc';
