@@ -138,8 +138,18 @@ class ThirteenthMonthController extends Controller
                 COUNT(DISTINCT p.pay_date) as periods,
                 COUNT(DISTINCT DATE_FORMAT(p.pay_date,'%Y-%m')) as months,
                 MIN(p.pay_date) as first_pay,
-                MAX(p.pay_date) as last_pay
-            ")
+                MAX(p.pay_date) as last_pay,
+                (
+                    (SELECT COUNT(DISTINCT s.attendance_date) FROM attendance_summaries s
+                        WHERE s.employee_id = u.empID AND s.attendance_date BETWEEN ? AND ? AND s.total_hours > 0)
+                    + (SELECT COUNT(DISTINCT ld.`date`) FROM leave_details ld
+                        WHERE ld.employee_id = u.empID AND ld.`date` BETWEEN ? AND ? AND ld.leave_kind = '0' AND ld.status = 'APPROVEDBYCFO')
+                    - (SELECT COUNT(DISTINCT s.attendance_date) FROM attendance_summaries s
+                        JOIN leave_details ld ON ld.employee_id = s.employee_id AND ld.`date` = s.attendance_date
+                            AND ld.leave_kind = '0' AND ld.status = 'APPROVEDBYCFO'
+                        WHERE s.employee_id = u.empID AND s.attendance_date BETWEEN ? AND ? AND s.total_hours > 0)
+                ) as days_paid
+            ", [$start, $end, $start, $end, $start, $end])
             ->groupBy('u.empID', 'card_no', 'employee_name', 'department_name', 'company_name')
             ->havingRaw('SUM(GREATEST(COALESCE(p.gross_pay,0) - COALESCE(p.overtime_pay,0) - COALESCE(p.holiday_pay,0) - COALESCE(p.night_diff_pay,0), 0)) > 0')
             ->orderBy('employee_name')
@@ -272,15 +282,15 @@ class ThirteenthMonthController extends Controller
         [$rows, $year, $from, $to] = $this->compute($request);
 
         $x = new SimpleXlsx('13th Month Pay');
-        $x->setColumnWidths([6, 14, 16, 34, 22, 16, 10, 20, 18, 18, 22, 22, 16]);
+        $x->setColumnWidths([6, 14, 16, 34, 22, 16, 10, 11, 20, 18, 18, 22, 22, 16]);
 
         $x->setString('A1', self::LETTERHEAD, SimpleXlsx::S_TITLE);
         $x->setString('A2', '13TH MONTH PAY — COVERAGE '.strtoupper($this->coverageLabel($from, $to)), SimpleXlsx::S_TITLE);
-        $x->setString('A3', 'Total basic salary earned within the coverage ÷ 12  •  taxable excess = amount over ₱'.number_format(self::TAX_EXEMPT_CAP).'  •  half = mid-year advance, full = remaining', SimpleXlsx::S_TITLE);
+        $x->setString('A3', 'Total basic salary earned within the coverage ÷ 12  •  taxable excess = amount over ₱'.number_format(self::TAX_EXEMPT_CAP).'  •  days paid = worked days + approved paid leave  •  half = mid-year advance, full = remaining', SimpleXlsx::S_TITLE);
 
         $hr = 5;
-        $headers = ['NO.', 'EMP ID', 'CARD NO', 'EMPLOYEE NAME', 'DEPARTMENT', 'STATUS', 'MONTHS', 'TOTAL BASIC EARNED', '13TH MONTH PAY', 'TAXABLE EXCESS', 'HALF CLAIMED', 'FULL CLAIMED', 'BALANCE'];
-        foreach (['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M'] as $i => $col) {
+        $headers = ['NO.', 'EMP ID', 'CARD NO', 'EMPLOYEE NAME', 'DEPARTMENT', 'STATUS', 'MONTHS', 'DAYS PAID', 'TOTAL BASIC EARNED', '13TH MONTH PAY', 'TAXABLE EXCESS', 'HALF CLAIMED', 'FULL CLAIMED', 'BALANCE'];
+        foreach (['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N'] as $i => $col) {
             $x->setString("{$col}{$hr}", $headers[$i], SimpleXlsx::S_BOLD);
         }
 
@@ -305,20 +315,22 @@ class ThirteenthMonthController extends Controller
             $x->setString("E{$r}", (string) $row->department_name, SimpleXlsx::S_NORMAL);
             $x->setString("F{$r}", (string) $row->status_label, SimpleXlsx::S_NORMAL);
             $x->setNumber("G{$r}", (float) $row->months, SimpleXlsx::S_NORMAL);
-            $x->setNumber("H{$r}", (float) $row->total_basic, SimpleXlsx::S_MONEY);
-            $x->setNumber("I{$r}", (float) $row->thirteenth, SimpleXlsx::S_MONEY);
-            $x->setNumber("J{$r}", (float) $row->taxable, SimpleXlsx::S_MONEY);
-            $x->setString("K{$r}", $claimCell($row->claim_half), SimpleXlsx::S_NORMAL);
-            $x->setString("L{$r}", $claimCell($row->claim_full), SimpleXlsx::S_NORMAL);
-            $x->setNumber("M{$r}", (float) $row->balance, SimpleXlsx::S_MONEY);
+            $x->setNumber("H{$r}", (int) ($row->days_paid ?? 0), SimpleXlsx::S_NORMAL);
+            $x->setNumber("I{$r}", (float) $row->total_basic, SimpleXlsx::S_MONEY);
+            $x->setNumber("J{$r}", (float) $row->thirteenth, SimpleXlsx::S_MONEY);
+            $x->setNumber("K{$r}", (float) $row->taxable, SimpleXlsx::S_MONEY);
+            $x->setString("L{$r}", $claimCell($row->claim_half), SimpleXlsx::S_NORMAL);
+            $x->setString("M{$r}", $claimCell($row->claim_full), SimpleXlsx::S_NORMAL);
+            $x->setNumber("N{$r}", (float) $row->balance, SimpleXlsx::S_MONEY);
             $r++;
         }
 
         $x->setString("D{$r}", 'TOTAL', SimpleXlsx::S_BOLD);
-        $x->setNumber("H{$r}", (float) $rows->sum('total_basic'), SimpleXlsx::S_SUBTOTAL);
-        $x->setNumber("I{$r}", (float) $rows->sum('thirteenth'), SimpleXlsx::S_SUBTOTAL);
-        $x->setNumber("J{$r}", (float) $rows->sum('taxable'), SimpleXlsx::S_SUBTOTAL);
-        $x->setNumber("M{$r}", (float) $rows->sum('balance'), SimpleXlsx::S_SUBTOTAL);
+        $x->setNumber("H{$r}", (int) $rows->sum('days_paid'), SimpleXlsx::S_SUBTOTAL);
+        $x->setNumber("I{$r}", (float) $rows->sum('total_basic'), SimpleXlsx::S_SUBTOTAL);
+        $x->setNumber("J{$r}", (float) $rows->sum('thirteenth'), SimpleXlsx::S_SUBTOTAL);
+        $x->setNumber("K{$r}", (float) $rows->sum('taxable'), SimpleXlsx::S_SUBTOTAL);
+        $x->setNumber("N{$r}", (float) $rows->sum('balance'), SimpleXlsx::S_SUBTOTAL);
 
         $path = $x->saveToTempFile();
 
@@ -625,18 +637,28 @@ class ThirteenthMonthController extends Controller
 
         abort_if(!$emp, 404, 'Employee not found.');
 
-        // Days worked and total tardiness both come from attendance_summaries
-        // over the coverage (the payrolls table stores deduction amounts, not
-        // minutes). Days = distinct attendance days with recorded hours.
+        // Total tardiness (minutes) comes from attendance_summaries over the
+        // coverage (the payrolls table stores deduction amounts, not minutes).
         $att = DB::table('attendance_summaries')
             ->where('employee_id', $empId)
             ->whereBetween('attendance_date', [$start, $end])
-            ->selectRaw('COUNT(DISTINCT CASE WHEN total_hours > 0 THEN attendance_date END) as days,
-                         COALESCE(SUM(mins_late), 0) as tardy_mins')
+            ->selectRaw('COALESCE(SUM(mins_late), 0) as tardy_mins')
             ->first();
-
-        $totalDays = (int) ($att->days ?? 0);
         $tardyMins = (float) ($att->tardy_mins ?? 0);
+
+        // DAYS PAID = distinct worked days (total_hours > 0) + approved PAID
+        // leave days (leave_kind '0', APPROVEDBYCFO), deduped via UNION so a day
+        // that is both counts once — matching how payroll's daysPresent counts a
+        // paid-leave day and how the 13th-month amount already includes it.
+        $totalDays = (int) (DB::selectOne("
+            SELECT COUNT(*) AS c FROM (
+                SELECT attendance_date AS d FROM attendance_summaries
+                    WHERE employee_id = ? AND attendance_date BETWEEN ? AND ? AND total_hours > 0
+                UNION
+                SELECT `date` AS d FROM leave_details
+                    WHERE employee_id = ? AND `date` BETWEEN ? AND ? AND leave_kind = '0' AND status = 'APPROVEDBYCFO'
+            ) x
+        ", [$empId, $start, $end, $empId, $start, $end])->c ?? 0);
 
         return view('pages.reports.thirteenth_month_payslip', [
             'emp'        => $emp,
