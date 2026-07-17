@@ -115,6 +115,27 @@ class ThirteenthMonthHalfAdvanceTest extends TestCase
         $this->assertEqualsWithDelta(10000.0, (float) $this->row(ThirteenthMonthPayout::PORTION_FULL)->amount, 0.01);
     }
 
+    public function test_second_half_release_is_skipped_not_duplicated(): void
+    {
+        $this->seedEmployee();
+
+        $first = $this->release($this->fullYearPayload(['portion' => 'half']))->getData(true);
+        $this->assertSame(1, $first['released']);
+
+        // A second half release must be refused, not overwrite the existing row.
+        $second = $this->release($this->fullYearPayload(['portion' => 'half']))->getData(true);
+        $this->assertSame(0, $second['released']);
+        $this->assertSame(1, $second['skipped']);
+
+        // Exactly one half row, amount unchanged.
+        $rows = ThirteenthMonthPayout::where('employee_id', self::EMP)
+            ->where('coverage_year', self::YEAR)
+            ->where('portion', ThirteenthMonthPayout::PORTION_HALF)
+            ->get();
+        $this->assertCount(1, $rows);
+        $this->assertEqualsWithDelta(10000.0, (float) $rows->first()->amount, 0.01);
+    }
+
     public function test_the_two_halves_sum_to_the_full_year_thirteenth(): void
     {
         $this->seedEmployee();

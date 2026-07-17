@@ -50,6 +50,8 @@
     .rpt-table thead th.sortable .fa { opacity:.35; font-size:.6rem; margin-left:3px; } .rpt-table thead th.sortable.asc .fa, .rpt-table thead th.sortable.desc .fa { opacity:1; color:var(--teal); }
     .btn-primary-teal { background:var(--teal-dark); color:#fff; border:none; border-radius:var(--radius-input); padding:.5rem .9rem; font-size:.8rem; font-weight:700; cursor:pointer; white-space:nowrap; }
     .btn-primary-teal:hover { background:#00524f; color:#fff; } .btn-primary-teal:disabled { opacity:.5; cursor:not-allowed; }
+    /* Row locked for the chosen release portion (already advanced/paid) — not selectable. */
+    tr.row-locked td:not(:last-child) { opacity:.5; } tr.row-locked .chkRow { cursor:not-allowed; }
 </style>
 
 <div class="rpt-shell">
@@ -205,6 +207,16 @@ $(function () {
 
     const selectedIds = () => [...checked];
 
+    // Whether a row can be released for the currently-chosen portion — mirrors
+    // the server guard: a ½ advance is refused once already advanced/paid, and a
+    // Full release is pointless once fully paid. Locked rows are grayed & can't
+    // be ticked (revert first to redo). ½-claimed rows stay open for Full.
+    function releasable(r) {
+        return $('#relPortion').val() === 'half'
+            ? r.claim_status === 'unclaimed'
+            : r.claim_status !== 'full';
+    }
+
     // Claim cell: a status badge + a who/when/amount line per portion claimed,
     // plus what is still DUE (the December view).
     function claimCell(r) {
@@ -237,7 +249,7 @@ $(function () {
     // filtered group only.
     function selectVisible() {
         checked.clear();
-        baseRows().forEach(r => checked.add(String(r.employee_id)));
+        baseRows().forEach(r => { if (releasable(r)) checked.add(String(r.employee_id)); });
     }
 
     const CLAIM_RANK = { unclaimed: 0, half: 1, full: 2 };
@@ -264,13 +276,16 @@ $(function () {
         let h = '';
         rows.forEach(r => {
             const slipQs = new URLSearchParams(Object.assign({}, params(), { employee_id: r.employee_id })).toString();
+            const rel = releasable(r);
+            if (!rel) checked.delete(String(r.employee_id));
             const isC = checked.has(String(r.employee_id));
             const cov = COV[r.coverage_flag] || COV.full;
             const sta = STA[String(r.status_code)] || { cls: 'b-pend', t: r.status_label || '—' };
             const claim = claimCell(r);
             const balDone = Math.abs(parseFloat(r.balance) || 0) < 0.005;
-            h += `<tr>
-                <td class="text-center ps-3"><input type="checkbox" class="chkRow" value="${r.employee_id}" ${isC ? 'checked' : ''}></td>
+            const lockTitle = $('#relPortion').val() === 'half' ? 'Already advanced/paid — revert the ½ first to re-release' : 'Already fully paid';
+            h += `<tr class="${rel ? '' : 'row-locked'}">
+                <td class="text-center ps-3"><input type="checkbox" class="chkRow" value="${r.employee_id}" ${isC ? 'checked' : ''} ${rel ? '' : `disabled title="${lockTitle}"`}></td>
                 <td><span class="fw-bold text-uppercase">${r.employee_name || ''}</span><br><span class="text-muted">${r.employee_id}</span></td>
                 <td><span class="badge-s ${sta.cls}">${sta.t}</span></td>
                 <td>${r.department_name ?? '—'}</td>
@@ -305,8 +320,8 @@ $(function () {
         $('#k13').text(peso(thirteen));
         $('#kTax').text(peso(tax));
         $('#tfoot').html(`<tr><td colspan="5" class="text-end">GRAND TOTAL (${n} selected):</td><td class="text-end">${peso(basic)}</td><td class="text-end">${peso(thirteen)}</td><td class="text-end">${peso(tax)}</td><td></td><td class="text-end">${peso(bal)}</td><td class="pe-3"></td></tr>`);
-        const total = rows.length;
-        $('#chkAll').prop('checked', total > 0 && n === total).prop('indeterminate', n > 0 && n < total);
+        const selectable = rows.filter(releasable).length;
+        $('#chkAll').prop('checked', selectable > 0 && n === selectable).prop('indeterminate', n > 0 && n < selectable);
         $('#btnRelease').prop('disabled', n === 0);
     }
 
@@ -344,9 +359,12 @@ $(function () {
 
     $('#chkAll').on('change', function () {
         if (this.checked) selectVisible(); else baseRows().forEach(r => checked.delete(String(r.employee_id)));
-        $('#tbl .chkRow').prop('checked', this.checked);
+        $('#tbl .chkRow:not(:disabled)').prop('checked', this.checked);
         recomputeTotals();
     });
+    // Switching the release portion changes which rows are eligible — re-select
+    // and repaint so locked rows gray out for the new portion.
+    $('#relPortion').on('change', function () { selectVisible(); render(); });
     $('#tbl').on('change', '.chkRow', function () {
         if (this.checked) checked.add(String(this.value)); else checked.delete(String(this.value));
         recomputeTotals();
