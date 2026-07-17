@@ -54,9 +54,12 @@
                 <th>Employee</th>
                 <th>Department</th>
                 <th>Company</th>
+                <th class="c">Status</th>
                 <th class="c">Months</th>
                 <th class="r">Total Basic Earned</th>
                 <th class="r">13th Month Pay</th>
+                <th class="r">Taxable Excess</th>
+                <th class="c">Released</th>
             </tr>
         </thead>
         <tbody>
@@ -66,19 +69,24 @@
                 <td><strong>{{ strtoupper($r->employee_name) }}</strong><br><span style="color:#94a3b8;">{{ $r->employee_id }}</span></td>
                 <td>{{ $r->department_name }}</td>
                 <td>{{ $r->company_name }}</td>
+                <td class="c">{{ $r->status_label ?? '—' }}</td>
                 <td class="c">{{ $r->months }}/12</td>
                 <td class="r">{{ number_format($r->total_basic, 2) }}</td>
                 <td class="r"><strong>{{ number_format($r->thirteenth, 2) }}</strong></td>
+                <td class="r">{{ $r->taxable > 0 ? number_format($r->taxable, 2) : '—' }}</td>
+                <td class="c">{{ $r->released ? ('Yes'.($r->released_at ? ' '.$r->released_at : '')) : 'No' }}</td>
             </tr>
             @empty
-            <tr><td colspan="7" style="text-align:center; padding:20px; color:#94a3b8;">No records within this coverage.</td></tr>
+            <tr><td colspan="10" style="text-align:center; padding:20px; color:#94a3b8;">No records within this coverage.</td></tr>
             @endforelse
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="5" class="r">GRAND TOTAL</td>
+                <td colspan="6" class="r">GRAND TOTAL</td>
                 <td class="r">{{ number_format($totalBasic, 2) }}</td>
                 <td class="r">{{ number_format($total13th, 2) }}</td>
+                <td class="r">{{ number_format($totalTaxable ?? 0, 2) }}</td>
+                <td></td>
             </tr>
         </tfoot>
     </table>

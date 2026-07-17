@@ -3,15 +3,27 @@
 namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\department;
+use App\Models\ThirteenthMonthPayout;
 use App\Support\SimpleXlsx;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class ThirteenthMonthController extends Controller
 {
     private const LETTERHEAD = 'KWATOGS LOMI HOUSE';
+
+    /**
+     * BIR/TRAIN de-minimis cap: 13th-month pay + other benefits are income-tax
+     * EXEMPT up to ₱90,000; only the excess is taxable. The report flags the
+     * taxable excess per employee so HR can reconcile against withholding tax.
+     * Not defined anywhere else in the codebase — this is the single home for it.
+     */
+    public const TAX_EXEMPT_CAP = 90000;
 
     public function index()
     {
@@ -101,6 +113,10 @@ class ThirteenthMonthController extends Controller
         $rows = $q->selectRaw("
                 u.empID as employee_id,
                 COALESCE(ed.empCardNo,'') as card_no,
+                MAX(ed.empPayrollType) as payroll_type,
+                MAX(ed.empStatus) as emp_status,
+                MAX(ed.separation_date) as separation_date,
+                MAX(ed.empDateHired) as date_hired,
                 TRIM(CONCAT(COALESCE(u.lname,''), ', ', COALESCE(u.fname,''))) as employee_name,
                 COALESCE(d.dep_name,'—') as department_name,
                 COALESCE(c.comp_name,'—') as company_name,
@@ -115,12 +131,67 @@ class ThirteenthMonthController extends Controller
             ->orderBy('employee_name')
             ->get();
 
+        $this->enrichRows($rows, $from, $to, $year);
+
+        return [$rows, $year, $from, $to];
+    }
+
+    /**
+     * Decorate each computed row in-place with the derived facts the report
+     * surfaces: 13th-month amount, BIR taxable excess (over ₱90k), employment
+     * status label, a coverage-quality flag (new hire vs unexplained gap), and
+     * the release/payout state from the payout ledger. Kept O(rows) — the
+     * payout lookup is a single bulk query keyed by employee_id.
+     */
+    private function enrichRows(Collection $rows, Carbon $from, Carbon $to, int $year): void
+    {
+        // Number of calendar months the coverage window spans (>=1). Used to
+        // tell an expected partial (short window / new hire) from a real gap.
+        $spanMonths = ($from->year - $to->year) * 12 + ($from->month - $to->month);
+        $spanMonths = abs($spanMonths) + 1;
+
+        // Bulk-load release records for this coverage year (one query).
+        $payouts = ThirteenthMonthPayout::where('coverage_year', $year)
+            ->whereIn('employee_id', $rows->pluck('employee_id')->all())
+            ->get()
+            ->keyBy('employee_id');
+
         foreach ($rows as $r) {
             $r->total_basic = (float) $r->total_basic;
             $r->thirteenth  = round($r->total_basic / 12, 2);
-        }
 
-        return [$rows, $year, $from, $to];
+            // (1) BIR tax-exemption split.
+            $r->tax_exempt    = round(min($r->thirteenth, self::TAX_EXEMPT_CAP), 2);
+            $r->taxable       = round(max(0, $r->thirteenth - self::TAX_EXEMPT_CAP), 2);
+            $r->is_taxable    = $r->taxable > 0;
+
+            // (2) Employment status.
+            $code = (string) ($r->emp_status ?? '1');
+            $r->status_code  = $code;
+            $r->status_label = ['1' => 'Active', '0' => 'Resigned', '2' => 'End of Contract'][$code] ?? '—';
+            $r->separated    = $code !== '1';
+
+            // (3) Coverage quality: separated / new hire (expected partial, OK)
+            //     vs full vs an unexplained gap that HR should review.
+            $hired = null;
+            try { $hired = $r->date_hired ? Carbon::parse($r->date_hired) : null; } catch (\Throwable) {}
+            if ($r->separated) {
+                $r->coverage_flag = 'separated';
+            } elseif ($hired && $hired->gt($from)) {
+                $r->coverage_flag = 'newhire';
+            } elseif ((int) $r->months >= $spanMonths) {
+                $r->coverage_flag = 'full';
+            } else {
+                $r->coverage_flag = 'partial'; // gap — needs review
+            }
+
+            // (4) Payout / release state.
+            $po = $payouts->get($r->employee_id);
+            $r->released        = (bool) $po;
+            $r->released_at     = $po?->released_at?->format('Y-m-d');
+            $r->released_amount = $po ? (float) $po->amount : null;
+            $r->released_batch  = $po?->batch;
+        }
     }
 
     private function coverageLabel(Carbon $from, Carbon $to): string
@@ -140,6 +211,8 @@ class ThirteenthMonthController extends Controller
             'coverage_label' => $this->coverageLabel($from, $to),
             'total_basic'    => $rows->sum('total_basic'),
             'total_13th'     => $rows->sum('thirteenth'),
+            'total_taxable'  => $rows->sum('taxable'),
+            'released_count' => $rows->where('released', true)->count(),
             'count'          => $rows->count(),
         ]);
     }
@@ -149,15 +222,15 @@ class ThirteenthMonthController extends Controller
         [$rows, $year, $from, $to] = $this->compute($request);
 
         $x = new SimpleXlsx('13th Month Pay');
-        $x->setColumnWidths([6, 14, 16, 34, 22, 22, 10, 18, 18]);
+        $x->setColumnWidths([6, 14, 16, 34, 22, 22, 16, 10, 20, 18, 18, 16]);
 
         $x->setString('A1', self::LETTERHEAD, SimpleXlsx::S_TITLE);
         $x->setString('A2', '13TH MONTH PAY — COVERAGE '.strtoupper($this->coverageLabel($from, $to)), SimpleXlsx::S_TITLE);
-        $x->setString('A3', 'Total basic salary earned within the coverage ÷ 12', SimpleXlsx::S_TITLE);
+        $x->setString('A3', 'Total basic salary earned within the coverage ÷ 12  •  taxable excess = amount over ₱'.number_format(self::TAX_EXEMPT_CAP), SimpleXlsx::S_TITLE);
 
         $hr = 5;
-        $headers = ['NO.', 'EMP ID', 'CARD NO', 'EMPLOYEE NAME', 'DEPARTMENT', 'COMPANY', 'MONTHS', 'TOTAL BASIC EARNED', '13TH MONTH PAY'];
-        foreach (['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'] as $i => $col) {
+        $headers = ['NO.', 'EMP ID', 'CARD NO', 'EMPLOYEE NAME', 'DEPARTMENT', 'COMPANY', 'STATUS', 'MONTHS', 'TOTAL BASIC EARNED', '13TH MONTH PAY', 'TAXABLE EXCESS', 'RELEASED'];
+        foreach (['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'] as $i => $col) {
             $x->setString("{$col}{$hr}", $headers[$i], SimpleXlsx::S_BOLD);
         }
 
@@ -171,19 +244,71 @@ class ThirteenthMonthController extends Controller
             $x->setString("D{$r}", strtoupper((string) $row->employee_name), SimpleXlsx::S_NORMAL);
             $x->setString("E{$r}", (string) $row->department_name, SimpleXlsx::S_NORMAL);
             $x->setString("F{$r}", (string) $row->company_name, SimpleXlsx::S_NORMAL);
-            $x->setNumber("G{$r}", (float) $row->months, SimpleXlsx::S_NORMAL);
-            $x->setNumber("H{$r}", (float) $row->total_basic, SimpleXlsx::S_MONEY);
-            $x->setNumber("I{$r}", (float) $row->thirteenth, SimpleXlsx::S_MONEY);
+            $x->setString("G{$r}", (string) $row->status_label, SimpleXlsx::S_NORMAL);
+            $x->setNumber("H{$r}", (float) $row->months, SimpleXlsx::S_NORMAL);
+            $x->setNumber("I{$r}", (float) $row->total_basic, SimpleXlsx::S_MONEY);
+            $x->setNumber("J{$r}", (float) $row->thirteenth, SimpleXlsx::S_MONEY);
+            $x->setNumber("K{$r}", (float) $row->taxable, SimpleXlsx::S_MONEY);
+            $x->setString("L{$r}", $row->released ? ('YES '.($row->released_at ?? '')) : 'NO', SimpleXlsx::S_NORMAL);
             $r++;
         }
 
         $x->setString("D{$r}", 'TOTAL', SimpleXlsx::S_BOLD);
-        $x->setNumber("H{$r}", (float) $rows->sum('total_basic'), SimpleXlsx::S_SUBTOTAL);
-        $x->setNumber("I{$r}", (float) $rows->sum('thirteenth'), SimpleXlsx::S_SUBTOTAL);
+        $x->setNumber("I{$r}", (float) $rows->sum('total_basic'), SimpleXlsx::S_SUBTOTAL);
+        $x->setNumber("J{$r}", (float) $rows->sum('thirteenth'), SimpleXlsx::S_SUBTOTAL);
+        $x->setNumber("K{$r}", (float) $rows->sum('taxable'), SimpleXlsx::S_SUBTOTAL);
 
         $path = $x->saveToTempFile();
 
+        $this->auditReportAction('exported', $from, $to, $rows, ['format' => 'register']);
+
         return response()->download($path, "13th_Month_Pay_{$year}.xlsx", [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Bank/disbursement file: a lean second export shaped for upload to a bank —
+     * card/account number, name and net 13th-month amount only. Intended for
+     * CARD-payroll employees (empPayrollType='CARD'); pass ?card_only=1 to drop
+     * cash-paid rows. A separate SimpleXlsx instance because the writer is
+     * single-sheet.
+     */
+    public function bankExport(Request $request)
+    {
+        [$rows, $year, $from, $to] = $this->compute($request);
+
+        if ($request->boolean('card_only')) {
+            $rows = $rows->filter(fn ($r) => strtoupper((string) $r->payroll_type) === 'CARD')->values();
+        }
+
+        $x = new SimpleXlsx('13th Month Bank File');
+        $x->setColumnWidths([6, 20, 34, 18]);
+        $x->setString('A1', self::LETTERHEAD.' — 13TH MONTH DISBURSEMENT '.$year, SimpleXlsx::S_TITLE);
+
+        $hr = 3;
+        foreach (['NO.', 'ACCOUNT / CARD NO', 'ACCOUNT NAME', 'AMOUNT'] as $i => $h) {
+            $x->setString(chr(65 + $i)."{$hr}", $h, SimpleXlsx::S_BOLD);
+        }
+
+        $r = $hr + 1;
+        $n = 0;
+        foreach ($rows as $row) {
+            $n++;
+            $x->setNumber("A{$r}", $n, SimpleXlsx::S_NORMAL);
+            $x->setString("B{$r}", (string) $row->card_no, SimpleXlsx::S_TEXT); // preserve leading zeros
+            $x->setString("C{$r}", strtoupper((string) $row->employee_name), SimpleXlsx::S_NORMAL);
+            $x->setNumber("D{$r}", (float) $row->thirteenth, SimpleXlsx::S_MONEY);
+            $r++;
+        }
+        $x->setString("C{$r}", 'TOTAL', SimpleXlsx::S_BOLD);
+        $x->setNumber("D{$r}", (float) $rows->sum('thirteenth'), SimpleXlsx::S_SUBTOTAL);
+
+        $path = $x->saveToTempFile();
+
+        $this->auditReportAction('exported', $from, $to, $rows, ['format' => 'bank_file']);
+
+        return response()->download($path, "13th_Month_BankFile_{$year}.xlsx", [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ])->deleteFileAfterSend(true);
     }
@@ -192,14 +317,128 @@ class ThirteenthMonthController extends Controller
     {
         [$rows, $year, $from, $to] = $this->compute($request);
 
+        $this->auditReportAction('printed', $from, $to, $rows, ['format' => 'print']);
+
         return view('pages.reports.thirteenth_month_print', [
-            'rows'       => $rows,
-            'year'       => $year,
-            'coverage'   => $this->coverageLabel($from, $to),
-            'totalBasic' => $rows->sum('total_basic'),
-            'total13th'  => $rows->sum('thirteenth'),
-            'letterhead' => self::LETTERHEAD,
+            'rows'        => $rows,
+            'year'        => $year,
+            'coverage'    => $this->coverageLabel($from, $to),
+            'totalBasic'  => $rows->sum('total_basic'),
+            'total13th'   => $rows->sum('thirteenth'),
+            'totalTaxable'=> $rows->sum('taxable'),
+            'letterhead'  => self::LETTERHEAD,
         ]);
+    }
+
+    /**
+     * Mark the selected employees' 13th month as RELEASED for the coverage year
+     * (records/updates one payout-ledger row each, unique per employee+year, so
+     * it is idempotent and safe to re-run). Saved through the model instance so
+     * Auditable logs it. `employee_ids` is required; the amount stored is the
+     * freshly re-computed figure (never trusts a client-sent amount).
+     */
+    public function release(Request $request)
+    {
+        $request->validate([
+            'employee_ids'   => 'required|array|min:1',
+            'employee_ids.*' => 'string',
+        ]);
+
+        [$rows, $year, $from, $to] = $this->compute($request);
+        $ids   = array_map('strval', $request->input('employee_ids'));
+        $batch = $request->input('batch');
+        $by    = $this->actorName();
+        $today = Carbon::now()->startOfDay();
+
+        $released = 0;
+        foreach ($rows as $r) {
+            if (!in_array((string) $r->employee_id, $ids, true)) {
+                continue;
+            }
+            $po = ThirteenthMonthPayout::firstOrNew([
+                'employee_id'   => $r->employee_id,
+                'coverage_year' => $year,
+            ]);
+            $po->forceFill([
+                'coverage_from'  => $from->format('Y-m-d'),
+                'coverage_to'    => $to->format('Y-m-d'),
+                'amount'         => $r->thirteenth,
+                'taxable_excess' => $r->taxable,
+                'released_at'    => $today->format('Y-m-d'),
+                'released_by'    => $by,
+                'batch'          => $batch,
+            ])->save();
+            $released++;
+        }
+
+        return response()->json([
+            'status'   => 'ok',
+            'released' => $released,
+            'message'  => "{$released} employee(s) marked as released.",
+        ]);
+    }
+
+    /**
+     * Revert a release (delete the payout-ledger rows) for the selected
+     * employees in the coverage year — e.g. a batch was marked paid by mistake.
+     * Instance delete() so Auditable records the revert.
+     */
+    public function unrelease(Request $request)
+    {
+        $request->validate([
+            'employee_ids'   => 'required|array|min:1',
+            'employee_ids.*' => 'string',
+        ]);
+
+        $year = $this->resolveYear($request);
+        $ids  = array_map('strval', $request->input('employee_ids'));
+
+        $reverted = 0;
+        ThirteenthMonthPayout::where('coverage_year', $year)
+            ->whereIn('employee_id', $ids)
+            ->get()
+            ->each(function ($po) use (&$reverted) {
+                $po->delete();
+                $reverted++;
+            });
+
+        return response()->json([
+            'status'   => 'ok',
+            'reverted' => $reverted,
+            'message'  => "{$reverted} release(s) reverted.",
+        ]);
+    }
+
+    /** Coverage-end year, mirroring compute()'s normalization. */
+    private function resolveYear(Request $request): int
+    {
+        [, $year] = $this->compute($request);
+        return $year;
+    }
+
+    /** Best-effort display name of the acting user for ledger/audit stamping. */
+    private function actorName(): string
+    {
+        $u = Auth::user();
+        if (!$u) {
+            return 'system';
+        }
+        $name = trim(($u->fname ?? '').' '.($u->lname ?? ''));
+        return $name !== '' ? $name : ($u->name ?? (string) $u->empID);
+    }
+
+    /**
+     * Record a manual audit entry for export/print (salary data leaving the
+     * system). AuditLog::record swallows its own failures, so this never breaks
+     * the download.
+     */
+    private function auditReportAction(string $action, Carbon $from, Carbon $to, Collection $rows, array $extra = []): void
+    {
+        AuditLog::record($action, 'ThirteenthMonthReport', null, array_merge([
+            'coverage' => $this->coverageLabel($from, $to),
+            'count'    => $rows->count(),
+            'total'    => round((float) $rows->sum('thirteenth'), 2),
+        ], $extra));
     }
 
     /**
