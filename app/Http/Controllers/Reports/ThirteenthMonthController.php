@@ -400,8 +400,8 @@ class ThirteenthMonthController extends Controller
      * (whole) balance. One ledger row per employee+year+portion (idempotent —
      * re-releasing a portion updates its row). The amount is always the freshly
      * re-computed figure (never a client-sent value); a `half` claim is skipped
-     * for anyone already fully settled. Saved through the model instance so
-     * Auditable logs it.
+     * for anyone already advanced (half) or fully settled (full) — revert first
+     * to re-release. Saved through the model instance so Auditable logs it.
      *
      * The mid-year HALF advance pays the 13th month accrued over the FIRST HALF
      * of the selected coverage window, IN FULL (no ÷2). The window is split by
@@ -452,8 +452,11 @@ class ThirteenthMonthController extends Controller
             $priorTotal = (float) $existing->where('portion', '!=', $portion)->sum('amount');
 
             if ($portion === ThirteenthMonthPayout::PORTION_HALF) {
-                // A half advance makes no sense once the whole has been settled.
-                if ($existing->firstWhere('portion', ThirteenthMonthPayout::PORTION_FULL)) {
+                // Skip if this employee is already advanced (half) or fully
+                // settled (full) — don't silently overwrite the release date /
+                // attribution. To re-release, Revert the half first.
+                if ($existing->firstWhere('portion', ThirteenthMonthPayout::PORTION_HALF)
+                    || $existing->firstWhere('portion', ThirteenthMonthPayout::PORTION_FULL)) {
                     $skipped++;
                     continue;
                 }
@@ -488,7 +491,7 @@ class ThirteenthMonthController extends Controller
         $label = $portion === ThirteenthMonthPayout::PORTION_HALF ? 'half advance' : 'full/remaining';
         $msg   = "{$released} employee(s) recorded ({$label}).";
         if ($skipped) {
-            $msg .= " {$skipped} skipped (already fully claimed).";
+            $msg .= " {$skipped} skipped (already released — revert first to re-release).";
         }
 
         return response()->json([
