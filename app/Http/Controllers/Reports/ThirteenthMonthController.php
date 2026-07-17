@@ -533,9 +533,10 @@ class ThirteenthMonthController extends Controller
      * style). Reuses compute() so the 13th-month figure is identical to the
      * report/export, then adds slip-only facts: company/department header +
      * address, BASIC RATE (from emp_details), TOTAL DAYS worked and TOTAL
-     * TARDINESS (hrs) over the coverage. `pay_date` is the payout date shown on
-     * the slip (defaults to the coverage end; it may fall outside the coverage
-     * because 13th month is often released before Dec 24).
+     * TARDINESS (hrs) over the coverage. Pay Date precedence: an explicit
+     * `pay_date` field wins; otherwise the ACTUAL release date from the payout
+     * ledger (the latest of the half/full claims); only if neither exists does
+     * it fall back to the coverage end.
      */
     public function payslip(Request $request)
     {
@@ -548,12 +549,22 @@ class ThirteenthMonthController extends Controller
         $start = $from->format('Y-m-d');
         $end   = $to->format('Y-m-d');
 
+        // Actual release date (latest claim) for this employee/coverage year.
+        $releasedOn = ThirteenthMonthPayout::where('employee_id', $empId)
+            ->where('coverage_year', $year)
+            ->whereNotNull('released_at')
+            ->max('released_at');
+
         try {
-            $payDate = $request->filled('pay_date')
-                ? Carbon::parse($request->input('pay_date'))
-                : $to->copy();
+            if ($request->filled('pay_date')) {
+                $payDate = Carbon::parse($request->input('pay_date'));
+            } elseif ($releasedOn) {
+                $payDate = Carbon::parse($releasedOn);
+            } else {
+                $payDate = $to->copy();
+            }
         } catch (\Throwable) {
-            $payDate = $to->copy();
+            $payDate = $releasedOn ? Carbon::parse($releasedOn) : $to->copy();
         }
 
         // Employee + company/department header facts (department carries the
