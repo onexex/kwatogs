@@ -309,7 +309,13 @@ $(function () {
     function recomputeTotals() {
         const rows = baseRows();
         let basic = 0, thirteen = 0, tax = 0, bal = 0, days = 0, n = 0;
+        // Claim-status breakdown reflects the FILTERED group (all visible rows),
+        // not just the ticked subset — so it reacts to the Status/Claim filters.
+        let whole = 0, remaining = 0, paid = 0;
         rows.forEach(r => {
+            if (r.claim_status === 'full') paid++;
+            else if (r.claim_status === 'half') remaining++;
+            else whole++;
             if (!checked.has(String(r.employee_id))) return;
             basic += parseFloat(r.total_basic) || 0;
             thirteen += parseFloat(r.thirteenth) || 0;
@@ -322,6 +328,9 @@ $(function () {
         $('#kBasic').text(peso(basic));
         $('#k13').text(peso(thirteen));
         $('#kTax').text(peso(tax));
+        $('#kUnclaimed').text(whole);
+        $('#kHalf').text(remaining);
+        $('#kFull').text(paid);
         $('#tfoot').html(`<tr><td colspan="5" class="text-end">GRAND TOTAL (${n} selected):</td><td class="text-center">${days.toLocaleString('en-PH')}</td><td class="text-end">${peso(basic)}</td><td class="text-end">${peso(thirteen)}</td><td class="text-end">${peso(tax)}</td><td></td><td class="text-end">${peso(bal)}</td><td class="pe-3"></td></tr>`);
         const selectable = rows.filter(releasable).length;
         $('#chkAll').prop('checked', selectable > 0 && n === selectable).prop('indeterminate', n > 0 && n < selectable);
@@ -339,10 +348,8 @@ $(function () {
             // The server may normalize a bad/reversed/over-long window — reflect the effective one.
             if (d.coverage_from) $('#fltFrom').val(d.coverage_from);
             if (d.coverage_to) $('#fltTo').val(d.coverage_to);
-            // Whole-workforce counts (independent of the current filter).
-            $('#kUnclaimed').text(d.unclaimed_count || 0);
-            $('#kHalf').text(d.half_count || 0);
-            $('#kFull').text(d.fully_count || 0);
+            // Claim-status cards are computed reactively in recomputeTotals()
+            // (called by render) so they track the Status/Claim filters.
             render();
         }).catch(() => {
             allRows = []; checked.clear();
