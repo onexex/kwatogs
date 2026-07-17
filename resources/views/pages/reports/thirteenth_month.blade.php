@@ -42,7 +42,8 @@
     .pill { font-size:.66rem; font-weight:700; background:#eef2f6; color:var(--slate); border-radius:6px; padding:2px 8px; }
     .badge-s { font-size:.62rem; font-weight:800; border-radius:6px; padding:2px 7px; text-transform:uppercase; letter-spacing:.3px; white-space:nowrap; }
     .b-active { background:#e0f2f1; color:#00695c; } .b-resigned { background:#fee2e2; color:#b91c1c; } .b-eoc { background:#fef3c7; color:#92400e; }
-    .b-rel { background:#dcfce7; color:#15803d; } .b-pend { background:#eef2f6; color:#64748b; }
+    .b-rel { background:#dcfce7; color:#15803d; } .b-pend { background:#eef2f6; color:#64748b; } .b-half { background:#fef3c7; color:#92400e; }
+    .claim-line { font-size:.66rem; color:var(--slate-light); white-space:nowrap; } .claim-line b { color:var(--slate); }
     /* coverage-quality pill accents */
     .pill.q-newhire { background:#e0f2fe; color:#0369a1; } .pill.q-partial { background:#fef3c7; color:#92400e; } .pill.q-separated { background:#fee2e2; color:#b91c1c; }
     .rpt-table thead th.sortable { cursor:pointer; user-select:none; } .rpt-table thead th.sortable:hover { color:var(--teal); }
@@ -107,7 +108,11 @@
                     <button class="btn-ghost" id="btnExport" title="Export register to Excel"><i class="fa fa-file-excel"></i></button>
                     <button class="btn-ghost" id="btnBank" title="Export bank/disbursement file"><i class="fa fa-building-columns"></i></button>
                     <button class="btn-ghost" id="btnPrint" title="Print"><i class="fa fa-print"></i></button>
-                    <button class="btn-primary-teal" id="btnRelease" title="Mark selected employees as released"><i class="fa fa-check-double me-1"></i> Release</button>
+                    <select id="relPortion" class="form-select form-select-sm" style="width:auto; flex:0 0 auto;" title="Which portion to record">
+                        <option value="half">½ Half (advance)</option>
+                        <option value="full" selected>Full / remaining</option>
+                    </select>
+                    <button class="btn-primary-teal" id="btnRelease" title="Record a claim for selected employees"><i class="fa fa-check-double me-1"></i> Release</button>
                 </div>
             </div>
         </div>
@@ -118,7 +123,8 @@
         <div class="stat"><div class="l">Total Basic Earned</div><div class="v" id="kBasic">&#8369;0.00</div></div>
         <div class="stat"><div class="l">Total 13th Month</div><div class="v" id="k13">&#8369;0.00</div></div>
         <div class="stat"><div class="l">Taxable Excess (&gt;&#8369;90k)</div><div class="v" id="kTax">&#8369;0.00</div></div>
-        <div class="stat"><div class="l">Released</div><div class="v" id="kReleased">0</div></div>
+        <div class="stat"><div class="l">Fully Claimed</div><div class="v" id="kFull">0</div></div>
+        <div class="stat"><div class="l">Half Only</div><div class="v" id="kHalf">0</div></div>
     </div>
 
     <div class="sc">
@@ -143,11 +149,12 @@
                         <th class="text-end sortable" data-key="total_basic">Total Basic Earned <i class="fa fa-sort"></i></th>
                         <th class="text-end sortable" data-key="thirteenth">13th Month Pay <i class="fa fa-sort"></i></th>
                         <th class="text-end sortable" data-key="taxable">Taxable Excess <i class="fa fa-sort"></i></th>
-                        <th class="text-center sortable" data-key="released">Released <i class="fa fa-sort"></i></th>
+                        <th class="sortable" data-key="claim_status">Claim (½ / Full) <i class="fa fa-sort"></i></th>
+                        <th class="text-end sortable" data-key="balance">Balance <i class="fa fa-sort"></i></th>
                         <th class="text-center pe-3">Slip</th>
                     </tr>
                 </thead>
-                <tbody id="tbl"><tr><td colspan="11" class="text-center text-muted py-4">Pick a year and click Filter.</td></tr></tbody>
+                <tbody id="tbl"><tr><td colspan="12" class="text-center text-muted py-4">Pick a year and click Filter.</td></tr></tbody>
                 <tfoot id="tfoot"></tfoot>
             </table>
         </div>
@@ -191,12 +198,25 @@ $(function () {
 
     const selectedIds = () => [...checked];
 
+    // Claim cell: a status badge + a who/when/amount line per portion claimed.
+    function claimCell(r) {
+        if (r.claim_status === 'unclaimed') return '<span class="badge-s b-pend">Unclaimed</span>';
+        const line = (label, c) => c
+            ? `<div class="claim-line"><b>${label}</b> ${peso(c.amount)}${c.at ? ` · ${c.at}` : ''}${c.by ? ` · ${c.by}` : ''}</div>`
+            : '';
+        const badge = r.claim_status === 'full'
+            ? '<span class="badge-s b-rel">Fully claimed</span>'
+            : '<span class="badge-s b-half">½ claimed</span>';
+        return `${badge}${line('½', r.claim_half)}${line('Full', r.claim_full)}`;
+    }
+
+    const CLAIM_RANK = { unclaimed: 0, half: 1, full: 2 };
     function sortedRows() {
         const k = sort.key, dir = sort.dir === 'asc' ? 1 : -1;
-        const numeric = ['months', 'total_basic', 'thirteenth', 'taxable', 'status_code'].includes(k);
+        const numeric = ['months', 'total_basic', 'thirteenth', 'taxable', 'balance', 'status_code'].includes(k);
         return allRows.slice().sort((a, b) => {
             let x = a[k], y = b[k];
-            if (k === 'released') { return ((a.released ? 1 : 0) - (b.released ? 1 : 0)) * dir; }
+            if (k === 'claim_status') { return ((CLAIM_RANK[a.claim_status] ?? 0) - (CLAIM_RANK[b.claim_status] ?? 0)) * dir; }
             if (numeric) return ((parseFloat(x) || 0) - (parseFloat(y) || 0)) * dir;
             return String(x ?? '').localeCompare(String(y ?? '')) * dir;
         });
@@ -205,7 +225,7 @@ $(function () {
     function render() {
         const rows = sortedRows();
         if (!rows.length) {
-            $('#tbl').html('<tr><td colspan="11" class="text-center text-muted py-4">No payroll records found within this coverage.</td></tr>');
+            $('#tbl').html('<tr><td colspan="12" class="text-center text-muted py-4">No payroll records found within this coverage.</td></tr>');
             $('#tfoot').html('');
             return;
         }
@@ -215,9 +235,8 @@ $(function () {
             const isC = checked.has(String(r.employee_id));
             const cov = COV[r.coverage_flag] || COV.full;
             const sta = STA[String(r.status_code)] || { cls: 'b-pend', t: r.status_label || '—' };
-            const rel = r.released
-                ? `<span class="badge-s b-rel">Released</span>${r.released_at ? `<br><span class="text-muted" style="font-size:.6rem">${r.released_at}</span>` : ''}`
-                : `<span class="badge-s b-pend">Pending</span>`;
+            const claim = claimCell(r);
+            const balDone = Math.abs(parseFloat(r.balance) || 0) < 0.005;
             h += `<tr>
                 <td class="text-center ps-3"><input type="checkbox" class="chkRow" value="${r.employee_id}" ${isC ? 'checked' : ''}></td>
                 <td><span class="fw-bold text-uppercase">${r.employee_name || ''}</span><br><span class="text-muted">${r.employee_id}</span></td>
@@ -228,7 +247,8 @@ $(function () {
                 <td class="text-end">${peso(r.total_basic)}</td>
                 <td class="text-end fw-bold" style="color:var(--teal-dark)">${peso(r.thirteenth)}</td>
                 <td class="text-end">${r.taxable > 0 ? `<span style="color:#b45309;font-weight:700">${peso(r.taxable)}</span>` : '<span class="text-muted">—</span>'}</td>
-                <td class="text-center">${rel}</td>
+                <td>${claim}</td>
+                <td class="text-end ${balDone ? '' : 'fw-bold'}" style="color:${balDone ? 'var(--teal)' : '#b45309'}">${peso(r.balance)}</td>
                 <td class="text-center pe-3"><button class="btn-ghost btn-slip" data-qs="${slipQs}" title="Print 13th month payslip"><i class="fa fa-receipt"></i></button></td>
             </tr>`;
         });
@@ -240,26 +260,27 @@ $(function () {
     // Stat cards + grand-total footer reflect the TICKED subset (kReleased is a
     // whole-list count, set on load).
     function recomputeTotals() {
-        let basic = 0, thirteen = 0, tax = 0, n = 0;
+        let basic = 0, thirteen = 0, tax = 0, bal = 0, n = 0;
         allRows.forEach(r => {
             if (!checked.has(String(r.employee_id))) return;
             basic += parseFloat(r.total_basic) || 0;
             thirteen += parseFloat(r.thirteenth) || 0;
             tax += parseFloat(r.taxable) || 0;
+            bal += parseFloat(r.balance) || 0;
             n++;
         });
         $('#kEmp').text(n);
         $('#kBasic').text(peso(basic));
         $('#k13').text(peso(thirteen));
         $('#kTax').text(peso(tax));
-        $('#tfoot').html(`<tr><td colspan="6" class="text-end">GRAND TOTAL (${n} selected):</td><td class="text-end">${peso(basic)}</td><td class="text-end">${peso(thirteen)}</td><td class="text-end">${peso(tax)}</td><td colspan="2" class="pe-3"></td></tr>`);
+        $('#tfoot').html(`<tr><td colspan="6" class="text-end">GRAND TOTAL (${n} selected):</td><td class="text-end">${peso(basic)}</td><td class="text-end">${peso(thirteen)}</td><td class="text-end">${peso(tax)}</td><td></td><td class="text-end">${peso(bal)}</td><td class="pe-3"></td></tr>`);
         const total = allRows.length;
         $('#chkAll').prop('checked', total > 0 && n === total).prop('indeterminate', n > 0 && n < total);
         $('#btnRelease').prop('disabled', n === 0);
     }
 
     function load() {
-        $('#tbl').html('<tr><td colspan="11" class="text-center py-4"><div class="spinner-border spinner-border-sm text-secondary"></div></td></tr>');
+        $('#tbl').html('<tr><td colspan="12" class="text-center py-4"><div class="spinner-border spinner-border-sm text-secondary"></div></td></tr>');
         $('#tfoot').html('');
         axios.get('/reports/thirteenth-month/fetch', { params: params() }).then(res => {
             const d = res.data;
@@ -270,11 +291,12 @@ $(function () {
             // The server may normalize a bad/reversed/over-long window — reflect the effective one.
             if (d.coverage_from) $('#fltFrom').val(d.coverage_from);
             if (d.coverage_to) $('#fltTo').val(d.coverage_to);
-            $('#kReleased').text(d.released_count || 0);
+            $('#kFull').text(d.fully_count || 0);
+            $('#kHalf').text(d.half_count || 0);
             render();
         }).catch(() => {
             allRows = []; checked.clear();
-            $('#tbl').html('<tr><td colspan="11" class="text-center text-danger py-4">Failed to load.</td></tr>');
+            $('#tbl').html('<tr><td colspan="12" class="text-center text-danger py-4">Failed to load.</td></tr>');
             $('#tfoot').html('');
         });
     }
@@ -322,15 +344,18 @@ $(function () {
     $('#btnRelease').on('click', function () {
         const ids = selectedIds();
         if (!ids.length) { alert('Select at least one employee.'); return; }
-        if (!confirm(`Mark ${ids.length} employee(s)' 13th month as RELEASED for this coverage year?\n\nThis records a payout entry (idempotent — safe to re-run).`)) return;
-        const batch = prompt('Optional batch label (e.g. "Dec 2026" or "Mid-year"):', '') || '';
+        const portion = $('#relPortion').val();
+        const label = portion === 'half' ? 'the ½ HALF advance (50%)' : 'the FULL / remaining balance';
+        if (!confirm(`Record ${label} for ${ids.length} employee(s) in this coverage year?\n\nThis is idempotent — safe to re-run.`)) return;
+        const batch = prompt('Optional batch label (e.g. "Dec 2026" or "Mid-year"):', portion === 'half' ? 'Mid-year' : '') || '';
         const body = new URLSearchParams(params());
+        body.append('portion', portion);
         ids.forEach(id => body.append('employee_ids[]', id));
         if (batch) body.append('batch', batch);
         $('#btnRelease').prop('disabled', true);
         axios.post('/reports/thirteenth-month/release', body, { headers: { 'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/x-www-form-urlencoded' } })
-            .then(res => { alert(res.data.message || 'Released.'); load(); })
-            .catch(err => { alert(err.response?.data?.message || 'Failed to release.'); $('#btnRelease').prop('disabled', false); });
+            .then(res => { alert(res.data.message || 'Recorded.'); load(); })
+            .catch(err => { alert(err.response?.data?.message || 'Failed to record claim.'); $('#btnRelease').prop('disabled', false); });
     });
     // Per-employee 13th-month payslip (opens the printable slip in a new tab).
     $('#tbl').on('click', '.btn-slip', function () {

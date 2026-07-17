@@ -17,8 +17,13 @@ class ThirteenthMonthPayout extends Model
 {
     use Auditable;
 
+    /** Mid-year 50% advance. */
+    public const PORTION_HALF = 'half';
+    /** The whole / remaining balance (December settlement). */
+    public const PORTION_FULL = 'full';
+
     protected $fillable = [
-        'employee_id', 'coverage_year', 'coverage_from', 'coverage_to',
+        'employee_id', 'coverage_year', 'portion', 'coverage_from', 'coverage_to',
         'amount', 'taxable_excess', 'released_at', 'released_by', 'batch', 'note',
     ];
 

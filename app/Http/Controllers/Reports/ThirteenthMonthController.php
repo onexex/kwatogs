@@ -150,11 +150,13 @@ class ThirteenthMonthController extends Controller
         $spanMonths = ($from->year - $to->year) * 12 + ($from->month - $to->month);
         $spanMonths = abs($spanMonths) + 1;
 
-        // Bulk-load release records for this coverage year (one query).
+        // Bulk-load claim records for this coverage year (one query), grouped
+        // per employee — up to a 'half' (mid-year advance) and a 'full'
+        // (remaining/whole) row each.
         $payouts = ThirteenthMonthPayout::where('coverage_year', $year)
             ->whereIn('employee_id', $rows->pluck('employee_id')->all())
             ->get()
-            ->keyBy('employee_id');
+            ->groupBy('employee_id');
 
         foreach ($rows as $r) {
             $r->total_basic = (float) $r->total_basic;
@@ -185,12 +187,32 @@ class ThirteenthMonthController extends Controller
                 $r->coverage_flag = 'partial'; // gap — needs review
             }
 
-            // (4) Payout / release state.
-            $po = $payouts->get($r->employee_id);
-            $r->released        = (bool) $po;
-            $r->released_at     = $po?->released_at?->format('Y-m-d');
-            $r->released_amount = $po ? (float) $po->amount : null;
-            $r->released_batch  = $po?->batch;
+            // (4) Claim state: half (mid-year advance) vs full (remaining/whole),
+            //     each with who/when, plus the running balance.
+            $group = $payouts->get($r->employee_id) ?? collect();
+            $half  = $group->firstWhere('portion', ThirteenthMonthPayout::PORTION_HALF);
+            $full  = $group->firstWhere('portion', ThirteenthMonthPayout::PORTION_FULL);
+
+            $claim = fn ($po) => $po ? [
+                'amount' => (float) $po->amount,
+                'at'     => $po->released_at?->format('Y-m-d'),
+                'by'     => $po->released_by,
+            ] : null;
+
+            $r->claim_half     = $claim($half);
+            $r->claim_full     = $claim($full);
+            $r->released_total = round((float) $group->sum('amount'), 2);
+            $r->balance        = round($r->thirteenth - $r->released_total, 2);
+
+            if ($group->isEmpty()) {
+                $r->claim_status = 'unclaimed';
+            } elseif ($full || $r->balance <= 0.005) {
+                $r->claim_status = 'full';   // fully settled
+            } else {
+                $r->claim_status = 'half';   // partial (advance only)
+            }
+            $r->released  = $r->claim_status === 'full';
+            $r->partially = $r->claim_status === 'half';
         }
     }
 
@@ -212,7 +234,8 @@ class ThirteenthMonthController extends Controller
             'total_basic'    => $rows->sum('total_basic'),
             'total_13th'     => $rows->sum('thirteenth'),
             'total_taxable'  => $rows->sum('taxable'),
-            'released_count' => $rows->where('released', true)->count(),
+            'fully_count'    => $rows->where('claim_status', 'full')->count(),
+            'half_count'     => $rows->where('claim_status', 'half')->count(),
             'count'          => $rows->count(),
         ]);
     }
@@ -222,17 +245,27 @@ class ThirteenthMonthController extends Controller
         [$rows, $year, $from, $to] = $this->compute($request);
 
         $x = new SimpleXlsx('13th Month Pay');
-        $x->setColumnWidths([6, 14, 16, 34, 22, 22, 16, 10, 20, 18, 18, 16]);
+        $x->setColumnWidths([6, 14, 16, 34, 22, 22, 16, 10, 20, 18, 18, 22, 22, 16]);
 
         $x->setString('A1', self::LETTERHEAD, SimpleXlsx::S_TITLE);
         $x->setString('A2', '13TH MONTH PAY — COVERAGE '.strtoupper($this->coverageLabel($from, $to)), SimpleXlsx::S_TITLE);
-        $x->setString('A3', 'Total basic salary earned within the coverage ÷ 12  •  taxable excess = amount over ₱'.number_format(self::TAX_EXEMPT_CAP), SimpleXlsx::S_TITLE);
+        $x->setString('A3', 'Total basic salary earned within the coverage ÷ 12  •  taxable excess = amount over ₱'.number_format(self::TAX_EXEMPT_CAP).'  •  half = mid-year advance, full = remaining', SimpleXlsx::S_TITLE);
 
         $hr = 5;
-        $headers = ['NO.', 'EMP ID', 'CARD NO', 'EMPLOYEE NAME', 'DEPARTMENT', 'COMPANY', 'STATUS', 'MONTHS', 'TOTAL BASIC EARNED', '13TH MONTH PAY', 'TAXABLE EXCESS', 'RELEASED'];
-        foreach (['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'] as $i => $col) {
+        $headers = ['NO.', 'EMP ID', 'CARD NO', 'EMPLOYEE NAME', 'DEPARTMENT', 'COMPANY', 'STATUS', 'MONTHS', 'TOTAL BASIC EARNED', '13TH MONTH PAY', 'TAXABLE EXCESS', 'HALF CLAIMED', 'FULL CLAIMED', 'BALANCE'];
+        foreach (['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N'] as $i => $col) {
             $x->setString("{$col}{$hr}", $headers[$i], SimpleXlsx::S_BOLD);
         }
+
+        $claimCell = function ($c) {
+            if (!$c) {
+                return '—';
+            }
+            $parts = number_format($c['amount'], 2);
+            if (!empty($c['at'])) { $parts .= ' • '.$c['at']; }
+            if (!empty($c['by'])) { $parts .= ' • '.$c['by']; }
+            return $parts;
+        };
 
         $r = $hr + 1;
         $n = 0;
@@ -249,7 +282,9 @@ class ThirteenthMonthController extends Controller
             $x->setNumber("I{$r}", (float) $row->total_basic, SimpleXlsx::S_MONEY);
             $x->setNumber("J{$r}", (float) $row->thirteenth, SimpleXlsx::S_MONEY);
             $x->setNumber("K{$r}", (float) $row->taxable, SimpleXlsx::S_MONEY);
-            $x->setString("L{$r}", $row->released ? ('YES '.($row->released_at ?? '')) : 'NO', SimpleXlsx::S_NORMAL);
+            $x->setString("L{$r}", $claimCell($row->claim_half), SimpleXlsx::S_NORMAL);
+            $x->setString("M{$r}", $claimCell($row->claim_full), SimpleXlsx::S_NORMAL);
+            $x->setNumber("N{$r}", (float) $row->balance, SimpleXlsx::S_MONEY);
             $r++;
         }
 
@@ -257,6 +292,7 @@ class ThirteenthMonthController extends Controller
         $x->setNumber("I{$r}", (float) $rows->sum('total_basic'), SimpleXlsx::S_SUBTOTAL);
         $x->setNumber("J{$r}", (float) $rows->sum('thirteenth'), SimpleXlsx::S_SUBTOTAL);
         $x->setNumber("K{$r}", (float) $rows->sum('taxable'), SimpleXlsx::S_SUBTOTAL);
+        $x->setNumber("N{$r}", (float) $rows->sum('balance'), SimpleXlsx::S_SUBTOTAL);
 
         $path = $x->saveToTempFile();
 
@@ -326,24 +362,29 @@ class ThirteenthMonthController extends Controller
             'totalBasic'  => $rows->sum('total_basic'),
             'total13th'   => $rows->sum('thirteenth'),
             'totalTaxable'=> $rows->sum('taxable'),
+            'totalBalance'=> $rows->sum('balance'),
             'letterhead'  => self::LETTERHEAD,
         ]);
     }
 
     /**
-     * Mark the selected employees' 13th month as RELEASED for the coverage year
-     * (records/updates one payout-ledger row each, unique per employee+year, so
-     * it is idempotent and safe to re-run). Saved through the model instance so
-     * Auditable logs it. `employee_ids` is required; the amount stored is the
-     * freshly re-computed figure (never trusts a client-sent amount).
+     * Record a CLAIM of the selected employees' 13th month for the coverage year:
+     * `portion=half` = the mid-year 50% advance, `portion=full` = the remaining
+     * (whole) balance. One ledger row per employee+year+portion (idempotent —
+     * re-releasing a portion updates its row). The amount is always the freshly
+     * re-computed figure (never a client-sent value); a `half` claim is skipped
+     * for anyone already fully settled. Saved through the model instance so
+     * Auditable logs it.
      */
     public function release(Request $request)
     {
         $request->validate([
             'employee_ids'   => 'required|array|min:1',
             'employee_ids.*' => 'string',
+            'portion'        => 'nullable|in:half,full',
         ]);
 
+        $portion = $request->input('portion', ThirteenthMonthPayout::PORTION_FULL);
         [$rows, $year, $from, $to] = $this->compute($request);
         $ids   = array_map('strval', $request->input('employee_ids'));
         $batch = $request->input('batch');
@@ -351,19 +392,42 @@ class ThirteenthMonthController extends Controller
         $today = Carbon::now()->startOfDay();
 
         $released = 0;
+        $skipped  = 0;
         foreach ($rows as $r) {
             if (!in_array((string) $r->employee_id, $ids, true)) {
                 continue;
             }
+
+            // Already-claimed portions for this employee/year.
+            $existing = ThirteenthMonthPayout::where('employee_id', $r->employee_id)
+                ->where('coverage_year', $year)->get();
+            $priorTotal = (float) $existing->where('portion', '!=', $portion)->sum('amount');
+
+            if ($portion === ThirteenthMonthPayout::PORTION_HALF) {
+                // A half advance makes no sense once the whole has been settled.
+                if ($existing->firstWhere('portion', ThirteenthMonthPayout::PORTION_FULL)) {
+                    $skipped++;
+                    continue;
+                }
+                $amount = round($r->thirteenth / 2, 2);
+            } else {
+                // Full = the remaining balance to reach the computed total.
+                $amount = round($r->thirteenth - $priorTotal, 2);
+                if ($amount < 0) {
+                    $amount = 0;
+                }
+            }
+
             $po = ThirteenthMonthPayout::firstOrNew([
                 'employee_id'   => $r->employee_id,
                 'coverage_year' => $year,
+                'portion'       => $portion,
             ]);
             $po->forceFill([
                 'coverage_from'  => $from->format('Y-m-d'),
                 'coverage_to'    => $to->format('Y-m-d'),
-                'amount'         => $r->thirteenth,
-                'taxable_excess' => $r->taxable,
+                'amount'         => $amount,
+                'taxable_excess' => $portion === ThirteenthMonthPayout::PORTION_FULL ? $r->taxable : 0,
                 'released_at'    => $today->format('Y-m-d'),
                 'released_by'    => $by,
                 'batch'          => $batch,
@@ -371,23 +435,31 @@ class ThirteenthMonthController extends Controller
             $released++;
         }
 
+        $label = $portion === ThirteenthMonthPayout::PORTION_HALF ? 'half advance' : 'full/remaining';
+        $msg   = "{$released} employee(s) recorded ({$label}).";
+        if ($skipped) {
+            $msg .= " {$skipped} skipped (already fully claimed).";
+        }
+
         return response()->json([
             'status'   => 'ok',
             'released' => $released,
-            'message'  => "{$released} employee(s) marked as released.",
+            'skipped'  => $skipped,
+            'message'  => $msg,
         ]);
     }
 
     /**
-     * Revert a release (delete the payout-ledger rows) for the selected
-     * employees in the coverage year — e.g. a batch was marked paid by mistake.
-     * Instance delete() so Auditable records the revert.
+     * Revert claims for the selected employees in the coverage year — e.g. a
+     * batch was recorded by mistake. Pass `portion` to revert only the half or
+     * full row; omit it to clear both. Instance delete() so Auditable records it.
      */
     public function unrelease(Request $request)
     {
         $request->validate([
             'employee_ids'   => 'required|array|min:1',
             'employee_ids.*' => 'string',
+            'portion'        => 'nullable|in:half,full',
         ]);
 
         $year = $this->resolveYear($request);
@@ -396,6 +468,7 @@ class ThirteenthMonthController extends Controller
         $reverted = 0;
         ThirteenthMonthPayout::where('coverage_year', $year)
             ->whereIn('employee_id', $ids)
+            ->when($request->filled('portion'), fn ($q) => $q->where('portion', $request->input('portion')))
             ->get()
             ->each(function ($po) use (&$reverted) {
                 $po->delete();
@@ -405,7 +478,7 @@ class ThirteenthMonthController extends Controller
         return response()->json([
             'status'   => 'ok',
             'reverted' => $reverted,
-            'message'  => "{$reverted} release(s) reverted.",
+            'message'  => "{$reverted} claim record(s) reverted.",
         ]);
     }
 
