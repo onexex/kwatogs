@@ -53,25 +53,36 @@
                 <th style="width:34px;">#</th>
                 <th>Employee</th>
                 <th>Department</th>
-                <th>Company</th>
+                <th class="c">Status</th>
                 <th class="c">Months</th>
                 <th class="r">Total Basic Earned</th>
                 <th class="r">13th Month Pay</th>
+                <th class="r">Taxable Excess</th>
+                <th>Half Claimed</th>
+                <th>Full Claimed</th>
+                <th class="r">Balance</th>
             </tr>
         </thead>
         <tbody>
+            @php
+                $claim = fn ($c) => $c ? number_format($c['amount'], 2).($c['at'] ? ' — '.$c['at'] : '').($c['by'] ? ' ('.$c['by'].')' : '') : '—';
+            @endphp
             @forelse ($rows as $i => $r)
             <tr>
                 <td>{{ $i + 1 }}</td>
                 <td><strong>{{ strtoupper($r->employee_name) }}</strong><br><span style="color:#94a3b8;">{{ $r->employee_id }}</span></td>
                 <td>{{ $r->department_name }}</td>
-                <td>{{ $r->company_name }}</td>
+                <td class="c">{{ $r->status_label ?? '—' }}</td>
                 <td class="c">{{ $r->months }}/12</td>
                 <td class="r">{{ number_format($r->total_basic, 2) }}</td>
                 <td class="r"><strong>{{ number_format($r->thirteenth, 2) }}</strong></td>
+                <td class="r">{{ $r->taxable > 0 ? number_format($r->taxable, 2) : '—' }}</td>
+                <td style="font-size:10px;">{{ $claim($r->claim_half) }}</td>
+                <td style="font-size:10px;">{{ $claim($r->claim_full) }}</td>
+                <td class="r">{{ number_format($r->balance, 2) }}</td>
             </tr>
             @empty
-            <tr><td colspan="7" style="text-align:center; padding:20px; color:#94a3b8;">No records within this coverage.</td></tr>
+            <tr><td colspan="11" style="text-align:center; padding:20px; color:#94a3b8;">No records within this coverage.</td></tr>
             @endforelse
         </tbody>
         <tfoot>
@@ -79,6 +90,9 @@
                 <td colspan="5" class="r">GRAND TOTAL</td>
                 <td class="r">{{ number_format($totalBasic, 2) }}</td>
                 <td class="r">{{ number_format($total13th, 2) }}</td>
+                <td class="r">{{ number_format($totalTaxable ?? 0, 2) }}</td>
+                <td colspan="2"></td>
+                <td class="r">{{ number_format($totalBalance ?? 0, 2) }}</td>
             </tr>
         </tfoot>
     </table>
