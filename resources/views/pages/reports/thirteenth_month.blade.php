@@ -141,9 +141,6 @@
         <div class="sc-head">
             <div class="sc-icon"><i class="fa fa-gift"></i></div>
             <h5 class="sc-title">13th Month Computation</h5>
-            <label class="ms-3 d-inline-flex align-items-center gap-1" style="font-size:.72rem; color:var(--slate-light); cursor:pointer;">
-                <input type="checkbox" id="tglCompany"> Hide company
-            </label>
             <span class="pill ms-auto" id="covLabel" title="Coverage period"><i class="fa fa-calendar me-1"></i>&mdash;</span>
         </div>
         <div class="table-responsive" style="max-height:66vh; overflow:auto;">
@@ -153,8 +150,7 @@
                         <th class="text-center ps-3" style="width:36px"><input type="checkbox" id="chkAll" checked title="Select all"></th>
                         <th class="sortable" data-key="employee_name">Employee <i class="fa fa-sort"></i></th>
                         <th class="sortable" data-key="status_code">Status <i class="fa fa-sort"></i></th>
-                        <th class="col-company">Dept</th>
-                        <th class="col-company">Company</th>
+                        <th>Dept</th>
                         <th class="text-center sortable" data-key="months">Months <i class="fa fa-sort"></i></th>
                         <th class="text-end sortable" data-key="total_basic">Total Basic Earned <i class="fa fa-sort"></i></th>
                         <th class="text-end sortable" data-key="thirteenth">13th Month Pay <i class="fa fa-sort"></i></th>
@@ -164,7 +160,7 @@
                         <th class="text-center pe-3">Slip</th>
                     </tr>
                 </thead>
-                <tbody id="tbl"><tr><td colspan="12" class="text-center text-muted py-4">Pick a year and click Filter.</td></tr></tbody>
+                <tbody id="tbl"><tr><td colspan="11" class="text-center text-muted py-4">Pick a year and click Filter.</td></tr></tbody>
                 <tfoot id="tfoot"></tfoot>
             </table>
         </div>
@@ -255,7 +251,7 @@ $(function () {
         const rows = sortedRows();
         if (!rows.length) {
             const msg = allRows.length ? 'No employees match this claim filter.' : 'No payroll records found within this coverage.';
-            $('#tbl').html(`<tr><td colspan="12" class="text-center text-muted py-4">${msg}</td></tr>`);
+            $('#tbl').html(`<tr><td colspan="11" class="text-center text-muted py-4">${msg}</td></tr>`);
             $('#tfoot').html('');
             recomputeTotals();
             return;
@@ -272,8 +268,7 @@ $(function () {
                 <td class="text-center ps-3"><input type="checkbox" class="chkRow" value="${r.employee_id}" ${isC ? 'checked' : ''}></td>
                 <td><span class="fw-bold text-uppercase">${r.employee_name || ''}</span><br><span class="text-muted">${r.employee_id}</span></td>
                 <td><span class="badge-s ${sta.cls}">${sta.t}</span></td>
-                <td class="col-company">${r.department_name ?? '—'}</td>
-                <td class="col-company">${r.company_name ?? '—'}</td>
+                <td>${r.department_name ?? '—'}</td>
                 <td class="text-center"><span class="pill ${cov.cls}" title="${cov.t}">${r.months}/12</span></td>
                 <td class="text-end">${peso(r.total_basic)}</td>
                 <td class="text-end fw-bold" style="color:var(--teal-dark)">${peso(r.thirteenth)}</td>
@@ -285,7 +280,6 @@ $(function () {
         });
         $('#tbl').html(h);
         recomputeTotals();
-        applyColToggle();
     }
 
     // Stat cards + grand-total footer reflect the TICKED subset (kReleased is a
@@ -305,14 +299,14 @@ $(function () {
         $('#kBasic').text(peso(basic));
         $('#k13').text(peso(thirteen));
         $('#kTax').text(peso(tax));
-        $('#tfoot').html(`<tr><td colspan="6" class="text-end">GRAND TOTAL (${n} selected):</td><td class="text-end">${peso(basic)}</td><td class="text-end">${peso(thirteen)}</td><td class="text-end">${peso(tax)}</td><td></td><td class="text-end">${peso(bal)}</td><td class="pe-3"></td></tr>`);
+        $('#tfoot').html(`<tr><td colspan="5" class="text-end">GRAND TOTAL (${n} selected):</td><td class="text-end">${peso(basic)}</td><td class="text-end">${peso(thirteen)}</td><td class="text-end">${peso(tax)}</td><td></td><td class="text-end">${peso(bal)}</td><td class="pe-3"></td></tr>`);
         const total = rows.length;
         $('#chkAll').prop('checked', total > 0 && n === total).prop('indeterminate', n > 0 && n < total);
         $('#btnRelease').prop('disabled', n === 0);
     }
 
     function load() {
-        $('#tbl').html('<tr><td colspan="12" class="text-center py-4"><div class="spinner-border spinner-border-sm text-secondary"></div></td></tr>');
+        $('#tbl').html('<tr><td colspan="11" class="text-center py-4"><div class="spinner-border spinner-border-sm text-secondary"></div></td></tr>');
         $('#tfoot').html('');
         axios.get('/reports/thirteenth-month/fetch', { params: params() }).then(res => {
             const d = res.data;
@@ -329,7 +323,7 @@ $(function () {
             render();
         }).catch(() => {
             allRows = []; checked.clear();
-            $('#tbl').html('<tr><td colspan="12" class="text-center text-danger py-4">Failed to load.</td></tr>');
+            $('#tbl').html('<tr><td colspan="11" class="text-center text-danger py-4">Failed to load.</td></tr>');
             $('#tfoot').html('');
         });
     }
@@ -341,10 +335,6 @@ $(function () {
         const p = new URLSearchParams(params());
         if (ids.length !== allRows.length) ids.forEach(id => p.append('employee_ids[]', id));
         return base + '?' + p.toString();
-    }
-
-    function applyColToggle() {
-        $('#rptTable .col-company').toggle(!$('#tglCompany').is(':checked'));
     }
 
     $('#chkAll').on('change', function () {
@@ -366,7 +356,6 @@ $(function () {
         $(this).addClass(sort.dir).find('.fa').attr('class', 'fa fa-sort-' + (sort.dir === 'asc' ? 'up' : 'down'));
         render();
     });
-    $('#tglCompany').on('change', applyColToggle);
 
     $('#btnFilter').on('click', load);
     $('#fltSearch').on('keyup', e => { if (e.key === 'Enter') load(); });
