@@ -258,15 +258,15 @@ class ThirteenthMonthController extends Controller
         [$rows, $year, $from, $to] = $this->compute($request);
 
         $x = new SimpleXlsx('13th Month Pay');
-        $x->setColumnWidths([6, 14, 16, 34, 22, 22, 16, 10, 20, 18, 18, 22, 22, 16]);
+        $x->setColumnWidths([6, 14, 16, 34, 22, 16, 10, 20, 18, 18, 22, 22, 16]);
 
         $x->setString('A1', self::LETTERHEAD, SimpleXlsx::S_TITLE);
         $x->setString('A2', '13TH MONTH PAY — COVERAGE '.strtoupper($this->coverageLabel($from, $to)), SimpleXlsx::S_TITLE);
         $x->setString('A3', 'Total basic salary earned within the coverage ÷ 12  •  taxable excess = amount over ₱'.number_format(self::TAX_EXEMPT_CAP).'  •  half = mid-year advance, full = remaining', SimpleXlsx::S_TITLE);
 
         $hr = 5;
-        $headers = ['NO.', 'EMP ID', 'CARD NO', 'EMPLOYEE NAME', 'DEPARTMENT', 'COMPANY', 'STATUS', 'MONTHS', 'TOTAL BASIC EARNED', '13TH MONTH PAY', 'TAXABLE EXCESS', 'HALF CLAIMED', 'FULL CLAIMED', 'BALANCE'];
-        foreach (['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N'] as $i => $col) {
+        $headers = ['NO.', 'EMP ID', 'CARD NO', 'EMPLOYEE NAME', 'DEPARTMENT', 'STATUS', 'MONTHS', 'TOTAL BASIC EARNED', '13TH MONTH PAY', 'TAXABLE EXCESS', 'HALF CLAIMED', 'FULL CLAIMED', 'BALANCE'];
+        foreach (['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M'] as $i => $col) {
             $x->setString("{$col}{$hr}", $headers[$i], SimpleXlsx::S_BOLD);
         }
 
@@ -289,23 +289,22 @@ class ThirteenthMonthController extends Controller
             $x->setString("C{$r}", (string) $row->card_no, SimpleXlsx::S_TEXT);
             $x->setString("D{$r}", strtoupper((string) $row->employee_name), SimpleXlsx::S_NORMAL);
             $x->setString("E{$r}", (string) $row->department_name, SimpleXlsx::S_NORMAL);
-            $x->setString("F{$r}", (string) $row->company_name, SimpleXlsx::S_NORMAL);
-            $x->setString("G{$r}", (string) $row->status_label, SimpleXlsx::S_NORMAL);
-            $x->setNumber("H{$r}", (float) $row->months, SimpleXlsx::S_NORMAL);
-            $x->setNumber("I{$r}", (float) $row->total_basic, SimpleXlsx::S_MONEY);
-            $x->setNumber("J{$r}", (float) $row->thirteenth, SimpleXlsx::S_MONEY);
-            $x->setNumber("K{$r}", (float) $row->taxable, SimpleXlsx::S_MONEY);
-            $x->setString("L{$r}", $claimCell($row->claim_half), SimpleXlsx::S_NORMAL);
-            $x->setString("M{$r}", $claimCell($row->claim_full), SimpleXlsx::S_NORMAL);
-            $x->setNumber("N{$r}", (float) $row->balance, SimpleXlsx::S_MONEY);
+            $x->setString("F{$r}", (string) $row->status_label, SimpleXlsx::S_NORMAL);
+            $x->setNumber("G{$r}", (float) $row->months, SimpleXlsx::S_NORMAL);
+            $x->setNumber("H{$r}", (float) $row->total_basic, SimpleXlsx::S_MONEY);
+            $x->setNumber("I{$r}", (float) $row->thirteenth, SimpleXlsx::S_MONEY);
+            $x->setNumber("J{$r}", (float) $row->taxable, SimpleXlsx::S_MONEY);
+            $x->setString("K{$r}", $claimCell($row->claim_half), SimpleXlsx::S_NORMAL);
+            $x->setString("L{$r}", $claimCell($row->claim_full), SimpleXlsx::S_NORMAL);
+            $x->setNumber("M{$r}", (float) $row->balance, SimpleXlsx::S_MONEY);
             $r++;
         }
 
         $x->setString("D{$r}", 'TOTAL', SimpleXlsx::S_BOLD);
-        $x->setNumber("I{$r}", (float) $rows->sum('total_basic'), SimpleXlsx::S_SUBTOTAL);
-        $x->setNumber("J{$r}", (float) $rows->sum('thirteenth'), SimpleXlsx::S_SUBTOTAL);
-        $x->setNumber("K{$r}", (float) $rows->sum('taxable'), SimpleXlsx::S_SUBTOTAL);
-        $x->setNumber("N{$r}", (float) $rows->sum('balance'), SimpleXlsx::S_SUBTOTAL);
+        $x->setNumber("H{$r}", (float) $rows->sum('total_basic'), SimpleXlsx::S_SUBTOTAL);
+        $x->setNumber("I{$r}", (float) $rows->sum('thirteenth'), SimpleXlsx::S_SUBTOTAL);
+        $x->setNumber("J{$r}", (float) $rows->sum('taxable'), SimpleXlsx::S_SUBTOTAL);
+        $x->setNumber("M{$r}", (float) $rows->sum('balance'), SimpleXlsx::S_SUBTOTAL);
 
         $path = $x->saveToTempFile();
 

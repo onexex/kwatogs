@@ -53,7 +53,6 @@
                 <th style="width:34px;">#</th>
                 <th>Employee</th>
                 <th>Department</th>
-                <th>Company</th>
                 <th class="c">Status</th>
                 <th class="c">Months</th>
                 <th class="r">Total Basic Earned</th>
@@ -73,7 +72,6 @@
                 <td>{{ $i + 1 }}</td>
                 <td><strong>{{ strtoupper($r->employee_name) }}</strong><br><span style="color:#94a3b8;">{{ $r->employee_id }}</span></td>
                 <td>{{ $r->department_name }}</td>
-                <td>{{ $r->company_name }}</td>
                 <td class="c">{{ $r->status_label ?? '—' }}</td>
                 <td class="c">{{ $r->months }}/12</td>
                 <td class="r">{{ number_format($r->total_basic, 2) }}</td>
@@ -84,12 +82,12 @@
                 <td class="r">{{ number_format($r->balance, 2) }}</td>
             </tr>
             @empty
-            <tr><td colspan="12" style="text-align:center; padding:20px; color:#94a3b8;">No records within this coverage.</td></tr>
+            <tr><td colspan="11" style="text-align:center; padding:20px; color:#94a3b8;">No records within this coverage.</td></tr>
             @endforelse
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="6" class="r">GRAND TOTAL</td>
+                <td colspan="5" class="r">GRAND TOTAL</td>
                 <td class="r">{{ number_format($totalBasic, 2) }}</td>
                 <td class="r">{{ number_format($total13th, 2) }}</td>
                 <td class="r">{{ number_format($totalTaxable ?? 0, 2) }}</td>

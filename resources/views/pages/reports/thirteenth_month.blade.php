@@ -82,15 +82,6 @@
                     <input type="date" id="fltPayDate" class="form-control form-control-sm">
                 </div>
                 <div class="col-6 col-md-3">
-                    <label class="field-label">Company</label>
-                    <select id="fltCompany" class="form-select form-select-sm">
-                        <option value="all">All</option>
-                        @foreach ($companies as $c)
-                            <option value="{{ $c->comp_id }}">{{ $c->comp_name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-6 col-md-3">
                     <label class="field-label">Department</label>
                     <select id="fltDept" class="form-select form-select-sm">
                         <option value="all">All</option>
@@ -178,7 +169,6 @@ $(function () {
         year: $('#fltYear').val(),
         coverage_from: $('#fltFrom').val(),
         coverage_to: $('#fltTo').val(),
-        company_id: $('#fltCompany').val() || 'all',
         department_id: $('#fltDept').val() || 'all',
         search: $('#fltSearch').val(),
         pay_date: $('#fltPayDate').val(),
@@ -360,7 +350,7 @@ $(function () {
     $('#btnFilter').on('click', load);
     $('#fltSearch').on('keyup', e => { if (e.key === 'Enter') load(); });
     $('#fltYear').on('change', () => { setCoverageFromYear(); load(); });
-    $('#fltFrom,#fltTo,#fltCompany,#fltDept').on('change', load);
+    $('#fltFrom,#fltTo,#fltDept').on('change', load);
     $('#btnExport').on('click', () => { const u = outUrl('/reports/thirteenth-month/export'); if (u) window.location = u; });
     $('#btnBank').on('click', () => { const u = outUrl('/reports/thirteenth-month/bank-export'); if (u) window.location = u; });
     $('#btnPrint').on('click', () => { const u = outUrl('/reports/thirteenth-month/print'); if (u) window.open(u, '_blank'); });
