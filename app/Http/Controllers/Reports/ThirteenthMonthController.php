@@ -318,20 +318,20 @@ class ThirteenthMonthController extends Controller
 
     /**
      * Bank/disbursement file: a lean second export for accounting/bank upload —
-     * NO., EMP ID, EMPLOYEE, DEPARTMENT, MONTHS, TOTAL BASIC EARNED, 13TH MONTH
-     * PAY (no COMPANY column). A separate SimpleXlsx instance because the writer
-     * is single-sheet.
+     * NO., EMP ID, CARD NO, EMPLOYEE, DEPARTMENT, MONTHS, TOTAL BASIC EARNED,
+     * 13TH MONTH PAY (no COMPANY column). A separate SimpleXlsx instance because
+     * the writer is single-sheet.
      */
     public function bankExport(Request $request)
     {
         [$rows, $year, $from, $to] = $this->compute($request);
 
         $x = new SimpleXlsx('13th Month Bank File');
-        $x->setColumnWidths([6, 16, 34, 22, 10, 20, 18]);
+        $x->setColumnWidths([6, 16, 16, 34, 22, 10, 20, 18]);
         $x->setString('A1', self::LETTERHEAD.' — 13TH MONTH DISBURSEMENT '.$year, SimpleXlsx::S_TITLE);
 
         $hr = 3;
-        $headers = ['NO.', 'EMP ID', 'EMPLOYEE', 'DEPARTMENT', 'MONTHS', 'TOTAL BASIC EARNED', '13TH MONTH PAY'];
+        $headers = ['NO.', 'EMP ID', 'CARD NO', 'EMPLOYEE', 'DEPARTMENT', 'MONTHS', 'TOTAL BASIC EARNED', '13TH MONTH PAY'];
         foreach ($headers as $i => $h) {
             $x->setString(chr(65 + $i)."{$hr}", $h, SimpleXlsx::S_BOLD);
         }
@@ -342,16 +342,17 @@ class ThirteenthMonthController extends Controller
             $n++;
             $x->setNumber("A{$r}", $n, SimpleXlsx::S_NORMAL);
             $x->setString("B{$r}", (string) $row->employee_id, SimpleXlsx::S_TEXT);
-            $x->setString("C{$r}", strtoupper((string) $row->employee_name), SimpleXlsx::S_NORMAL);
-            $x->setString("D{$r}", (string) $row->department_name, SimpleXlsx::S_NORMAL);
-            $x->setNumber("E{$r}", (float) $row->months, SimpleXlsx::S_NORMAL);
-            $x->setNumber("F{$r}", (float) $row->total_basic, SimpleXlsx::S_MONEY);
-            $x->setNumber("G{$r}", (float) $row->thirteenth, SimpleXlsx::S_MONEY);
+            $x->setString("C{$r}", (string) $row->card_no, SimpleXlsx::S_TEXT); // preserve leading zeros
+            $x->setString("D{$r}", strtoupper((string) $row->employee_name), SimpleXlsx::S_NORMAL);
+            $x->setString("E{$r}", (string) $row->department_name, SimpleXlsx::S_NORMAL);
+            $x->setNumber("F{$r}", (float) $row->months, SimpleXlsx::S_NORMAL);
+            $x->setNumber("G{$r}", (float) $row->total_basic, SimpleXlsx::S_MONEY);
+            $x->setNumber("H{$r}", (float) $row->thirteenth, SimpleXlsx::S_MONEY);
             $r++;
         }
-        $x->setString("C{$r}", 'TOTAL', SimpleXlsx::S_BOLD);
-        $x->setNumber("F{$r}", (float) $rows->sum('total_basic'), SimpleXlsx::S_SUBTOTAL);
-        $x->setNumber("G{$r}", (float) $rows->sum('thirteenth'), SimpleXlsx::S_SUBTOTAL);
+        $x->setString("D{$r}", 'TOTAL', SimpleXlsx::S_BOLD);
+        $x->setNumber("G{$r}", (float) $rows->sum('total_basic'), SimpleXlsx::S_SUBTOTAL);
+        $x->setNumber("H{$r}", (float) $rows->sum('thirteenth'), SimpleXlsx::S_SUBTOTAL);
 
         $path = $x->saveToTempFile();
 
