@@ -56,6 +56,7 @@
                 <th>Department</th>
                 <th class="c">Status</th>
                 <th class="c">Months</th>
+                <th class="c" title="Worked days + approved paid leave within coverage">Days Paid</th>
                 <th class="r">Total Basic Earned</th>
                 <th class="r">13th Month Pay</th>
                 <th class="r">Taxable Excess</th>
@@ -75,6 +76,7 @@
                 <td>{{ $r->department_name }}</td>
                 <td class="c">{{ $r->status_label ?? '—' }}</td>
                 <td class="c">{{ $r->months }}/12</td>
+                <td class="c">{{ (int) ($r->days_paid ?? 0) }}</td>
                 <td class="r">{{ number_format($r->total_basic, 2) }}</td>
                 <td class="r"><strong>{{ number_format($r->thirteenth, 2) }}</strong></td>
                 <td class="r">{{ $r->taxable > 0 ? number_format($r->taxable, 2) : '—' }}</td>
@@ -83,12 +85,13 @@
                 <td class="r">{{ number_format($r->balance, 2) }}</td>
             </tr>
             @empty
-            <tr><td colspan="11" style="text-align:center; padding:20px; color:#94a3b8;">No records within this coverage.</td></tr>
+            <tr><td colspan="12" style="text-align:center; padding:20px; color:#94a3b8;">No records within this coverage.</td></tr>
             @endforelse
         </tbody>
         <tfoot>
             <tr>
                 <td colspan="5" class="r">GRAND TOTAL</td>
+                <td class="c">{{ (int) $rows->sum('days_paid') }}</td>
                 <td class="r">{{ number_format($totalBasic, 2) }}</td>
                 <td class="r">{{ number_format($total13th, 2) }}</td>
                 <td class="r">{{ number_format($totalTaxable ?? 0, 2) }}</td>

@@ -153,6 +153,7 @@
                         <th class="sortable" data-key="status_code">Status <i class="fa fa-sort"></i></th>
                         <th>Dept</th>
                         <th class="text-center sortable" data-key="months">Months <i class="fa fa-sort"></i></th>
+                        <th class="text-center sortable" data-key="days_paid" title="Worked days + approved paid leave">Days Paid <i class="fa fa-sort"></i></th>
                         <th class="text-end sortable" data-key="total_basic">Total Basic Earned <i class="fa fa-sort"></i></th>
                         <th class="text-end sortable" data-key="thirteenth">13th Month Pay <i class="fa fa-sort"></i></th>
                         <th class="text-end sortable" data-key="taxable">Taxable Excess <i class="fa fa-sort"></i></th>
@@ -161,7 +162,7 @@
                         <th class="text-center pe-3">Slip</th>
                     </tr>
                 </thead>
-                <tbody id="tbl"><tr><td colspan="11" class="text-center text-muted py-4">Pick a year and click Filter.</td></tr></tbody>
+                <tbody id="tbl"><tr><td colspan="12" class="text-center text-muted py-4">Pick a year and click Filter.</td></tr></tbody>
                 <tfoot id="tfoot"></tfoot>
             </table>
         </div>
@@ -255,7 +256,7 @@ $(function () {
     const CLAIM_RANK = { unclaimed: 0, half: 1, full: 2 };
     function sortedRows() {
         const k = sort.key, dir = sort.dir === 'asc' ? 1 : -1;
-        const numeric = ['months', 'total_basic', 'thirteenth', 'taxable', 'balance', 'status_code'].includes(k);
+        const numeric = ['months', 'days_paid', 'total_basic', 'thirteenth', 'taxable', 'balance', 'status_code'].includes(k);
         return baseRows().slice().sort((a, b) => {
             let x = a[k], y = b[k];
             if (k === 'claim_status') { return ((CLAIM_RANK[a.claim_status] ?? 0) - (CLAIM_RANK[b.claim_status] ?? 0)) * dir; }
@@ -268,7 +269,7 @@ $(function () {
         const rows = sortedRows();
         if (!rows.length) {
             const msg = allRows.length ? 'No employees match this claim filter.' : 'No payroll records found within this coverage.';
-            $('#tbl').html(`<tr><td colspan="11" class="text-center text-muted py-4">${msg}</td></tr>`);
+            $('#tbl').html(`<tr><td colspan="12" class="text-center text-muted py-4">${msg}</td></tr>`);
             $('#tfoot').html('');
             recomputeTotals();
             return;
@@ -290,6 +291,7 @@ $(function () {
                 <td><span class="badge-s ${sta.cls}">${sta.t}</span></td>
                 <td>${r.department_name ?? '—'}</td>
                 <td class="text-center"><span class="pill ${cov.cls}" title="${cov.t}">${r.months}/12</span></td>
+                <td class="text-center">${parseInt(r.days_paid) || 0}</td>
                 <td class="text-end">${peso(r.total_basic)}</td>
                 <td class="text-end fw-bold" style="color:var(--teal-dark)">${peso(r.thirteenth)}</td>
                 <td class="text-end">${r.taxable > 0 ? `<span style="color:#b45309;font-weight:700">${peso(r.taxable)}</span>` : '<span class="text-muted">—</span>'}</td>
@@ -306,27 +308,28 @@ $(function () {
     // whole-list count, set on load).
     function recomputeTotals() {
         const rows = baseRows();
-        let basic = 0, thirteen = 0, tax = 0, bal = 0, n = 0;
+        let basic = 0, thirteen = 0, tax = 0, bal = 0, days = 0, n = 0;
         rows.forEach(r => {
             if (!checked.has(String(r.employee_id))) return;
             basic += parseFloat(r.total_basic) || 0;
             thirteen += parseFloat(r.thirteenth) || 0;
             tax += parseFloat(r.taxable) || 0;
             bal += parseFloat(r.balance) || 0;
+            days += parseInt(r.days_paid) || 0;
             n++;
         });
         $('#kEmp').text(n);
         $('#kBasic').text(peso(basic));
         $('#k13').text(peso(thirteen));
         $('#kTax').text(peso(tax));
-        $('#tfoot').html(`<tr><td colspan="5" class="text-end">GRAND TOTAL (${n} selected):</td><td class="text-end">${peso(basic)}</td><td class="text-end">${peso(thirteen)}</td><td class="text-end">${peso(tax)}</td><td></td><td class="text-end">${peso(bal)}</td><td class="pe-3"></td></tr>`);
+        $('#tfoot').html(`<tr><td colspan="5" class="text-end">GRAND TOTAL (${n} selected):</td><td class="text-center">${days.toLocaleString('en-PH')}</td><td class="text-end">${peso(basic)}</td><td class="text-end">${peso(thirteen)}</td><td class="text-end">${peso(tax)}</td><td></td><td class="text-end">${peso(bal)}</td><td class="pe-3"></td></tr>`);
         const selectable = rows.filter(releasable).length;
         $('#chkAll').prop('checked', selectable > 0 && n === selectable).prop('indeterminate', n > 0 && n < selectable);
         $('#btnRelease').prop('disabled', n === 0);
     }
 
     function load() {
-        $('#tbl').html('<tr><td colspan="11" class="text-center py-4"><div class="spinner-border spinner-border-sm text-secondary"></div></td></tr>');
+        $('#tbl').html('<tr><td colspan="12" class="text-center py-4"><div class="spinner-border spinner-border-sm text-secondary"></div></td></tr>');
         $('#tfoot').html('');
         axios.get('/reports/thirteenth-month/fetch', { params: params() }).then(res => {
             const d = res.data;
@@ -343,7 +346,7 @@ $(function () {
             render();
         }).catch(() => {
             allRows = []; checked.clear();
-            $('#tbl').html('<tr><td colspan="11" class="text-center text-danger py-4">Failed to load.</td></tr>');
+            $('#tbl').html('<tr><td colspan="12" class="text-center text-danger py-4">Failed to load.</td></tr>');
             $('#tfoot').html('');
         });
     }
