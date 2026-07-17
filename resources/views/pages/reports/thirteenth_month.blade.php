@@ -91,6 +91,14 @@
                     </select>
                 </div>
                 <div class="col-6 col-md-2">
+                    <label class="field-label" title="Separated staff are usually paid via final pay at separation">Status</label>
+                    <select id="fltStatus" class="form-select form-select-sm">
+                        <option value="all">All</option>
+                        <option value="active">Active only</option>
+                        <option value="separated">Separated only</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
                     <label class="field-label" title="December view: who is owed the whole vs the remaining half">Claim</label>
                     <select id="fltClaim" class="form-select form-select-sm">
                         <option value="all">All</option>
@@ -212,10 +220,17 @@ $(function () {
         return `${badge}${line('½', r.claim_half)}${line('Full', r.claim_full)}`;
     }
 
-    // Rows visible under the current claim filter (the December "whole vs half" view).
+    // Rows visible under the current status + claim filters (the December
+    // "active vs separated" and "whole vs half" views).
     function baseRows() {
-        const f = $('#fltClaim').val();
-        return (f && f !== 'all') ? allRows.filter(r => r.claim_status === f) : allRows;
+        const claim = $('#fltClaim').val();
+        const stat = $('#fltStatus').val();
+        return allRows.filter(r => {
+            if (claim && claim !== 'all' && r.claim_status !== claim) return false;
+            if (stat === 'active' && String(r.status_code) !== '1') return false;
+            if (stat === 'separated' && String(r.status_code) === '1') return false;
+            return true;
+        });
     }
 
     // Selection always follows visibility, so Export/Print/Release act on the
@@ -336,8 +351,8 @@ $(function () {
         if (this.checked) checked.add(String(this.value)); else checked.delete(String(this.value));
         recomputeTotals();
     });
-    // Claim filter (December: whole vs remaining-half) — re-selects the visible group.
-    $('#fltClaim').on('change', function () { selectVisible(); render(); });
+    // Status / Claim filters — re-select the visible group so Release/Export/Print act on it.
+    $('#fltStatus, #fltClaim').on('change', function () { selectVisible(); render(); });
     $('#rptTable thead').on('click', '.sortable', function () {
         const key = $(this).data('key');
         if (sort.key === key) sort.dir = sort.dir === 'asc' ? 'desc' : 'asc';
