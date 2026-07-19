@@ -22,7 +22,7 @@
         :root {
             --primary-teal: #008080;
             --dark-teal: #006666;
-            --deep-teal: #004d4d;
+            --deep-teal: #003d3d;
             --teal-mid: #4db6ac;
             --teal-light: #e0f2f1;
             --soft-teal: rgba(0, 128, 128, 0.12);
@@ -40,283 +40,354 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            font-family: 'Plus Jakarta Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(120% 120% at 0% 0%, #0b3d3d 0%, #04292b 45%, #011b1d 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 1.5rem;
+            padding: 2rem 1rem;
             position: relative;
-            overflow: hidden;
-            background: radial-gradient(circle at 20% 20%, #0a5c5c 0%, transparent 55%),
-                        radial-gradient(circle at 80% 80%, #013a3a 0%, transparent 55%),
-                        linear-gradient(135deg, var(--primary-teal) 0%, var(--deep-teal) 100%);
+            overflow-x: hidden;
         }
 
-        /* Ambient animated blobs behind the card */
-        .bg-blob {
+        /* Ambient aurora glows behind the card */
+        body::before,
+        body::after {
+            content: '';
             position: fixed;
             border-radius: 50%;
-            filter: blur(70px);
-            opacity: .45;
-            z-index: 0;
+            filter: blur(90px);
             pointer-events: none;
+            z-index: 0;
         }
-        .bg-blob.b1 { width: 460px; height: 460px; top: -140px; left: -120px; background: var(--teal-mid); animation: float1 16s ease-in-out infinite; }
-        .bg-blob.b2 { width: 520px; height: 520px; bottom: -180px; right: -140px; background: #00b3a4; animation: float2 20s ease-in-out infinite; }
-        .bg-blob.b3 { width: 300px; height: 300px; top: 40%; left: 55%; background: #0fd4c0; opacity: .25; animation: float1 24s ease-in-out infinite; }
-
-        @keyframes float1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px,-30px) scale(1.08); } }
-        @keyframes float2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-50px,30px) scale(1.12); } }
+        body::before {
+            width: 46vw; height: 46vw;
+            top: -14vw; left: -10vw;
+            background: rgba(0, 128, 128, .45);
+            animation: drift 18s ease-in-out infinite alternate;
+        }
+        body::after {
+            width: 38vw; height: 38vw;
+            bottom: -12vw; right: -8vw;
+            background: rgba(77, 182, 172, .28);
+            animation: drift 22s ease-in-out infinite alternate-reverse;
+        }
+        @keyframes drift {
+            from { transform: translate3d(0, 0, 0) scale(1); }
+            to   { transform: translate3d(4vw, 3vw, 0) scale(1.15); }
+        }
 
         .login-container {
             position: relative;
             z-index: 1;
-            background-color: rgba(255, 255, 255, 0.98);
+            background: rgba(255, 255, 255, .96);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, .5);
             border-radius: var(--radius-card);
-            box-shadow: 0 30px 70px -20px rgba(0, 40, 40, 0.55),
-                        0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+            box-shadow: 0 30px 70px -20px rgba(0, 0, 0, .55), 0 0 0 1px rgba(0, 0, 0, .04);
             width: 100%;
-            max-width: 1040px;
+            max-width: 1020px;
             overflow: hidden;
-            animation: cardIn .7s cubic-bezier(.16,.84,.44,1) both;
+            animation: riseIn .6s cubic-bezier(.16, 1, .3, 1) both;
+        }
+        @keyframes riseIn {
+            from { opacity: 0; transform: translateY(18px) scale(.985); }
+            to   { opacity: 1; transform: none; }
         }
 
-        @keyframes cardIn {
-            from { opacity: 0; transform: translateY(24px) scale(.985); }
-            to   { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        /* ---------------- Form side ---------------- */
         .login-card-form {
             padding: 56px 52px;
         }
 
-        .brand-mark {
+        .brand-chip {
             display: inline-flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 34px;
-        }
-        .brand-mark img {
-            height: 46px;
-            width: 46px;
-            object-fit: contain;
-            border-radius: 12px;
-            background: var(--teal-light);
-            padding: 5px;
-            box-shadow: 0 4px 12px rgba(0,128,128,.18);
-        }
-        .brand-mark .brand-name {
-            font-weight: 800;
-            font-size: 1.15rem;
-            color: var(--slate);
-            letter-spacing: -.01em;
-            line-height: 1.1;
-        }
-        .brand-mark .brand-sub {
-            font-size: .72rem;
-            color: var(--muted);
+            gap: .5rem;
+            padding: .35rem .75rem .35rem .4rem;
+            border: 1px solid var(--border);
+            border-radius: 50px;
+            background: #fff;
+            font-size: .75rem;
             font-weight: 600;
+            letter-spacing: .04em;
             text-transform: uppercase;
-            letter-spacing: .08em;
+            color: var(--slate-light);
+            margin-bottom: 28px;
+        }
+        .brand-chip img {
+            height: 24px; width: 24px;
+            border-radius: 50%;
+            object-fit: cover;
         }
 
         .login-card-form h2 {
             font-weight: 800;
+            font-size: 2rem;
+            letter-spacing: -.02em;
             color: var(--slate);
             margin-bottom: 8px;
-            font-size: 1.9rem;
-            letter-spacing: -.02em;
         }
 
         .login-card-form .subtitle {
             color: var(--slate-light);
-            margin-bottom: 34px;
+            margin-bottom: 32px;
             font-size: .95rem;
         }
 
-        .form-floating > label {
-            color: var(--slate-light);
-            padding-left: 1rem;
-        }
-        .form-floating > .form-control:focus ~ label,
-        .form-floating > .form-control:not(:placeholder-shown) ~ label {
-            color: var(--primary-teal);
+        .field-label {
+            display: block;
+            font-size: .8rem;
             font-weight: 600;
+            color: var(--slate);
+            margin-bottom: .45rem;
+            letter-spacing: .01em;
         }
 
+        .field-icon {
+            position: absolute;
+            left: 1.1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
+            z-index: 4;
+            pointer-events: none;
+            transition: color .2s ease;
+            font-size: .95rem;
+        }
+        .input-wrap:focus-within .field-icon { color: var(--primary-teal); }
+
         .form-control {
+            height: 54px;
             border: 1.5px solid var(--border);
             border-radius: 14px;
-            padding: 1rem;
-            background: #fbfdfd;
+            padding: .75rem 3rem;
+            background: #f8fafc;
+            font-size: .95rem;
+            color: var(--slate);
             transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
         }
-        .form-control:hover { border-color: #cbd5e1; }
+        .form-control::placeholder {
+            color: var(--muted);
+            opacity: 1;
+        }
         .form-control:focus {
             border-color: var(--primary-teal);
+            background: #fff;
             box-shadow: 0 0 0 4px var(--soft-teal);
-            background: #ffffff;
+        }
+        .form-control.is-invalid {
+            border-color: #dc3545;
+            background: #fff5f5;
         }
 
         .btn-color {
+            position: relative;
+            overflow: hidden;
             background: linear-gradient(135deg, var(--primary-teal) 0%, var(--dark-teal) 100%);
             border: none;
-            color: white;
+            color: #fff;
             width: 100%;
-            padding: 14px;
+            padding: 15px;
             border-radius: 14px;
             font-weight: 700;
-            font-size: 1rem;
+            font-size: .98rem;
             letter-spacing: .01em;
-            transition: all 0.25s ease;
-            margin-top: 8px;
-            box-shadow: 0 10px 22px -8px rgba(0, 128, 128, 0.6);
+            transition: transform .25s ease, box-shadow .25s ease, filter .25s ease;
+            margin-top: 6px;
+            box-shadow: 0 10px 24px -8px rgba(0, 128, 128, .6);
+        }
+        .btn-color::after {
+            content: '';
+            position: absolute;
+            inset: 0 auto 0 -60%;
+            width: 40%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,.28), transparent);
+            transform: skewX(-20deg);
+            transition: left .6s ease;
         }
         .btn-color:hover {
+            color: #fff;
             transform: translateY(-2px);
-            box-shadow: 0 16px 30px -10px rgba(0, 128, 128, 0.7);
-            filter: brightness(1.05);
+            filter: brightness(1.06);
+            box-shadow: 0 16px 32px -10px rgba(0, 128, 128, .7);
         }
+        .btn-color:hover::after { left: 120%; }
         .btn-color:active { transform: translateY(0); }
         .btn-color:disabled {
-            opacity: .8;
+            opacity: .7;
             cursor: not-allowed;
             transform: none !important;
+            filter: none !important;
             box-shadow: none !important;
-            filter: none;
         }
+        .btn-color:disabled::after { display: none; }
 
         .toggle-password {
             text-decoration: none;
             z-index: 5;
             color: var(--muted);
+            transition: color .2s ease;
         }
         .toggle-password:hover { color: var(--primary-teal) !important; }
         .toggle-password:focus { box-shadow: none; }
 
-        .form-control.is-invalid { border-color: #dc3545; }
-        .error-text { display: block; margin-top: .3rem; }
-
-        .form-divider {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            margin: 28px 0 6px;
-            color: var(--muted);
+        .error-text {
+            display: block;
+            margin-top: .35rem;
             font-size: .78rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: .1em;
-        }
-        .form-divider::before, .form-divider::after {
-            content: "";
-            flex: 1;
-            height: 1px;
-            background: var(--border);
+            font-weight: 500;
         }
 
-        .secure-note {
+        .form-footnote {
+            margin-top: 28px;
+            padding-top: 22px;
+            border-top: 1px solid var(--border);
+            font-size: .8rem;
+            color: var(--muted);
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 8px;
-            color: var(--muted);
-            font-size: .82rem;
-            margin-top: 22px;
+            gap: .45rem;
         }
-        .secure-note i { color: var(--teal-mid); }
+        .form-footnote i { color: var(--teal-mid); }
 
-        /* ---------------- Branding side ---------------- */
+        /* ---------- Branding panel ---------- */
         .brand-panel {
             position: relative;
             height: 100%;
             min-height: 560px;
-            background: linear-gradient(150deg, var(--primary-teal) 0%, var(--deep-teal) 100%);
-            color: #fff;
-            padding: 56px 48px;
+            background: linear-gradient(150deg, var(--primary-teal) 0%, var(--dark-teal) 55%, var(--deep-teal) 100%);
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            padding: 48px 44px;
             overflow: hidden;
         }
-        /* decorative rings */
-        .brand-panel::before,
-        .brand-panel::after {
-            content: "";
+        .brand-panel::before {
+            content: '';
             position: absolute;
-            border-radius: 50%;
-            border: 1.5px solid rgba(255,255,255,.14);
+            inset: 0;
+            background-image:
+                radial-gradient(circle at 80% 15%, rgba(255,255,255,.16) 0%, transparent 45%),
+                radial-gradient(circle at 10% 90%, rgba(77,182,172,.35) 0%, transparent 50%);
         }
-        .brand-panel::before { width: 340px; height: 340px; top: -110px; right: -90px; }
-        .brand-panel::after  { width: 220px; height: 220px; bottom: -70px; left: -60px; background: rgba(255,255,255,.05); border: none; }
-
-        .brand-panel .panel-top { position: relative; z-index: 2; }
-        .brand-panel .panel-logo {
-            height: 96px;
-            width: 96px;
-            object-fit: contain;
-            border-radius: 20px;
-            background: rgba(255,255,255,.95);
-            padding: 12px;
-            box-shadow: 0 12px 30px rgba(0,0,0,.22);
-            margin-bottom: 26px;
+        /* Fine grid texture */
+        .brand-panel::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
+            background-size: 34px 34px;
+            mask-image: radial-gradient(circle at 50% 50%, #000 0%, transparent 78%);
+            -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 0%, transparent 78%);
         }
-        .brand-panel h3 {
-            font-weight: 800;
-            font-size: 1.75rem;
-            margin-bottom: 10px;
-            letter-spacing: -.02em;
-        }
-        .brand-panel .panel-lead {
-            opacity: .85;
-            font-size: .98rem;
-            line-height: 1.6;
-            max-width: 340px;
-        }
-
-        .feature-list {
+        /* Fills the panel so the block sits vertically centered above the footer */
+        .brand-inner {
             position: relative;
             z-index: 2;
-            list-style: none;
-            padding: 0;
-            margin: 34px 0 0;
+            color: #fff;
+            text-align: center;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
-        .feature-list li {
+
+        .brand-logo-wrap {
+            width: 190px;
+            height: 190px;
+            border-radius: 40px;
+            background: rgba(255,255,255,.94);
             display: flex;
             align-items: center;
-            gap: 14px;
-            margin-bottom: 18px;
-            font-size: .95rem;
-            font-weight: 500;
+            justify-content: center;
+            padding: 18px;
+            box-shadow: 0 18px 40px -12px rgba(0,0,0,.45);
+            margin: 0 auto 30px;
         }
-        .feature-list .fi-icon {
-            flex: 0 0 auto;
-            height: 38px;
-            width: 38px;
-            display: grid;
-            place-items: center;
-            border-radius: 11px;
-            background: rgba(255,255,255,.14);
-            backdrop-filter: blur(4px);
-            font-size: .95rem;
+        .brand-logo-wrap img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            image-rendering: -webkit-optimize-contrast;
         }
 
-        .brand-panel .panel-foot {
+        .brand-title {
+            font-weight: 800;
+            font-size: 1.75rem;
+            letter-spacing: -.02em;
+            margin-bottom: .5rem;
+        }
+        .brand-sub {
+            font-size: .95rem;
+            opacity: .8;
+            line-height: 1.6;
+            margin: 0 auto 34px;
+            max-width: 34ch;
+        }
+
+        /* Feature rows stay left-aligned to each other, but the group is centered */
+        .brand-features {
+            display: inline-block;
+            text-align: left;
+        }
+
+        .brand-feature {
+            display: flex;
+            align-items: center;
+            gap: .8rem;
+            font-size: .875rem;
+            color: rgba(255,255,255,.9);
+            margin-bottom: .9rem;
+        }
+        .brand-feature .dot {
+            flex: 0 0 auto;
+            width: 30px; height: 30px;
+            border-radius: 10px;
+            background: rgba(255,255,255,.14);
+            border: 1px solid rgba(255,255,255,.18);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: .75rem;
+        }
+
+        .brand-foot {
             position: relative;
             z-index: 2;
-            font-size: .8rem;
-            opacity: .7;
+            font-size: .75rem;
+            color: rgba(255,255,255,.55);
+            letter-spacing: .02em;
+            text-align: center;
         }
 
-        /* ---------------- Responsive ---------------- */
-        @media (max-width: 991.98px) {
-            .brand-panel { display: none; }
-            .login-card-form { padding: 44px 40px; }
+        /* Mobile brand header */
+        .mobile-logo img {
+            height: 130px;
+            width: 130px;
+            object-fit: contain;
+            padding: 12px;
+            border-radius: 28px;
+            background: #fff;
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 20px -8px rgba(0,0,0,.25);
         }
-        @media (max-width: 575.98px) {
-            body { padding: 0; }
-            .login-container { border-radius: 0; min-height: 100vh; display: flex; align-items: center; }
-            .login-card-form { padding: 34px 22px; width: 100%; }
-            .login-card-form h2 { font-size: 1.6rem; }
+
+        @media (max-width: 991.98px) {
+            .login-card-form { padding: 40px 34px; }
+            .brand-chip { display: none; }
+        }
+
+        @media (max-width: 480px) {
+            body { padding: 1rem .75rem; }
+            .login-container { border-radius: 18px; }
+            .login-card-form { padding: 30px 22px; }
+            .login-card-form h2 { font-size: 1.5rem; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            body::before, body::after, .login-container { animation: none; }
+            .btn-color, .btn-color::after { transition: none; }
         }
     </style>
 </head>
@@ -332,18 +403,20 @@
             {{-- Left: form column --}}
             <div class="col-lg-6 col-md-12">
                 <div class="login-card-form">
-
-                    {{-- Brand mark (visible on all sizes; doubles as mobile logo) --}}
-                    <div class="brand-mark">
-                        <img src="{{ asset('img/kwatogslogo.jpg') }}?v=demo" alt="{{ config('app.name') }}">
-                        <div>
-                            <div class="brand-name">{{ config('app.name', 'HR Portal') }}</div>
-                            <div class="brand-sub">Workforce Suite</div>
-                        </div>
+                    {{-- Mobile brand header: shown only when the right branding panel is hidden --}}
+                    <div class="mobile-logo d-flex d-lg-none flex-column align-items-center text-center mb-4">
+                        <img src="{{ asset('img/kwatogslogo.jpg') }}" alt="{{ config('app.name') }}">
+                        <h4 class="fw-bold mt-3 mb-1" style="color:var(--slate);">{{ config('app.name', 'HR Portal') }}</h4>
+                        <p class="mb-0" style="color:var(--slate-light);font-size:.85rem;">Your all-in-one workforce management solution</p>
                     </div>
 
+                    <span class="brand-chip">
+                        <img src="{{ asset('img/kwatogslogo.jpg') }}" alt="">
+                        {{ config('app.name', 'HR Portal') }}
+                    </span>
+
                     <h2>Welcome back</h2>
-                    <p class="subtitle">Sign in to access your workspace.</p>
+                    <p class="subtitle">Sign in to your account to continue.</p>
 
                     <form id="frmlogin" action="#" autocomplete="off" novalidate>
                         @csrf
@@ -352,32 +425,38 @@
                         <input type="text" name="website" style="display:none" tabindex="-1" autocomplete="off">
 
                         {{-- Email or Username --}}
-                        <div class="form-floating mb-3">
-                            <input type="text"
-                                   class="form-control"
-                                   id="floatingInput"
-                                   name="username"
-                                   placeholder="Email or Username"
-                                   autocomplete="username">
-                            <label for="floatingInput"><i class="fa-regular fa-user me-2"></i>Email or Username</label>
-                            <span class="error-text username_error text-danger" style="font-size:.8rem;"></span>
+                        <div class="mb-3">
+                            <label class="field-label" for="floatingInput">Email or Username</label>
+                            <div class="input-wrap position-relative">
+                                <i class="fa-regular fa-user field-icon"></i>
+                                <input type="text"
+                                       class="form-control"
+                                       id="floatingInput"
+                                       name="username"
+                                       placeholder="Enter your email or username"
+                                       autocomplete="username">
+                            </div>
+                            <span class="error-text username_error text-danger"></span>
                         </div>
 
                         {{-- Password --}}
-                        <div class="form-floating mb-2 position-relative">
-                            <input type="password"
-                                   class="form-control"
-                                   id="floatingPassword"
-                                   name="password"
-                                   placeholder="Password"
-                                   autocomplete="current-password">
-                            <label for="floatingPassword"><i class="fa-solid fa-lock me-2"></i>Password</label>
-                            <a href="#"
-                               class="toggle-password position-absolute end-0 top-50 translate-middle-y me-3"
-                               aria-label="Show password">
-                                <i class="fa fa-eye"></i>
-                            </a>
-                            <span class="error-text password_error text-danger" style="font-size:.8rem;"></span>
+                        <div class="mb-3">
+                            <label class="field-label" for="floatingPassword">Password</label>
+                            <div class="input-wrap position-relative">
+                                <i class="fa-solid fa-lock field-icon"></i>
+                                <input type="password"
+                                       class="form-control"
+                                       id="floatingPassword"
+                                       name="password"
+                                       placeholder="Enter your password"
+                                       autocomplete="current-password">
+                                <a href="#"
+                                   class="toggle-password position-absolute end-0 top-50 translate-middle-y me-3"
+                                   aria-label="Show password">
+                                    <i class="fa fa-eye"></i>
+                                </a>
+                            </div>
+                            <span class="error-text password_error text-danger"></span>
                         </div>
 
                         {{-- Submit --}}
@@ -387,6 +466,10 @@
                             </span>
                         </button>
 
+                        <div class="form-footnote">
+                            <i class="fa-solid fa-shield-halved"></i>
+                            Secure sign-in. Forgot your password? Contact HR to have it reset.
+                        </div>
                     </form>
 
                     <div class="secure-note">
@@ -399,19 +482,30 @@
             {{-- Right: branding column --}}
             <div class="col-lg-6 d-none d-lg-block">
                 <div class="brand-panel">
-                    <div class="panel-top">
-                        <img class="panel-logo" src="{{ asset('img/kwatogslogo.jpg') }}?v=demo" alt="{{ config('app.name') }}">
-                        <h3>{{ config('app.name', 'HR Portal') }}</h3>
-                        <p class="panel-lead">Your all-in-one workforce management solution — payroll, attendance, leave, and compliance in one place.</p>
+                    <div class="brand-inner">
+                        <div class="brand-logo-wrap">
+                            <img src="{{ asset('img/kwatogslogo.jpg') }}" alt="{{ config('app.name') }}">
+                        </div>
+                        <h3 class="brand-title">{{ config('app.name', 'HR Portal') }}</h3>
+                        <p class="brand-sub">Your all-in-one workforce management solution — payroll, attendance, and people, in one place.</p>
 
-                        <ul class="feature-list">
-                            <li><span class="fi-icon"><i class="fa-solid fa-money-check-dollar"></i></span> Automated payroll &amp; payslips</li>
-                            <li><span class="fi-icon"><i class="fa-solid fa-clock"></i></span> Real-time attendance tracking</li>
-                            <li><span class="fi-icon"><i class="fa-solid fa-file-shield"></i></span> Government-compliant reporting</li>
-                        </ul>
+                        <div class="brand-features">
+                            <div class="brand-feature">
+                                <span class="dot"><i class="fa-solid fa-money-check-dollar"></i></span>
+                                Payroll &amp; government compliance
+                            </div>
+                            <div class="brand-feature">
+                                <span class="dot"><i class="fa-regular fa-clock"></i></span>
+                                Attendance, schedules &amp; overtime
+                            </div>
+                            <div class="brand-feature">
+                                <span class="dot"><i class="fa-regular fa-folder-open"></i></span>
+                                201 files, leave &amp; certificates
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="panel-foot">
+                    <div class="brand-foot">
                         &copy; {{ date('Y') }} {{ config('app.name', 'HR Portal') }}. All rights reserved.
                     </div>
                 </div>

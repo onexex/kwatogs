@@ -22,8 +22,9 @@
         tfoot td { padding:6px 4px; border-top:2px solid #008080; background:#e0f2f1; font-weight:800; color:#006666; font-size:9px; text-align:right; }
         tfoot td.l { text-align:left; }
         .sign { margin-top:34px; display:flex; justify-content:space-between; font-size:10px; }
-        .sign div { width:30%; text-align:center; }
-        .sign .ln { border-top:1px solid #475569; margin-bottom:4px; padding-top:4px; }
+        .sign > div { width:30%; text-align:center; }
+        .sign .cap { margin-bottom:28px; }
+        .sign .ln { border-top:1px solid #475569; }
         @media print { .noprint { display:none; } }
         .noprint { text-align:right; margin-bottom:8px; }
         .btn { background:#008080; color:#fff; border:none; padding:7px 16px; border-radius:6px; font-weight:700; cursor:pointer; }
@@ -99,9 +100,9 @@
     </table>
 
     <div class="sign">
-        <div><div class="ln"></div>Prepared by</div>
-        <div><div class="ln"></div>Checked &amp; Verified by</div>
-        <div><div class="ln"></div>Approved by</div>
+        <div><div class="cap">Prepared by</div><div class="ln"></div></div>
+        <div><div class="cap">Checked &amp; Verified by</div><div class="ln"></div></div>
+        <div><div class="cap">Approved by</div><div class="ln"></div></div>
     </div>
 </body>
 </html>
