@@ -471,11 +471,11 @@
                             Secure sign-in. Forgot your password? Contact HR to have it reset.
                         </div>
                     </form>
-
+{{-- 
                     <div class="secure-note">
                         <i class="fa-solid fa-shield-halved"></i>
                         <span>Secured with encrypted access</span>
-                    </div>
+                    </div> --}}
                 </div>
             </div>
 
