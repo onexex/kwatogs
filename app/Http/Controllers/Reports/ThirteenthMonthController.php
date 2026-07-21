@@ -103,6 +103,10 @@ class ThirteenthMonthController extends Controller
             ->leftJoin('companies as c', 'c.comp_id', '=', 'ed.empCompID')
             ->whereBetween('p.pay_date', [$start, $end]);
 
+        // Trainees (TRN) are excluded from 13th-month pay. emp_details is left-joined,
+        // so keep NULL/unclassified rows (they are not trainees) and drop only literal 'TRN'.
+        $q->whereRaw("COALESCE(ed.empClassification, '') <> 'TRN'");
+
         if ($request->filled('department_id') && $request->department_id !== 'all') {
             $q->where('ed.empDepID', $request->department_id);
         }
@@ -636,6 +640,10 @@ class ThirteenthMonthController extends Controller
             ->first();
 
         abort_if(!$emp, 404, 'Employee not found.');
+
+        // Trainees (TRN) are excluded from 13th-month pay — no zeroed slip.
+        abort_if(($emp->empClassification ?? null) === 'TRN', 404,
+            'Trainees are excluded from 13th-month pay.');
 
         // Total tardiness (minutes) comes from attendance_summaries over the
         // coverage (the payrolls table stores deduction amounts, not minutes).
