@@ -487,13 +487,25 @@
                         <div class="alert-row"><span class="nm text-capitalize">{{ $r->name }}</span><span class="meta text-danger">{{ \Carbon\Carbon::parse($r->exp)->format('M d, Y') }}</span></div>
                     @endforeach
                 @endif
+                @if($d['sanitaryCards']->isNotEmpty())
+                    <div class="lgnd mt-2 mb-2"><i class="fa fa-notes-medical text-danger"></i> <b>Sanitary Cards (renew)</b></div>
+                    @foreach($d['sanitaryCards'] as $r)
+                        @php $scPast = \Carbon\Carbon::parse($r->exp)->lt(\Carbon\Carbon::today()); @endphp
+                        <div class="alert-row">
+                            <span class="nm text-capitalize">{{ $r->name }}</span>
+                            <span class="meta {{ $scPast ? 'text-danger' : 'text-warning' }}">
+                                {{ \Carbon\Carbon::parse($r->exp)->format('M d, Y') }}{{ $scPast ? ' · expired' : '' }}
+                            </span>
+                        </div>
+                    @endforeach
+                @endif
                 @if($d['missingDocs']->isNotEmpty())
                     <div class="lgnd mt-2 mb-2"><i class="fa fa-triangle-exclamation text-warning"></i> <b>Missing Gov't IDs</b></div>
                     @foreach($d['missingDocs'] as $r)
                         <div class="alert-row"><span class="nm text-capitalize">{{ $r->name }}</span><span class="meta text-warning">{{ $r->missing }}</span></div>
                     @endforeach
                 @endif
-                @if($d['expiringPassport']->isEmpty() && $d['missingDocs']->isEmpty())
+                @if($d['expiringPassport']->isEmpty() && $d['missingDocs']->isEmpty() && $d['sanitaryCards']->isEmpty())
                     <div class="empty">All documents in order.</div>
                 @endif
             </div>

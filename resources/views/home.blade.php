@@ -320,6 +320,8 @@
 
     <div class="home-shell">
 
+        @include('partials.sanitary_card_banner', ['emp' => optional(auth()->user())->empDetail])
+
         {{-- ── Top header ── --}}
         <div class="home-topbar">
             <div>

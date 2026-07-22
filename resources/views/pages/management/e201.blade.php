@@ -249,6 +249,11 @@
                             $pe = \Carbon\Carbon::parse($det->empPassportExpDate);
                             if ($pe->gte($attnToday) && $pe->lte($attnToday->copy()->addDays(60))) $flags[] = 'passport';
                         }
+                        // Health/sanitary card needing renewal — expiring within 30 days OR already expired.
+                        if ($det->empSanitaryCardExpDate) {
+                            $sc = \Carbon\Carbon::parse($det->empSanitaryCardExpDate);
+                            if ($sc->lte($attnToday->copy()->addDays(30))) $flags[] = 'sanitarycard';
+                        }
                         if ($det->empDateRegular) {
                             $rg = \Carbon\Carbon::parse($det->empDateRegular);
                             if ($rg->gte($attnToday) && $rg->lte($attnToday->copy()->addDays(14))) $flags[] = 'regularize';
@@ -400,6 +405,14 @@
                                 <div class="col-6 col-md-3">
                                     <div class="label-caps">TIN</div>
                                     <div class="value-text" id="view_tin">---</div>
+                                </div>
+                                <div class="col-6 col-md-3 border-end">
+                                    <div class="label-caps">Health Sanitary Card</div>
+                                    <div class="value-text" id="view_sanitary_card">---</div>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <div class="label-caps">Sanitary Card Expiry</div>
+                                    <div class="value-text" id="view_sanitary_card_exp">---</div>
                                 </div>
                             </div>
                         </div>
