@@ -315,6 +315,8 @@
         </div>
     </div>
 
+    @include('partials.sanitary_card_banner', ['emp' => $emp])
+
     {{-- Hero Section --}}
     <div class="card profile-hero mb-4">
         <div class="card-body p-4 p-lg-5">
@@ -809,8 +811,12 @@
                                 ['label' => 'Pag-IBIG', 'val' => $emp->empPagibig ?? null, 'icon' => 'fa-house-chimney-user'],
                                 ['label' => 'TIN', 'val' => $emp->empTIN ?? null, 'icon' => 'fa-file-invoice'],
                                 ['label' => 'UMID', 'val' => $emp->empUMID ?? null, 'icon' => 'fa-address-card'],
-                                ['label' => 'Passport', 'val' => $emp->empPassport ?? null, 'icon' => 'fa-passport']
+                                ['label' => 'Passport', 'val' => $emp->empPassport ?? null, 'icon' => 'fa-passport'],
+                                ['label' => 'Health Sanitary Card', 'val' => $emp->empSanitaryCardNo ?? null, 'icon' => 'fa-notes-medical'],
                             ];
+                            // Sanitary-card expiry status (drives the tile colour + the top-of-page banner).
+                            $scExp     = $emp->empSanitaryCardExpDate ? \Carbon\Carbon::parse($emp->empSanitaryCardExpDate) : null;
+                            $scExpired = $scExp && $scExp->lt(\Carbon\Carbon::today());
                         @endphp
                         @foreach($governmentFields as $item)
                             <div class="col-md-4">
@@ -823,6 +829,18 @@
                                 </div>
                             </div>
                         @endforeach
+                        <div class="col-md-4">
+                            <div class="tile d-flex align-items-center gap-3">
+                                <div class="tile-icon"><i class="fa-solid fa-calendar-xmark"></i></div>
+                                <div>
+                                    <span class="field-label">Sanitary Card Expiry</span>
+                                    <div class="field-value fw-bold {{ $scExpired ? 'text-danger' : '' }}">
+                                        {{ $scExp ? $scExp->format('M d, Y') : 'Not Provided' }}
+                                        @if($scExpired)<span class="badge bg-danger ms-1">Expired</span>@endif
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

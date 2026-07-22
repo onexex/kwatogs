@@ -253,6 +253,8 @@ class registerCtrl extends Controller
             'sss'        => 'nullable|digits:10', // SSS Number is 10 digits
             'tin'        => 'nullable|digits:9',  // Standard TIN is 9 (minsan 12 kung may branch code)
             'umid'       => 'nullable|digits:12', // UMID is 12 digits
+            'sanitary_card_no'       => 'nullable|string|max:100',
+            'sanitary_card_exp_date' => 'nullable|date',
 
              //profile picture
              'path' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
@@ -375,6 +377,8 @@ class registerCtrl extends Controller
                 'empSSS' => $request->sss,
                 'empTIN' => $request->tin,
                 'empUMID' => $request->umid,
+                'empSanitaryCardNo' => $request->sanitary_card_no,
+                'empSanitaryCardExpDate' => $request->sanitary_card_exp_date,
                 'created_at' => $current_date_time,
                 'updated_at' => $current_date_time,
             ];
@@ -512,6 +516,8 @@ class registerCtrl extends Controller
             'sss'        => 'nullable|digits:10',
             'tin'        => 'nullable|digits:9',
             'umid'       => 'nullable|digits:12',
+            'sanitary_card_no'       => 'nullable|string|max:100',
+            'sanitary_card_exp_date' => 'nullable|date',
 
             // Profile picture is optional on update, but if supplied must be a valid image.
             'path' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
@@ -601,6 +607,8 @@ class registerCtrl extends Controller
                 'empSSS' => $request->sss,
                 'empTIN' => $request->tin,
                 'empUMID' => $request->umid,
+                'empSanitaryCardNo' => $request->sanitary_card_no,
+                'empSanitaryCardExpDate' => $request->sanitary_card_exp_date,
             ];
 
 

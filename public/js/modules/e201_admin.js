@@ -28,6 +28,7 @@ $(document).ready(function() {
     const FOCUS_LABELS   = {
         missingdocs: 'Missing government docs',
         passport:    'Passport expiring soon',
+        sanitarycard:'Sanitary card renewal',
         regularize:  'Upcoming regularization',
         birthday:    'Birthday this week',
         hireanniv:   'Work anniversary this week',
@@ -590,6 +591,13 @@ $(document).ready(function() {
             $('#view_pagibig').text(detail.empPagibig ?? '---');
             $('#view_tin').text(detail.empTIN ?? '---');
             $('#view_company').text(detail.company ? detail.company.comp_name : '---');
+
+            // Health / sanitary card — expiry rendered red once past due.
+            $('#view_sanitary_card').text(detail.empSanitaryCardNo ?? '---');
+            const scExp = detail.empSanitaryCardExpDate ? new Date(detail.empSanitaryCardExpDate) : null;
+            $('#view_sanitary_card_exp')
+                .text(scExp ? scExp.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : '---')
+                .toggleClass('text-danger fw-bold', !!scExp && scExp < new Date(new Date().toDateString()));
 
             // Years rendered + separation snapshot (only meaningful once separated).
             $('#view_years_rendered').text(

@@ -1045,10 +1045,20 @@
                                     </div>
                                 </div>
                                 <div class="col-lg-4">
-                                    <div class="mb-0">
+                                    <div class="mb-3">
                                         <label for="txtUMIDNo" class="field-label">UMID</label>
                                         <input type="text" class="form-control" id="txtUMIDNo" name="umid" placeholder="0000-0000000-0" autocomplete="off">
                                         <span class="text-danger error-text umid_error"></span>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="txtSanitaryCardNo" class="field-label">Health Sanitary Card No.</label>
+                                        <input type="text" class="form-control" id="txtSanitaryCardNo" name="sanitary_card_no" placeholder="Health/Sanitary card number" autocomplete="off">
+                                        <span class="text-danger error-text sanitary_card_no_error"></span>
+                                    </div>
+                                    <div class="mb-0">
+                                        <label for="txtSanitaryCardExp" class="field-label">Sanitary Card Expiry</label>
+                                        <input type="date" class="form-control" id="txtSanitaryCardExp" name="sanitary_card_exp_date">
+                                        <span class="text-danger error-text sanitary_card_exp_date_error"></span>
                                     </div>
                                 </div>
                             </div>
