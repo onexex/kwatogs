@@ -119,6 +119,16 @@ class HrDashboardController extends Controller
             ->selectRaw("TRIM(CONCAT(u.lname,', ',u.fname)) as name, e.empPassportExpDate as exp")
             ->orderBy('e.empPassportExpDate')->limit(6)->get();
 
+        // Health/sanitary cards needing renewal: active staff whose card expires within 30
+        // days OR has already lapsed. One set (<= today+30) covers both.
+        $d['sanitaryCards'] = DB::table('emp_details as e')
+            ->join('users as u', 'u.empID', '=', 'e.empID')
+            ->where('e.empStatus', '1')
+            ->whereNotNull('e.empSanitaryCardExpDate')
+            ->whereDate('e.empSanitaryCardExpDate', '<=', Carbon::today()->addDays(30)->toDateString())
+            ->selectRaw("TRIM(CONCAT(u.lname,', ',u.fname)) as name, e.empSanitaryCardExpDate as exp")
+            ->orderBy('e.empSanitaryCardExpDate')->limit(6)->get();
+
         $d['missingDocs'] = DB::table('emp_details as e')
             ->join('users as u', 'u.empID', '=', 'e.empID')
             ->where('e.empStatus', '1')
@@ -674,6 +684,13 @@ class HrDashboardController extends Controller
             ->whereDate('empPassportExpDate', '<=', Carbon::today()->addDays(60)->toDateString())
             ->count();
 
+        // Sanitary cards expiring within 30 days OR already expired (active staff only).
+        $expiringSanitaryCard = DB::table('emp_details')
+            ->where('empStatus', '1')
+            ->whereNotNull('empSanitaryCardExpDate')
+            ->whereDate('empSanitaryCardExpDate', '<=', Carbon::today()->addDays(30)->toDateString())
+            ->count();
+
         $regularize = DB::table('emp_details')->where('empStatus', '1')
             ->whereNotNull('empDateRegular')
             ->whereDate('empDateRegular', '>=', $today)
@@ -719,6 +736,7 @@ class HrDashboardController extends Controller
             ['attendance', 'hrdashboard', $noSchedule, 'Active staff with no schedule', 'Employee Schedules', '/employee-schedules?view=unscheduled&date=today', 'fa-calendar-plus', 'warning'],
             ['attendance', $e201, $missingDocs, 'Missing government docs', 'SSS, PhilHealth, TIN', '/pages/management/e201?focus=missingdocs', 'fa-file-circle-exclamation', 'warning'],
             ['attendance', $e201, $expiringPassport, 'Passports expiring soon', 'Within 60 days', '/pages/management/e201?focus=passport', 'fa-id-card', 'warning'],
+            ['attendance', $e201, $expiringSanitaryCard, 'Sanitary cards to renew', 'Expiring or expired', '/pages/management/e201?focus=sanitarycard', 'fa-notes-medical', 'warning'],
             ['hr', 'coemanagement', $coePending, 'COE requests to review', 'Certificate of Employment', '/pages/modules/coe?status=pending', 'fa-file-signature', 'purple'],
             ['hr', 'programs', $tenurePending, 'Tenure milestones to grant', 'Programs', '/pages/modules/programs?focus=pending', 'fa-award', 'purple'],
             ['hr', $e201, $regularize, 'Upcoming regularizations', 'Within 14 days', '/pages/management/e201?focus=regularize', 'fa-user-check', 'purple'],

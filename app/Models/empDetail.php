@@ -23,6 +23,8 @@ class empDetail extends Model
         'empDateResigned', 'empDateRegular', 'empPrevPos', 'empPrevDep',
         'empPrevWorkStartDate', 'empPassport', 'empPassportExpDate', 'empPassportIssueAuth',
         'empPagibig', 'empPhilhealth', 'empSSS', 'empTIN', 'empUMID', 'empPrevDesignation',
+        // Health / Sanitary Card (document number + expiry) — mirrors the passport pair
+        'empSanitaryCardNo', 'empSanitaryCardExpDate',
         // Per-employee government-dues enrolment toggles (default enrolled)
         'sss_enabled', 'philhealth_enabled', 'pagibig_enabled',
         // Separation (employment exit) metadata + independent flag layer — see E-201 Update Status
