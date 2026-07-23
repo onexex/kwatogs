@@ -10,6 +10,16 @@
     RewriteCond %{HTTPS} !=on
     RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301,NE]
 
+    # 1.5️⃣ Route the bare site root ("/") into Laravel.
+    #    The document root is itself a directory, so the "!-d" guard on rules
+    #    #2 and #3 below is FALSE for the root request — those rules skip it,
+    #    the "/" never reaches public/index.php, and Apache falls back to a
+    #    directory index. There is no index file at the project root (it lives
+    #    in /public), and with "Options -Indexes" set that surfaces as a
+    #    403 Forbidden on the homepage even though /auth/login and every other
+    #    path work fine. This explicit rule handles only the empty path.
+    RewriteRule ^$ public/index.php [L]
+
     # 2️⃣ Serve any request that matches a REAL FILE inside /public directly.
     #    Replaces a hardcoded css|js|img|fonts|vendor whitelist, which silently
     #    404'd anything outside those 5 names — e.g. KuBo's uploaded images
