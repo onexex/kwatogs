@@ -222,6 +222,24 @@ $(document).ready(function() {
         return ((sep - hired) / (365.25 * 24 * 60 * 60 * 1000)).toFixed(2);
     }
 
+    // Human-readable tenure between two dates, e.g. "1 year and 2 months",
+    // "7 months", "2 years". Returns null if the dates are missing/invalid.
+    function humanTenure(startStr, endStr) {
+        if (!startStr || !endStr) return null;
+        const start = new Date(startStr);
+        const end = new Date(endStr);
+        if (isNaN(start) || isNaN(end) || end < start) return null;
+        let months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+        if (end.getDate() < start.getDate()) months--; // current month not yet completed
+        if (months < 0) months = 0;
+        const years = Math.floor(months / 12);
+        const rem = months % 12;
+        const parts = [];
+        if (years > 0) parts.push(years + (years === 1 ? ' year' : ' years'));
+        if (rem > 0) parts.push(rem + (rem === 1 ? ' month' : ' months'));
+        return parts.length ? parts.join(' and ') : 'Less than a month';
+    }
+
     function toggleUsFields() {
         const status = $('#us_emp_status').val();
         const isExit = status !== '1';
@@ -599,12 +617,15 @@ $(document).ready(function() {
                 .text(scExp ? scExp.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : '---')
                 .toggleClass('text-danger fw-bold', !!scExp && scExp < new Date(new Date().toDateString()));
 
-            // Years rendered + separation snapshot (only meaningful once separated).
-            $('#view_years_rendered').text(
-                (detail.years_rendered !== null && detail.years_rendered !== undefined && detail.years_rendered !== '')
-                    ? parseFloat(detail.years_rendered).toFixed(2) + ' yrs'
-                    : '---'
-            );
+            // Years rendered, shown human-readable ("1 year and 2 months"). For a
+            // separated employee (empStatus !== '1', i.e. Resigned/EOC) compute the
+            // span from hire date to their separation/resignation date; active
+            // employees have no rendered tenure.
+            let yearsText = '---';
+            if (String(detail.empStatus) !== '1') {
+                yearsText = humanTenure(detail.empDateHired, detail.separation_date || detail.empDateResigned || null) || '---';
+            }
+            $('#view_years_rendered').text(yearsText);
 
             const sepDate = detail.separation_date
                 ? new Date(detail.separation_date).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
